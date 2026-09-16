@@ -73,6 +73,11 @@ def listar_servicos(db: Session = Depends(get_db)) -> ServiceListResponse:
             signed_pdf_url=service.signed_pdf_url,
             created_on=service.created_on,
             completion_date=service.completion_date,
+            requester=service.requester,
+            analyst_responsible=service.analyst_responsible,
+            non_approval_reason=service.non_approval_reason,
+            category=service.category,
+            subcategory=service.subcategory,
         )
         for service in services
     ]

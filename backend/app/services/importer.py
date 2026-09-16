@@ -53,6 +53,11 @@ CAMPOS_SINCRONIZADOS: tuple[str, ...] = (
     "signed_pdf_url",
     "created_on",
     "completion_date",
+    "requester",
+    "analyst_responsible",
+    "non_approval_reason",
+    "category",
+    "subcategory",
 )
 
 
@@ -400,6 +405,21 @@ def extrair_campos_negocio(linha: dict[str, object]) -> dict[str, Any]:
         "created_on": created_on,
         "completion_date": converter_data(
             obter_valor_campo(linha, "completion_date", obter_field_id_por_alias("completion_date"))
+        ),
+        "requester": normalizar_texto(
+            obter_valor_campo(linha, "requester", obter_field_id_por_alias("requester"))
+        ),
+        "analyst_responsible": normalizar_texto(
+            obter_valor_campo(linha, "analyst_responsible", obter_field_id_por_alias("analyst_responsible"))
+        ),
+        "non_approval_reason": normalizar_texto(
+            obter_valor_campo(linha, "non_approval_reason", obter_field_id_por_alias("non_approval_reason"))
+        ),
+        "category": normalizar_texto(
+            obter_valor_campo(linha, "category", obter_field_id_por_alias("category"))
+        ),
+        "subcategory": normalizar_texto(
+            obter_valor_campo(linha, "subcategory", obter_field_id_por_alias("subcategory"))
         ),
     }
 

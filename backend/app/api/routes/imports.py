@@ -10,6 +10,8 @@ Este módulo define as rotas responsáveis por:
 A importação é protegida por API Key.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -19,6 +21,7 @@ from app.schemas.upload import UploadResponse
 from app.services.importer import importar_servicos_tape
 
 router = APIRouter(prefix="/imports", tags=["Imports"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -52,9 +55,10 @@ def sincronizar_tape(
         ) from error
 
     except Exception as error:
+        logger.exception("Erro ao sincronizar dados da Tape")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Ocorreu um erro ao sincronizar os dados da Tape.",
+            detail=f"Erro ao sincronizar: {type(error).__name__}: {error}",
         ) from error
 
 

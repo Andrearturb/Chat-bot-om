@@ -55,6 +55,21 @@ class Service(Base):
     # Data de conclusão do chamado (field 615596 da Tape)
     completion_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # Requisitante do chamado (field 580436 da Tape)
+    requester: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Analista responsável pelo chamado (field 603645 da Tape)
+    analyst_responsible: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Motivo da não aprovação (field 617502 da Tape)
+    non_approval_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Categoria do chamado (field 601597 da Tape)
+    category: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Subcategoria do chamado (field 601598 da Tape)
+    subcategory: Mapped[str | None] = mapped_column(String, nullable=True)
+
     # Campo interno: FK da última sincronização que tocou este registro
     upload_id: Mapped[int] = mapped_column(
         Integer,

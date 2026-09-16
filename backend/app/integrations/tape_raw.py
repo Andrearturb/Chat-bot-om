@@ -33,7 +33,12 @@ class TapeClient:
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
-        self.client = httpx.Client(timeout=timeout)
+        # connect: tempo para estabelecer a conexão TCP
+        # read: tempo para receber a resposta (APIs com muitos registros podem demorar)
+        # write/pool: mantidos conservadores
+        self.client = httpx.Client(
+            timeout=httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
+        )
 
     def close(self) -> None:
         """Fecha as conexões abertas do cliente HTTP."""
@@ -59,21 +64,40 @@ class TapeClient:
         Extrai todos os registros de um app com paginação por cursor.
 
         Itera automaticamente até esgotar todas as páginas disponíveis.
+        Respeita o rate limit da Tape API via retry com backoff em caso de 429.
         """
+        import time
+
         all_records: list[dict[str, Any]] = []
         cursor: str | None = None
+        max_retries = 5
 
         while True:
             params: dict[str, Any] = {"limit": limit}
             if cursor:
                 params["cursor"] = cursor
 
-            response = self.client.get(
-                f"{self.base_url}/record/app/{app_id}",
-                headers=self.headers,
-                params=params,
-            )
-            response.raise_for_status()
+            # Retry com backoff exponencial para lidar com rate limiting (429)
+            for attempt in range(max_retries):
+                response = self.client.get(
+                    f"{self.base_url}/record/app/{app_id}",
+                    headers=self.headers,
+                    params=params,
+                )
+
+                if response.status_code == 429:
+                    # Respeita o header Retry-After se presente, senão usa backoff
+                    retry_after = response.headers.get("Retry-After")
+                    wait = float(retry_after) if retry_after else (2 ** attempt)
+                    time.sleep(wait)
+                    continue
+
+                response.raise_for_status()
+                break
+            else:
+                # Esgotou as tentativas — lança o último erro recebido
+                response.raise_for_status()
+
             payload = response.json()
 
             records = payload.get("records") or []
@@ -82,6 +106,10 @@ class TapeClient:
 
             all_records.extend(record for record in records if isinstance(record, dict))
             cursor = payload.get("cursor")
+
+            # Pausa mínima entre páginas para evitar disparar o rate limit
+            if cursor:
+                time.sleep(0.3)
 
         return {"records": all_records}
 

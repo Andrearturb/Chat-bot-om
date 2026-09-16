@@ -61,19 +61,25 @@ def make_linha(
     signature_status: str | None = None,
     signed_pdf_url: str | None = None,
     created_on: str | None = None,  # None por padrão para evitar divergência com fixtures
+    requester: str | None = None,
+    analyst_responsible: str | None = None,
+    non_approval_reason: str | None = None,
 ) -> dict:
     """Monta uma linha no formato já tratado pelo TapeTransformer."""
     return {
         "field_values": {
-            "ticket":               {"field_id": 623225, "label": "Ticket",                "value": ticket},
-            "status":               {"field_id": 580453, "label": "Status",                "value": status},
-            "raw_location":         {"field_id": 580441, "label": "Local de Atendimento",  "value": store_name},
-            "praca":                {"field_id": 580450, "label": "Praça",                 "value": praca},
-            "service_description":  {"field_id": 638539, "label": "Descrição do Serviço",  "value": service_description},
-            "supplier":             {"field_id": 603575, "label": "Fornecedor",            "value": supplier},
-            "visit_date":           {"field_id": 622874, "label": "Data da Visita",        "value": visit_date},
-            "solution_text":        {"field_id": 623224, "label": "Solução",               "value": solution_text},
-            "raw_signature":        {"field_id": 645992, "label": "Status da Assinatura",  "value": None},
+            "ticket":               {"field_id": 623225, "label": "Ticket",                        "value": ticket},
+            "status":               {"field_id": 580453, "label": "Status",                        "value": status},
+            "raw_location":         {"field_id": 580441, "label": "Local de Atendimento",          "value": store_name},
+            "praca":                {"field_id": 580450, "label": "Praça",                         "value": praca},
+            "service_description":  {"field_id": 638539, "label": "Descrição do Serviço",          "value": service_description},
+            "supplier":             {"field_id": 603575, "label": "Fornecedor",                    "value": supplier},
+            "visit_date":           {"field_id": 622874, "label": "Data da Visita",                "value": visit_date},
+            "solution_text":        {"field_id": 623224, "label": "Solução",                       "value": solution_text},
+            "raw_signature":        {"field_id": 645992, "label": "Status da Assinatura",          "value": None},
+            "requester":            {"field_id": 580436, "label": "Requisitante",                  "value": requester},
+            "analyst_responsible":  {"field_id": 603645, "label": "Analista Responsável",          "value": analyst_responsible},
+            "non_approval_reason":  {"field_id": 617502, "label": "Motivo da Não Aprovação",       "value": non_approval_reason},
         },
         "created_on": created_on,
     }

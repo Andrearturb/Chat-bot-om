@@ -29,6 +29,11 @@ class ServiceItemResponse(BaseModel):
     signed_pdf_url: str | None
     created_on: datetime | None
     completion_date: datetime | None
+    requester: str | None
+    analyst_responsible: str | None
+    non_approval_reason: str | None
+    category: str | None
+    subcategory: str | None
 
 
 class ServiceListResponse(BaseModel):

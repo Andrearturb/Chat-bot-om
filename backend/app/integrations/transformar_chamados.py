@@ -125,6 +125,26 @@ FIELD_ALIASES: dict[str, dict[str, Any]] = {
         "field_ids": [615596],
         "labels": ["Data de conclusão", "Data da Conclusão"],
     },
+    "requester": {
+        "field_ids": [580436],
+        "labels": ["Requisitante"],
+    },
+    "analyst_responsible": {
+        "field_ids": [603645],
+        "labels": ["Analista Responsável", "Analista Responsavel"],
+    },
+    "non_approval_reason": {
+        "field_ids": [617502],
+        "labels": ["Motivo da Não Aprovação", "Motivo da Nao Aprovacao"],
+    },
+    "category": {
+        "field_ids": [601597],
+        "labels": ["Categoria"],
+    },
+    "subcategory": {
+        "field_ids": [601598],
+        "labels": ["Subcategoria"],
+    },
 }
 
 

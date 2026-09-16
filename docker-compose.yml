@@ -1,0 +1,65 @@
+services:
+
+    n8n:
+      image: docker.n8n.io/n8nio/n8n
+      container_name: n8n
+
+      ports:
+        - "5678:5678"
+      
+      environment:
+       - TZ=America/Fortaleza
+       - GENERIC_TIMEZONE=America/Fortaleza
+       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+
+      volumes:
+
+        - n8n_data:/home/node/.n8n
+    db:
+      image: postgres:16
+      restart: unless-stopped
+
+      environment:
+          POSTGRES_DB: ${POSTGRES_DB:?defina POSTFRES_DB no arquivo .env}
+          POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER no arquivo .env}
+          POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+
+      volumes:
+        - chatbot_postgres_data:/var/lib/postgresql/data
+
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}
+        interval: 5s
+        timeout: 5s
+        retries: 10
+        start_period: 10s
+    
+    backend:
+      build:
+        context: ./backend
+        dockerfile: Dockerfile
+
+      container_name: chatbot-backend
+      restart: unless-stopped
+
+      environment:
+        DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+        API_KEY: ${API_KEY}
+        TAPE_API_TOKEN: ${TAPE_API_TOKEN}
+        TAPE_SYNC_SCHEDULE_ENABLED: ${TAPE_SYNC_SCHEDULE_ENABLED:-true}
+        TAPE_SYNC_INTERVAL_HOURS: ${TAPE_SYNC_INTERVAL_HOURS:-24}
+        TAPE_SYNC_RUN_ON_STARTUP: ${TAPE_SYNC_RUN_ON_STARTUP:-false}
+        TZ: America/Fortaleza
+
+      depends_on:
+        db:
+          condition: service_healthy
+
+      ports:
+        - "8040:8000"
+
+volumes: 
+  n8n_data:
+  chatbot_postgres_data:

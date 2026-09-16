@@ -1,0 +1,10 @@
+.env
+.env.*
+node_modules/
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+n8n_data/
+postgres_data/
+*.log

@@ -87,7 +87,7 @@ function App() {
           <HeroAssistant active={active} />
           <ChatArea messages={messages} active={active} />
           <div className="interaction-zone">
-            <SuggestionChips onSelect={(selectedPrompt) => sendMessage(null, selectedPrompt)} active={active} />
+            {!active && <SuggestionChips onSelect={(selectedPrompt) => sendMessage(null, selectedPrompt)} active={active} />}
             <ChatComposer value={prompt} onChange={setPrompt} onSubmit={sendMessage} loading={loading} />
           </div>
         </div>

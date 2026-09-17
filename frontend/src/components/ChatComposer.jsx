@@ -1,9 +1,20 @@
 export default function ChatComposer({ value, onChange, onSubmit, loading }) {
+  function handleKeyDown(event) {
+    if (event.key !== 'Enter' || event.shiftKey) return
+
+    event.preventDefault()
+
+    if (!loading && value.trim()) {
+      onSubmit()
+    }
+  }
+
   return (
     <form className="composer" onSubmit={onSubmit}>
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder="Pergunte sobre chamados, lojas, analistas, fornecedores ou indicadores..."
         rows="2"
         aria-label="Pergunta para o assistente"

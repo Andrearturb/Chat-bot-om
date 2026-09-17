@@ -59,7 +59,22 @@ services:
 
       ports:
         - "8040:8000"
+    frontend:
+      build:
+        context: ./frontend
+        dockerfile: Dockerfile
+
+      container_name: chatbot-frontend
+      restart: unless-stopped
+
+      ports:
+        - "5173:5173"
+
+      volumes:
+        - ./frontend:/app
+        - frontend_node_modules:/app/node_modules
 
 volumes: 
   n8n_data:
   chatbot_postgres_data:
+  frontend_node_modules:

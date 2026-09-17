@@ -1,5 +1,7 @@
 import re
 
+from sqlglot import exp, parse
+from sqlglot.errors import ParseError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -66,14 +68,28 @@ def validar_sql(sql: str) -> str:
                 f"Comando não permitido: {comando.upper()}."
             )
 
-    # Descobre tabelas utilizadas em FROM e JOIN
-    tabelas_encontradas = re.findall(
-        r"\b(?:from|join)\s+([a-zA-Z_][a-zA-Z0-9_.]*)",
-        sql_lower,
-    )
+    try:
+        statements = parse(sql_limpo, read="postgres")
+    except ParseError as exc:
+        raise ChatbotQueryError("A consulta SQL é inválida.") from exc
 
-    for tabela in tabelas_encontradas:
-        nome_tabela = tabela.split(".")[-1]
+    if len(statements) != 1 or not isinstance(statements[0], exp.Select):
+        raise ChatbotQueryError(
+            "Somente consultas SELECT ou WITH ... SELECT são permitidas."
+        )
+
+    statement = statements[0]
+    aliases_cte = {
+        cte.alias_or_name.lower()
+        for cte in statement.find_all(exp.CTE)
+    }
+
+    # O AST distingue tabelas reais do FROM interno de funções como EXTRACT.
+    for tabela in statement.find_all(exp.Table):
+        nome_tabela = tabela.name.lower()
+
+        if nome_tabela in aliases_cte:
+            continue
 
         if nome_tabela not in TABELAS_PERMITIDAS:
             raise ChatbotQueryError(

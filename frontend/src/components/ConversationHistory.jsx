@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+
 function formatConversationDate(value) {
   const date = new Date(value)
   const today = new Date()
@@ -35,6 +37,18 @@ function ConversationItem({ conversation, active, onSelect, onDelete }) {
 }
 
 export default function ConversationHistory({ conversations, activeConversationId, onSelect, onNewConversation, onDelete, onClose }) {
+  const historyPanelRef = useRef(null)
+
+  useEffect(() => {
+    function handleOutsideClick(event) {
+      if (event.target.closest('[data-history-toggle]')) return
+      if (historyPanelRef.current && !historyPanelRef.current.contains(event.target)) onClose()
+    }
+
+    document.addEventListener('pointerdown', handleOutsideClick)
+    return () => document.removeEventListener('pointerdown', handleOutsideClick)
+  }, [onClose])
+
   const ordered = [...conversations].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
   const today = new Date().toDateString()
   const todayConversations = ordered.filter((conversation) => new Date(conversation.updatedAt).toDateString() === today)
@@ -59,7 +73,7 @@ export default function ConversationHistory({ conversations, activeConversationI
   }
 
   return (
-    <aside className="conversation-history" aria-label="Histórico de conversas">
+    <aside ref={historyPanelRef} className="conversation-history" aria-label="Histórico de conversas">
       <div className="conversation-history__header">
         <div><span className="history-kicker">HISTÓRICO</span><h2>Conversas</h2></div>
         <button className="history-close" type="button" onClick={onClose} aria-label="Fechar histórico" title="Fechar histórico">×</button>

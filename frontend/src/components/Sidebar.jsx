@@ -19,7 +19,7 @@ export default function Sidebar({ onNewConversation, onOpenConversations, onClos
           const onClick = index === 0 ? onCloseConversations : index === 1 ? onOpenConversations : undefined
 
           return (
-          <button className={`nav-button ${isActive ? 'nav-button--active' : ''}`} key={label} type="button" title={label} aria-label={label} aria-current={isActive ? 'page' : undefined} onClick={onClick}>
+          <button className={`nav-button ${isActive ? 'nav-button--active' : ''}`} key={label} type="button" title={label} aria-label={label} aria-current={isActive ? 'page' : undefined} data-history-toggle={index === 1 ? 'true' : undefined} onClick={onClick}>
             <span aria-hidden="true">{icon}</span>
             <small>{label}</small>
           </button>

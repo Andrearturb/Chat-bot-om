@@ -16,14 +16,10 @@ function newSessionId() {
   return crypto.randomUUID()
 }
 
-function createConversation() {
-  const now = new Date().toISOString()
+function createDraftConversation() {
   return {
     id: crypto.randomUUID(),
     sessionId: newSessionId(),
-    title: 'Nova conversa',
-    createdAt: now,
-    updatedAt: now,
     messages: [],
   }
 }
@@ -65,11 +61,10 @@ function validStore(parsed) {
   return (
     parsed &&
     parsed.version === 2 &&
-    typeof parsed.activeConversationId === 'string' &&
+    (parsed.activeConversationId === null || typeof parsed.activeConversationId === 'string') &&
     Array.isArray(parsed.conversations) &&
-    parsed.conversations.length > 0 &&
     parsed.conversations.every(isValidConversation) &&
-    parsed.conversations.some((conversation) => conversation.id === parsed.activeConversationId)
+    (parsed.conversations.length === 0 || parsed.conversations.some((conversation) => conversation.id === parsed.activeConversationId))
   )
 }
 
@@ -78,7 +73,14 @@ function loadConversationStore() {
     const storedV2 = localStorage.getItem(CONVERSATIONS_KEY)
     if (storedV2) {
       const parsed = JSON.parse(storedV2)
-      if (validStore(parsed)) return parsed
+      if (validStore(parsed)) {
+        const conversations = parsed.conversations.filter((conversation) => conversation.messages.length > 0)
+        const mostRecentConversation = [...conversations].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0]
+        const activeConversationId = conversations.some((conversation) => conversation.id === parsed.activeConversationId)
+          ? parsed.activeConversationId
+          : mostRecentConversation?.id || null
+        return { version: 2, activeConversationId, conversations }
+      }
     }
 
     const storedV1 = localStorage.getItem(CURRENT_CONVERSATION_KEY)
@@ -105,15 +107,16 @@ function loadConversationStore() {
           updatedAt: now,
           messages: parsed.messages,
         }
-        return { version: 2, activeConversationId: migrated.id, conversations: [migrated] }
+        if (migrated.messages.length > 0) {
+          return { version: 2, activeConversationId: migrated.id, conversations: [migrated] }
+        }
       }
     }
   } catch (error) {
     console.warn('Não foi possível restaurar o histórico de conversas:', error)
   }
 
-  const conversation = createConversation()
-  return { version: 2, activeConversationId: conversation.id, conversations: [conversation] }
+  return { version: 2, activeConversationId: null, conversations: [] }
 }
 
 function extractResponse(data) {
@@ -124,13 +127,14 @@ function extractResponse(data) {
 
 function App() {
   const [conversationStore, setConversationStore] = useState(() => loadConversationStore())
+  const [draftConversation, setDraftConversation] = useState(() => createDraftConversation())
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const requestControllerRef = useRef(null)
 
   const { conversations, activeConversationId } = conversationStore
-  const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) || conversations[0]
+  const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) || draftConversation
   const messages = activeConversation?.messages ?? []
   const active = messages.length > 0
 
@@ -165,11 +169,10 @@ function App() {
 
   function createNewConversation() {
     abortCurrentRequest()
-    const conversation = createConversation()
+    setDraftConversation(createDraftConversation())
     setConversationStore((current) => ({
       ...current,
-      activeConversationId: conversation.id,
-      conversations: [conversation, ...current.conversations],
+      activeConversationId: null,
     }))
     setPrompt('')
     setHistoryOpen(false)
@@ -178,6 +181,7 @@ function App() {
   function selectConversation(conversationId) {
     abortCurrentRequest()
     setPrompt('')
+    setDraftConversation(createDraftConversation())
     setConversationStore((current) => ({ ...current, activeConversationId: conversationId }))
     setHistoryOpen(false)
   }
@@ -189,15 +193,15 @@ function App() {
     setConversationStore((current) => {
       const remaining = current.conversations.filter((conversation) => conversation.id !== conversationId)
       if (remaining.length > 0) {
+        const mostRecentConversation = [...remaining].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0]
         return {
           ...current,
-          activeConversationId: isDeletingActive ? remaining[0].id : current.activeConversationId,
+          activeConversationId: isDeletingActive ? mostRecentConversation.id : current.activeConversationId,
           conversations: remaining,
         }
       }
 
-      const replacement = createConversation()
-      return { ...current, activeConversationId: replacement.id, conversations: [replacement] }
+      return { ...current, activeConversationId: null, conversations: [] }
     })
     setPrompt('')
     setLoading(false)
@@ -213,12 +217,27 @@ function App() {
     const now = new Date().toISOString()
     const userMessage = { id: `${Date.now()}-user`, role: 'user', content }
 
-    updateConversation(conversationIdAtSend, (conversation) => ({
-      ...conversation,
-      title: conversation.title === 'Nova conversa' ? createTitleFromMessage(content) : conversation.title,
-      updatedAt: now,
-      messages: [...conversation.messages, userMessage],
-    }))
+    if (activeConversationId === null) {
+      const conversation = {
+        id: draftConversation.id,
+        sessionId: draftConversation.sessionId,
+        title: createTitleFromMessage(content),
+        createdAt: now,
+        updatedAt: now,
+        messages: [userMessage],
+      }
+      setConversationStore((current) => ({
+        ...current,
+        activeConversationId: conversation.id,
+        conversations: [conversation, ...current.conversations],
+      }))
+    } else {
+      updateConversation(conversationIdAtSend, (conversation) => ({
+        ...conversation,
+        updatedAt: now,
+        messages: [...conversation.messages, userMessage],
+      }))
+    }
     setPrompt('')
     setLoading(true)
 
@@ -264,7 +283,7 @@ function App() {
       <div className="app-panel">
         <Sidebar
           onNewConversation={createNewConversation}
-          onOpenConversations={() => setHistoryOpen(true)}
+          onOpenConversations={() => setHistoryOpen((current) => !current)}
           onCloseConversations={() => setHistoryOpen(false)}
           historyOpen={historyOpen}
         />

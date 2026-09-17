@@ -24,11 +24,16 @@ function Message({ message }) {
 }
 
 export default function ChatArea({ messages, active }) {
-  const bottomRef = useRef(null)
+  const messagesRef = useRef(null)
 
   useEffect(() => {
-    if (!active) return
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!active || !messagesRef.current) return
+
+    const container = messagesRef.current
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth',
+    })
   }, [active, messages])
 
   return (
@@ -37,9 +42,8 @@ export default function ChatArea({ messages, active }) {
         <img src={assistantImage} alt="" />
         <div><strong>Assistente de Obras &amp; Manutenções</strong><span><i /> Online</span></div>
       </div>
-      <div className="messages">
+      <div className="messages" ref={messagesRef}>
         {messages.map((message) => <Message key={message.id} message={message} />)}
-        <div ref={bottomRef} />
       </div>
     </section>
   )

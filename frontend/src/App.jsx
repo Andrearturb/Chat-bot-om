@@ -2,16 +2,30 @@ import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import ChatArea from './components/ChatArea'
 import ChatComposer from './components/ChatComposer'
+import ConversationHistory from './components/ConversationHistory'
 import HeroAssistant from './components/HeroAssistant'
 import Sidebar from './components/Sidebar'
 import SuggestionChips from './components/SuggestionChips'
 
 const WEBHOOK_URL = 'http://localhost:5678/webhook/9db5ead4-d4ca-4f5c-a1b4-3969e60cb8df/chat'
-const CONVERSATION_KEY = 'gentil-obras-current-conversation-v1'
+const CONVERSATIONS_KEY = 'gentil-obras-conversations-v2'
+const CURRENT_CONVERSATION_KEY = 'gentil-obras-current-conversation-v1'
 const LEGACY_SESSION_KEY = 'gentil-obras-session-id'
 
 function newSessionId() {
   return crypto.randomUUID()
+}
+
+function createConversation() {
+  const now = new Date().toISOString()
+  return {
+    id: crypto.randomUUID(),
+    sessionId: newSessionId(),
+    title: 'Nova conversa',
+    createdAt: now,
+    updatedAt: now,
+    messages: [],
+  }
 }
 
 function isValidMessage(message) {
@@ -24,13 +38,53 @@ function isValidMessage(message) {
   )
 }
 
-function loadConversation() {
-  try {
-    const raw = localStorage.getItem(CONVERSATION_KEY)
+function isValidConversation(conversation) {
+  return (
+    conversation &&
+    typeof conversation === 'object' &&
+    typeof conversation.id === 'string' &&
+    conversation.id.trim() !== '' &&
+    typeof conversation.sessionId === 'string' &&
+    conversation.sessionId.trim() !== '' &&
+    typeof conversation.title === 'string' &&
+    typeof conversation.createdAt === 'string' &&
+    typeof conversation.updatedAt === 'string' &&
+    Array.isArray(conversation.messages) &&
+    conversation.messages.every(isValidMessage)
+  )
+}
 
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      const valid = (
+function createTitleFromMessage(content) {
+  const normalized = content.replace(/\s+/g, ' ').trim()
+  if (!normalized) return 'Nova conversa'
+  if (normalized.length <= 48) return normalized
+  return `${normalized.slice(0, 45)}...`
+}
+
+function validStore(parsed) {
+  return (
+    parsed &&
+    parsed.version === 2 &&
+    typeof parsed.activeConversationId === 'string' &&
+    Array.isArray(parsed.conversations) &&
+    parsed.conversations.length > 0 &&
+    parsed.conversations.every(isValidConversation) &&
+    parsed.conversations.some((conversation) => conversation.id === parsed.activeConversationId)
+  )
+}
+
+function loadConversationStore() {
+  try {
+    const storedV2 = localStorage.getItem(CONVERSATIONS_KEY)
+    if (storedV2) {
+      const parsed = JSON.parse(storedV2)
+      if (validStore(parsed)) return parsed
+    }
+
+    const storedV1 = localStorage.getItem(CURRENT_CONVERSATION_KEY)
+    if (storedV1) {
+      const parsed = JSON.parse(storedV1)
+      const validV1 = (
         parsed &&
         parsed.version === 1 &&
         typeof parsed.sessionId === 'string' &&
@@ -39,21 +93,27 @@ function loadConversation() {
         parsed.messages.every(isValidMessage)
       )
 
-      if (valid) {
-        return {
+      if (validV1) {
+        const now = new Date().toISOString()
+        const migrated = {
+          id: crypto.randomUUID(),
           sessionId: parsed.sessionId,
+          title: parsed.messages.find((message) => message.role === 'user')?.content
+            ? createTitleFromMessage(parsed.messages.find((message) => message.role === 'user').content)
+            : 'Nova conversa',
+          createdAt: now,
+          updatedAt: now,
           messages: parsed.messages,
         }
+        return { version: 2, activeConversationId: migrated.id, conversations: [migrated] }
       }
     }
   } catch (error) {
-    console.warn('Não foi possível restaurar a conversa:', error)
+    console.warn('Não foi possível restaurar o histórico de conversas:', error)
   }
 
-  return {
-    sessionId: newSessionId(),
-    messages: [],
-  }
+  const conversation = createConversation()
+  return { version: 2, activeConversationId: conversation.id, conversations: [conversation] }
 }
 
 function extractResponse(data) {
@@ -63,12 +123,15 @@ function extractResponse(data) {
 }
 
 function App() {
-  const [initialConversation] = useState(() => loadConversation())
-  const [sessionId, setSessionId] = useState(initialConversation.sessionId)
-  const [messages, setMessages] = useState(initialConversation.messages)
+  const [conversationStore, setConversationStore] = useState(() => loadConversationStore())
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const requestControllerRef = useRef(null)
+
+  const { conversations, activeConversationId } = conversationStore
+  const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) || conversations[0]
+  const messages = activeConversation?.messages ?? []
   const active = messages.length > 0
 
   useEffect(() => {
@@ -77,60 +140,117 @@ function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(
-        CONVERSATION_KEY,
-        JSON.stringify({
-          version: 1,
-          sessionId,
-          messages,
-        }),
-      )
+      localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(conversationStore))
+      localStorage.removeItem(CURRENT_CONVERSATION_KEY)
       localStorage.removeItem(LEGACY_SESSION_KEY)
     } catch (error) {
-      console.warn('Não foi possível salvar a conversa:', error)
+      console.warn('Não foi possível salvar o histórico de conversas:', error)
     }
-  }, [sessionId, messages])
+  }, [conversationStore])
 
-  function resetConversation() {
-    requestControllerRef.current?.abort()
+  function updateConversation(conversationId, updater) {
+    setConversationStore((current) => ({
+      ...current,
+      conversations: current.conversations.map((conversation) => (
+        conversation.id === conversationId ? updater(conversation) : conversation
+      )),
+    }))
+  }
+
+  function abortCurrentRequest() {
+    requestControllerRef.current?.controller?.abort()
     requestControllerRef.current = null
     setLoading(false)
+  }
 
-    const nextSessionId = newSessionId()
-    setSessionId(nextSessionId)
-    setMessages([])
+  function createNewConversation() {
+    abortCurrentRequest()
+    const conversation = createConversation()
+    setConversationStore((current) => ({
+      ...current,
+      activeConversationId: conversation.id,
+      conversations: [conversation, ...current.conversations],
+    }))
     setPrompt('')
+    setHistoryOpen(false)
+  }
+
+  function selectConversation(conversationId) {
+    abortCurrentRequest()
+    setPrompt('')
+    setConversationStore((current) => ({ ...current, activeConversationId: conversationId }))
+    setHistoryOpen(false)
+  }
+
+  function deleteConversation(conversationId) {
+    const isDeletingActive = conversationId === activeConversationId
+    if (isDeletingActive) abortCurrentRequest()
+
+    setConversationStore((current) => {
+      const remaining = current.conversations.filter((conversation) => conversation.id !== conversationId)
+      if (remaining.length > 0) {
+        return {
+          ...current,
+          activeConversationId: isDeletingActive ? remaining[0].id : current.activeConversationId,
+          conversations: remaining,
+        }
+      }
+
+      const replacement = createConversation()
+      return { ...current, activeConversationId: replacement.id, conversations: [replacement] }
+    })
+    setPrompt('')
+    setLoading(false)
   }
 
   async function sendMessage(event, selectedPrompt = prompt) {
     event?.preventDefault()
     const content = selectedPrompt.trim()
-    if (!content || loading) return
+    if (!content || loading || !activeConversation) return
 
-    setMessages((current) => [...current, { id: `${Date.now()}-user`, role: 'user', content }])
+    const conversationIdAtSend = activeConversation.id
+    const sessionIdAtSend = activeConversation.sessionId
+    const now = new Date().toISOString()
+    const userMessage = { id: `${Date.now()}-user`, role: 'user', content }
+
+    updateConversation(conversationIdAtSend, (conversation) => ({
+      ...conversation,
+      title: conversation.title === 'Nova conversa' ? createTitleFromMessage(content) : conversation.title,
+      updatedAt: now,
+      messages: [...conversation.messages, userMessage],
+    }))
     setPrompt('')
     setLoading(true)
 
     const controller = new AbortController()
-    requestControllerRef.current = controller
+    requestControllerRef.current = { controller, conversationId: conversationIdAtSend }
 
     try {
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({ action: 'sendMessage', sessionId, chatInput: content }),
+        body: JSON.stringify({ action: 'sendMessage', sessionId: sessionIdAtSend, chatInput: content }),
       })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const data = await response.json()
-      if (requestControllerRef.current !== controller) return
-      setMessages((current) => [...current, { id: `${Date.now()}-assistant`, role: 'assistant', content: extractResponse(data) }])
+      if (requestControllerRef.current?.controller !== controller) return
+
+      updateConversation(conversationIdAtSend, (conversation) => ({
+        ...conversation,
+        updatedAt: new Date().toISOString(),
+        messages: [...conversation.messages, { id: `${Date.now()}-assistant`, role: 'assistant', content: extractResponse(data) }],
+      }))
     } catch (error) {
-      if (error.name === 'AbortError' || requestControllerRef.current !== controller) return
-      setMessages((current) => [...current, { id: `${Date.now()}-error`, role: 'assistant', content: 'Não consegui conectar ao assistente agora. Verifique se o n8n está disponível e tente novamente.' }])
+      if (error.name === 'AbortError' || requestControllerRef.current?.controller !== controller) return
+      updateConversation(conversationIdAtSend, (conversation) => ({
+        ...conversation,
+        updatedAt: new Date().toISOString(),
+        messages: [...conversation.messages, { id: `${Date.now()}-error`, role: 'assistant', content: 'Não consegui conectar ao assistente agora. Verifique se o n8n está disponível e tente novamente.' }],
+      }))
       console.error('Falha ao enviar mensagem para o n8n:', error)
     } finally {
-      if (requestControllerRef.current === controller) {
+      if (requestControllerRef.current?.controller === controller) {
         requestControllerRef.current = null
         setLoading(false)
       }
@@ -142,12 +262,27 @@ function App() {
       <div className="ambient-glow ambient-glow--blue" />
       <div className="ambient-glow ambient-glow--yellow" />
       <div className="app-panel">
-        <Sidebar onNewConversation={resetConversation} />
+        <Sidebar
+          onNewConversation={createNewConversation}
+          onOpenConversations={() => setHistoryOpen(true)}
+          onCloseConversations={() => setHistoryOpen(false)}
+          historyOpen={historyOpen}
+        />
+        {historyOpen && (
+          <ConversationHistory
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            onSelect={selectConversation}
+            onNewConversation={createNewConversation}
+            onDelete={deleteConversation}
+            onClose={() => setHistoryOpen(false)}
+          />
+        )}
         <div className={`workspace ${active ? 'workspace--active' : ''}`}>
           <header className="workspace-header">
             <div className="workspace-title"><span className="header-accent" /> Gentil Negócios <span>· Obras &amp; Manutenções</span></div>
             <div className="header-greeting"><span className="header-greeting__icon">♧</span><span><strong>Bom dia!</strong><small>Vamos construir resultados.</small></span></div>
-            {active && <button className="new-conversation" type="button" onClick={resetConversation}>+ Nova conversa</button>}
+            {active && <button className="new-conversation" type="button" onClick={createNewConversation}>+ Nova conversa</button>}
           </header>
           <HeroAssistant active={active} />
           <ChatArea messages={messages} active={active} />

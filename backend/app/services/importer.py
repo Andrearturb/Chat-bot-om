@@ -150,54 +150,62 @@ def normalizar_praca(valor: object) -> str | None:
     return praca
 
 
-def normalizar_status(
-    status_original: object,
-    supplier: str | None,
-    visit_date: datetime | None,
-) -> str | None:
+def normalizar_status(status_original: object) -> str | None:
     """
-    Define o status final do serviço com base em regras de negócio.
+    Mapeia o status original da Tape para os cinco status internos do sistema.
 
-    Ordem de prioridade:
-    1. Completa     — status original é finalizado/concluído
-    2. Não aprovado — status original é 'Não Aprovado'
-    3. Agendado     — há fornecedor e data de visita
-    4. Em atendimento — há fornecedor ou status original é 'Em Atendimento'
-    5. BackLog      — status original é 'Em Aberto'
-    6. Mantém o valor original nos demais casos
+    Mapeamento:
+    - "Em Aberto"                          → "Em Aberto"
+    - "Em Atendimento"                     → "Em atendimento"
+    - "Pendente Aprovação" / variações     → "Pendente de aprovação"
+    - "Não Aprovado" / variações           → "Não Aprovado"
+    - "Solicitação Finalizada"             → "Concluído"
+    - "Chamado Concluído"                  → "Concluído"
+    - Qualquer outro valor                 → preservado como recebido (sem inferência)
+
+    Regras:
+    - Não altera o status com base em supplier, visit_date ou qualquer outro campo.
+    - Tolera diferenças de maiúsculas/minúsculas e espaços extras.
+    - Valores desconhecidos são preservados, não classificados arbitrariamente.
     """
     status_limpo = normalizar_texto(status_original)
 
     if status_limpo is None:
-        if supplier and visit_date:
-            return "Agendado"
-        if supplier:
-            return "Em atendimento"
         return None
 
-    status_normalizado = status_limpo.lower().strip()
+    chave = status_limpo.strip().lower()
 
-    if status_normalizado in {
+    # Finalizado / concluído
+    if chave in {
         "solicitação finalizada",
         "solicitacao finalizada",
         "chamado concluído",
         "chamado concluido",
-        "completa",
     }:
-        return "Completa"
+        return "Concluído"
 
-    if status_normalizado in {"não aprovado", "nao aprovado"}:
-        return "Não aprovado"
+    # Não aprovado
+    if chave in {"não aprovado", "nao aprovado"}:
+        return "Não Aprovado"
 
-    if supplier and visit_date:
-        return "Agendado"
+    # Pendente de aprovação — variações conhecidas da Tape
+    if chave in {
+        "pendente aprovação",
+        "pendente aprovacao",
+        "pendente de aprovação",
+        "pendente de aprovacao",
+    }:
+        return "Pendente de aprovação"
 
-    if supplier or status_normalizado == "em atendimento":
+    # Em atendimento
+    if chave == "em atendimento":
         return "Em atendimento"
 
-    if status_normalizado == "em aberto":
-        return "BackLog"
+    # Em aberto
+    if chave == "em aberto":
+        return "Em Aberto"
 
+    # Status desconhecido — preservar o valor original sem inferir
     return status_limpo
 
 
@@ -374,8 +382,6 @@ def extrair_campos_negocio(linha: dict[str, object]) -> dict[str, Any]:
     )
     status = normalizar_status(
         status_original=obter_valor_campo(linha, "status", obter_field_id_por_alias("status")),
-        supplier=supplier,
-        visit_date=visit_date,
     )
 
     created_on = converter_data(

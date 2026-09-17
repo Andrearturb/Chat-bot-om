@@ -42,7 +42,7 @@ def criar_service_existente(
     db: Session,
     upload_id: int,
     ticket: str = "1001",
-    status: str = "BackLog",
+    status: str = "Em Aberto",
     store_name: str = "Loja A",
     bpcs_number: str = "100",
     sap_number: str = "200",
@@ -94,9 +94,8 @@ def sync(db, linhas, upload=None, agora=None):
 
 class TestCamposMudaram:
     def test_status_mudou(self, db, upload):
-        svc = criar_service_existente(db, upload.id, ticket="1", status="BackLog")
+        svc = criar_service_existente(db, upload.id, ticket="1", status="Em Aberto")
         campos = {"status": "Em atendimento", **{c: None for c in CAMPOS_SINCRONIZADOS if c != "status"}}
-        # store_name etc precisam bater para isolar o status
         campos["store_name"] = svc.store_name
         campos["bpcs_number"] = svc.bpcs_number
         campos["sap_number"] = svc.sap_number
@@ -105,7 +104,7 @@ class TestCamposMudaram:
         assert campos_mudaram(svc, campos) is True
 
     def test_sem_mudanca(self, db, upload):
-        svc = criar_service_existente(db, upload.id, ticket="2", status="BackLog")
+        svc = criar_service_existente(db, upload.id, ticket="2", status="Em Aberto")
         campos = {c: getattr(svc, c) for c in CAMPOS_SINCRONIZADOS}
         assert campos_mudaram(svc, campos) is False
 
@@ -149,16 +148,16 @@ class TestSincronizarServicos:
         assert resultado["unchanged"] == 0
 
         svc = db.query(Service).filter_by(ticket="2000").one()
-        assert svc.status == "BackLog"
+        assert svc.status == "Em Aberto"   # "Em aberto" → "Em Aberto" (nova regra)
         assert svc.praca == "Nordeste"
-        # SQLite strip tzinfo — compara ingênuo
         assert svc.synced_at is not None
 
     def test_atualiza_status_mudou(self, db, upload, agora):
-        criar_service_existente(db, upload.id, ticket="3000", status="BackLog", praca="Nordeste")
+        criar_service_existente(db, upload.id, ticket="3000", status="Em Aberto", praca="Nordeste")
 
-        # Linha com fornecedor → status muda para "Em atendimento"
-        linhas = [make_linha(ticket="3000", status="Em aberto", supplier="Fornecedor Teste")]
+        # Linha com fornecedor: status NÃO muda por causa do fornecedor (nova regra)
+        # O status da Tape é "Em atendimento" → banco deve refletir isso
+        linhas = [make_linha(ticket="3000", status="Em Atendimento", supplier="Fornecedor Teste")]
         resultado = sync(db, linhas, upload, agora)
 
         assert resultado["updated"] == 1
@@ -171,7 +170,7 @@ class TestSincronizarServicos:
     def test_atualiza_descricao_status_igual(self, db, upload, agora):
         criar_service_existente(
             db, upload.id, ticket="4000",
-            status="BackLog", praca="Nordeste",
+            status="Em Aberto", praca="Nordeste",
             service_description="Descrição antiga",
         )
 
@@ -181,13 +180,13 @@ class TestSincronizarServicos:
         assert resultado["updated"] == 1
         svc = db.query(Service).filter_by(ticket="4000").one()
         assert svc.service_description == "Descrição nova"
-        assert svc.status == "BackLog"  # status não mudou
+        assert svc.status == "Em Aberto"  # status não mudou
 
     def test_sem_mudanca_nao_conta_como_update(self, db, upload, agora):
         """Registro idêntico: unchanged++ mas sem UPDATE nos campos de negócio."""
         svc_antes = criar_service_existente(
             db, upload.id, ticket="5000",
-            status="BackLog", praca="Nordeste",
+            status="Em Aberto", praca="Nordeste",
             service_description="Descrição padrão",
             store_name="Loja A",
             bpcs_number="100",
@@ -205,8 +204,8 @@ class TestSincronizarServicos:
         assert resultado["updated"] == 0
 
         svc = db.query(Service).filter_by(ticket="5000").one()
-        assert svc.id == id_antes  # identidade preservada
-        assert svc.created_on == created_on_antes  # created_on preservado
+        assert svc.id == id_antes
+        assert svc.created_on == created_on_antes
 
     def test_registro_ausente_preservado(self, db, upload, agora):
         """Registro existente não presente na resposta → não é excluído."""
@@ -268,21 +267,24 @@ class TestSincronizarServicos:
         """Atualização não deve recriar o registro: id é preservado."""
         svc = criar_service_existente(
             db, upload.id, ticket="10000",
-            status="BackLog", praca="Nordeste",
-            created_on=None,  # compatível com make_linha padrão (created_on=None)
+            status="Em Aberto", praca="Nordeste",
+            created_on=None,
         )
         id_original = svc.id
         db.flush()
 
-        # Status muda via fornecedor
+        # Fornecedor muda mas status NÃO muda por causa dele (nova regra)
+        # O status da Tape continua "Em aberto" → "Em Aberto"
         linhas = [make_linha(ticket="10000", supplier="Novo Fornecedor")]
         resultado = sync(db, linhas, upload, agora)
 
+        # supplier mudou (None → "Novo Fornecedor") → updated
         assert resultado["updated"] == 1
         db.flush()
         svc_atualizado = db.query(Service).filter_by(ticket="10000").one()
         assert svc_atualizado.id == id_original
         assert svc_atualizado.supplier == "Novo Fornecedor"
+        assert svc_atualizado.status == "Em Aberto"  # status não foi alterado pelo fornecedor
 
     def test_synced_at_atualizado_em_unchanged(self, db, upload):
         """synced_at deve ser atualizado mesmo quando o registro não mudou.
@@ -319,7 +321,7 @@ class TestCriterioAceitacao:
         servicos = [
             Service(
                 ticket=str(i),
-                status="BackLog",
+                status="Em Aberto",
                 praca="Nordeste",
                 store_name=f"Loja {i}",
                 bpcs_number=str(i),
@@ -344,13 +346,13 @@ class TestCriterioAceitacao:
 
         for i in range(1, 1001):
             if i <= 10:
-                # Tickets 1-10: status muda para "Em atendimento" via fornecedor
+                # Tickets 1-10: status muda explicitamente para "Em Atendimento" na Tape
                 linhas.append(make_linha(
                     ticket=str(i),
+                    status="Em Atendimento",
                     praca="Nordeste",
                     store_name=f"Loja {i} | BCPS: {i} | SAP: {i}",
                     service_description=f"Descrição {i}",
-                    supplier="Fornecedor Novo",
                 ))
             else:
                 linhas.append(make_linha(
@@ -372,8 +374,8 @@ class TestCriterioAceitacao:
         resultado = sync(db, linhas, agora=agora)
         db.commit()
 
-        assert resultado["inserted"] == 20,  f"Esperado 20 inserções, obteve {resultado['inserted']}"
-        assert resultado["updated"] == 10,   f"Esperado 10 atualizações, obteve {resultado['updated']}"
+        assert resultado["inserted"] == 20,   f"Esperado 20 inserções, obteve {resultado['inserted']}"
+        assert resultado["updated"] == 10,    f"Esperado 10 atualizações, obteve {resultado['updated']}"
         assert resultado["unchanged"] == 990, f"Esperado 990 sem mudança, obteve {resultado['unchanged']}"
         assert resultado["rejected"] == 0
 
@@ -416,13 +418,8 @@ class TestImportarServicosTape:
 
     def test_coleta_vazia_nao_altera_banco(self, db, upload):
         """Resposta vazia da API → banco preservado, sem escrita."""
-        criar_service_existente = __import__(
-            "tests.conftest", fromlist=["criar_service_existente"]
-        )
-
-        # Cria um serviço existente direto
         svc = Service(
-            ticket="99999", status="BackLog", praca="Nordeste",
+            ticket="99999", status="Em Aberto", praca="Nordeste",
             upload_id=upload.id,
         )
         db.add(svc)

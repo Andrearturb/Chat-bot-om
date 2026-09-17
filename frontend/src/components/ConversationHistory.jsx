@@ -14,6 +14,8 @@ function formatConversationDate(value) {
 }
 
 function ConversationItem({ conversation, active, onSelect, onDelete }) {
+  const messageCount = conversation.messages.filter((message) => !message.isGreeting).length
+
   function handleDelete(event) {
     event.stopPropagation()
     if (window.confirm('Excluir esta conversa?')) onDelete(conversation.id)
@@ -29,7 +31,7 @@ function ConversationItem({ conversation, active, onSelect, onDelete }) {
         title={conversation.title}
       >
         <strong>{conversation.title}</strong>
-        <small>{formatConversationDate(conversation.updatedAt)} · {conversation.messages.length} mensagens</small>
+        <small>{formatConversationDate(conversation.updatedAt)} · {messageCount} mensagens</small>
       </button>
       <button className="conversation-item__delete" type="button" onClick={handleDelete} aria-label="Excluir conversa" title="Excluir conversa">×</button>
     </div>

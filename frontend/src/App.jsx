@@ -11,16 +11,19 @@ const WEBHOOK_URL = 'http://localhost:5678/webhook/9db5ead4-d4ca-4f5c-a1b4-3969e
 const CONVERSATIONS_KEY = 'gentil-obras-conversations-v2'
 const CURRENT_CONVERSATION_KEY = 'gentil-obras-current-conversation-v1'
 const LEGACY_SESSION_KEY = 'gentil-obras-session-id'
+const GENTILEZA_GREETING = 'Olá! Eu me chamo Gentileza 👋 Como posso te ajudar com Obras & Manutenções hoje?'
 
 function newSessionId() {
   return crypto.randomUUID()
 }
 
-function createDraftConversation() {
+function createDraftConversation({ withGreeting = false } = {}) {
   return {
     id: crypto.randomUUID(),
     sessionId: newSessionId(),
-    messages: [],
+    messages: withGreeting
+      ? [{ id: crypto.randomUUID(), role: 'assistant', content: GENTILEZA_GREETING, isGreeting: true }]
+      : [],
   }
 }
 
@@ -64,7 +67,7 @@ function validStore(parsed) {
     (parsed.activeConversationId === null || typeof parsed.activeConversationId === 'string') &&
     Array.isArray(parsed.conversations) &&
     parsed.conversations.every(isValidConversation) &&
-    (parsed.conversations.length === 0 || parsed.conversations.some((conversation) => conversation.id === parsed.activeConversationId))
+    parsed.activeConversationId === null || parsed.conversations.some((conversation) => conversation.id === parsed.activeConversationId)
   )
 }
 
@@ -76,9 +79,14 @@ function loadConversationStore() {
       if (validStore(parsed)) {
         const conversations = parsed.conversations.filter((conversation) => conversation.messages.length > 0)
         const mostRecentConversation = [...conversations].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0]
-        const activeConversationId = conversations.some((conversation) => conversation.id === parsed.activeConversationId)
-          ? parsed.activeConversationId
-          : mostRecentConversation?.id || null
+        let activeConversationId
+        if (parsed.activeConversationId === null) {
+          activeConversationId = null
+        } else if (conversations.some((conversation) => conversation.id === parsed.activeConversationId)) {
+          activeConversationId = parsed.activeConversationId
+        } else {
+          activeConversationId = mostRecentConversation?.id || null
+        }
         return { version: 2, activeConversationId, conversations }
       }
     }
@@ -169,11 +177,19 @@ function App() {
 
   function createNewConversation() {
     abortCurrentRequest()
-    setDraftConversation(createDraftConversation())
+    setDraftConversation(createDraftConversation({ withGreeting: true }))
     setConversationStore((current) => ({
       ...current,
       activeConversationId: null,
     }))
+    setPrompt('')
+    setHistoryOpen(false)
+  }
+
+  function goToAssistantHome() {
+    abortCurrentRequest()
+    setDraftConversation(createDraftConversation())
+    setConversationStore((current) => ({ ...current, activeConversationId: null }))
     setPrompt('')
     setHistoryOpen(false)
   }
@@ -224,7 +240,7 @@ function App() {
         title: createTitleFromMessage(content),
         createdAt: now,
         updatedAt: now,
-        messages: [userMessage],
+        messages: [...draftConversation.messages, userMessage],
       }
       setConversationStore((current) => ({
         ...current,
@@ -284,8 +300,9 @@ function App() {
         <Sidebar
           onNewConversation={createNewConversation}
           onOpenConversations={() => setHistoryOpen((current) => !current)}
-          onCloseConversations={() => setHistoryOpen(false)}
+          onGoHome={goToAssistantHome}
           historyOpen={historyOpen}
+          homeActive={!active && !historyOpen}
         />
         {historyOpen && (
           <ConversationHistory

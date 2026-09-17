@@ -40,7 +40,7 @@ export default function ChatArea({ messages, active }) {
     <section className={`chat-area ${active ? 'chat-area--active' : ''}`} aria-live="polite">
       <div className="chat-header">
         <img src={assistantImage} alt="" />
-        <div><strong>Assistente de Obras &amp; Manutenções</strong><span><i /> Online</span></div>
+        <div><strong>Gentileza</strong><span><i /> Assistente de Obras &amp; Manutenções · Online</span></div>
       </div>
       <div className="messages" ref={messagesRef}>
         {messages.map((message) => <Message key={message.id} message={message} />)}

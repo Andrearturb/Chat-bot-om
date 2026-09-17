@@ -7,7 +7,7 @@ const navigation = [
   ['⚙', 'Configurações'],
 ]
 
-export default function Sidebar({ onNewConversation, onOpenConversations, onCloseConversations, historyOpen }) {
+export default function Sidebar({ onNewConversation, onOpenConversations, onGoHome, historyOpen, homeActive }) {
   return (
     <aside className="sidebar">
       <div className="sidebar__avatar" aria-label="Assistente de Obras & Manutenções">
@@ -15,8 +15,8 @@ export default function Sidebar({ onNewConversation, onOpenConversations, onClos
       </div>
       <nav className="sidebar__nav" aria-label="Navegação principal">
         {navigation.map(([icon, label], index) => {
-          const isActive = index === 0 ? !historyOpen : index === 1 ? historyOpen : false
-          const onClick = index === 0 ? onCloseConversations : index === 1 ? onOpenConversations : undefined
+          const isActive = index === 0 ? homeActive : index === 1 ? historyOpen : false
+          const onClick = index === 0 ? onGoHome : index === 1 ? onOpenConversations : undefined
 
           return (
           <button className={`nav-button ${isActive ? 'nav-button--active' : ''}`} key={label} type="button" title={label} aria-label={label} aria-current={isActive ? 'page' : undefined} data-history-toggle={index === 1 ? 'true' : undefined} onClick={onClick}>

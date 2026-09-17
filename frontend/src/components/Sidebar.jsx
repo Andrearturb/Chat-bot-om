@@ -1,4 +1,4 @@
-import assistantImage from '../assets/assistente-obras.jpeg'
+import { assistantImage } from '../assets/assistantImage'
 
 const navigation = [
   ['⌂', 'Assistente'],

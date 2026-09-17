@@ -1,4 +1,4 @@
-import assistantImage from '../assets/assistente-obras.jpeg'
+import { assistantImage } from '../assets/assistantImage'
 
 export default function HeroAssistant({ active }) {
   return (

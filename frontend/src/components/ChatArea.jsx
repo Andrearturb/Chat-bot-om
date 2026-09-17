@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import assistantImage from '../assets/assistente-obras.jpeg'
+import { assistantImage } from '../assets/assistantImage'
 
 function formatMarkdown(content) {
   const escaped = content

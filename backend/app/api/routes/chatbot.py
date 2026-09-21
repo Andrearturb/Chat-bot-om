@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import verificar_api_key
 from app.db.session import get_db
 from app.schemas.chatbot import (
     ChatbotQueryRequest,
@@ -10,6 +11,7 @@ from app.services.chatbot_query import (
     ChatbotQueryError,
     executar_consulta_chatbot,
 )
+from app.services.qa_trace import get_qa_trace
 
 
 router = APIRouter(
@@ -30,6 +32,7 @@ def executar_query(
         return executar_consulta_chatbot(
             db=db,
             sql=payload.sql,
+            qa_trace_id=payload.qa_trace_id,
         )
 
     except ChatbotQueryError as exc:
@@ -45,3 +48,19 @@ def executar_query(
             status_code=500,
             detail="Erro ao executar consulta no banco de dados.",
         ) from exc
+
+
+@router.get(
+    "/qa-traces/{trace_id}",
+)
+def listar_qa_trace(
+    trace_id: str,
+    _api_key_check: None = Depends(verificar_api_key),
+):
+    trace = get_qa_trace(trace_id)
+    if trace is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Trace de QA não encontrado.",
+        )
+    return trace

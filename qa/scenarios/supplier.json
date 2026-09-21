@@ -1,0 +1,82 @@
+{
+  "id": "supplier-filter-continuity",
+  "name": "Fornecedor",
+  "category": "supplier",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos em agosto de 2026 com o fornecedor 43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "supplier": "43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA"
+      },
+      "must_be_null": [
+        "analyst_responsible",
+        "requester",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(supplier)) = LOWER(BTRIM('43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA'));"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "supplier": "43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA"
+      },
+      "must_be_null": [
+        "analyst_responsible",
+        "requester",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(supplier)) = LOWER(BTRIM('43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA')) ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "e quantos com o fornecedor 01.006.533/0002-24 - CAMPOS SERVICE LTDA?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "supplier": "01.006.533/0002-24 - CAMPOS SERVICE LTDA"
+      },
+      "must_be_null": [
+        "analyst_responsible",
+        "requester",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(supplier)) = LOWER(BTRIM('01.006.533/0002-24 - CAMPOS SERVICE LTDA'));"
+      }
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "id": "category-subcategory-switch",
+  "name": "Categoria e troca de subcategoria",
+  "category": "classification",
+  "steps": [
+    {
+      "message": "Quantos chamados da categoria Infraestrutura / Estrutura Física estão em atendimento?",
+      "expected_state": {
+        "event": "current_status",
+        "category": "Infraestrutura / Estrutura Física",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "subcategory",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE LOWER(BTRIM(category)) = LOWER(BTRIM('Infraestrutura / Estrutura Física')) AND status = 'Em atendimento';"
+      }
+    },
+    {
+      "message": "e da subcategoria Pintura?",
+      "expected_state": {
+        "event": "current_status",
+        "category": "Infraestrutura / Estrutura Física",
+        "subcategory": "Pintura",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE LOWER(BTRIM(category)) = LOWER(BTRIM('Infraestrutura / Estrutura Física')) AND LOWER(BTRIM(subcategory)) = LOWER(BTRIM('Pintura')) AND status = 'Em atendimento';"
+      }
+    },
+    {
+      "message": "e da subcategoria Móveis?",
+      "expected_state": {
+        "event": "current_status",
+        "category": "Infraestrutura / Estrutura Física",
+        "subcategory": "Móveis",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE LOWER(BTRIM(category)) = LOWER(BTRIM('Infraestrutura / Estrutura Física')) AND LOWER(BTRIM(subcategory)) = LOWER(BTRIM('Móveis')) AND status = 'Em atendimento';"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "current_status",
+        "category": "Infraestrutura / Estrutura Física",
+        "subcategory": "Móveis",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE LOWER(BTRIM(category)) = LOWER(BTRIM('Infraestrutura / Estrutura Física')) AND LOWER(BTRIM(subcategory)) = LOWER(BTRIM('Móveis')) AND status = 'Em atendimento' ORDER BY ticket;"
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "id": "visited-date-continuity",
+  "name": "Visitas",
+  "category": "temporal",
+  "steps": [
+    {
+      "message": "Quantos chamados foram visitados em agosto de 2026?",
+      "expected_state": {
+        "event": "visited",
+        "date_field": "visit_date",
+        "year": 2026,
+        "month": 8
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE visit_date >= '2026-08-01' AND visit_date < '2026-09-01';"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "visited",
+        "date_field": "visit_date",
+        "year": 2026,
+        "month": 8
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE visit_date >= '2026-08-01' AND visit_date < '2026-09-01' ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "e em julho?",
+      "expected_state": {
+        "event": "visited",
+        "date_field": "visit_date",
+        "year": 2026,
+        "month": 7
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE visit_date >= '2026-07-01' AND visit_date < '2026-08-01';"
+      }
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "id": "missing-field-analyst",
+  "name": "Chamados sem analista",
+  "category": "missing_field",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos em julho de 2026 na praça Natal sem analista?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 7,
+        "praca": "Natal",
+        "missing_field": "analyst_responsible"
+      },
+      "must_be_null": [
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-07-01' AND created_on < '2026-08-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND (analyst_responsible IS NULL OR BTRIM(analyst_responsible) = '');"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 7,
+        "praca": "Natal",
+        "missing_field": "analyst_responsible"
+      },
+      "must_be_null": [
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE created_on >= '2026-07-01' AND created_on < '2026-08-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND (analyst_responsible IS NULL OR BTRIM(analyst_responsible) = '') ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "e quantos em maio?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 5,
+        "praca": "Natal",
+        "missing_field": "analyst_responsible"
+      },
+      "must_be_null": [
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-05-01' AND created_on < '2026-06-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND (analyst_responsible IS NULL OR BTRIM(analyst_responsible) = '');"
+      }
+    }
+  ]
+}

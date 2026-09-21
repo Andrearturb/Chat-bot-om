@@ -1,0 +1,47 @@
+{
+  "scenarios": 1,
+  "steps": 3,
+  "pass_count": 3,
+  "fail_count": 0,
+  "results": [
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "Quantos chamados estão em atendimento em Trairi?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "e em Maracaçumé?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 2
+        }
+      ]
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4205"
+        },
+        {
+          "ticket": "3685"
+        }
+      ]
+    }
+  ]
+}

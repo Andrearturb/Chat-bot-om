@@ -1,0 +1,40 @@
+{
+  "id": "category-subcategory",
+  "name": "Categoria / subcategoria",
+  "category": "classification",
+  "steps": [
+    {
+      "message": "Quantos chamados da categoria Infraestrutura / Estrutura Física estão em atendimento?",
+      "expected_state": {
+        "event": "current_status",
+        "category": "Infraestrutura / Estrutura Física",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE LOWER(BTRIM(category)) = LOWER(BTRIM('Infraestrutura / Estrutura Física')) AND status = 'Em atendimento';"
+      }
+    },
+    {
+      "message": "e por subcategoria?",
+      "expected_state": {
+        "event": "current_status",
+        "category": "Infraestrutura / Estrutura Física",
+        "statuses": [
+          "Em atendimento"
+        ],
+        "group_by": "subcategory"
+      },
+      "oracle": {
+        "type": "ranking",
+        "sql": "SELECT subcategory, COUNT(*) AS total FROM services WHERE LOWER(BTRIM(category)) = LOWER(BTRIM('Infraestrutura / Estrutura Física')) AND status = 'Em atendimento' GROUP BY subcategory ORDER BY total DESC;"
+      }
+    }
+  ]
+}

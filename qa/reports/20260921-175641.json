@@ -1,0 +1,266 @@
+{
+  "scenarios": 1,
+  "steps": 5,
+  "pass_count": 5,
+  "fail_count": 0,
+  "results": [
+    {
+      "scenario": "Analista para sem analista e retorno",
+      "step_message": "Quantos chamados foram abertos em julho de 2026 na praça Natal pelo analista André Brito?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 63
+        }
+      ]
+    },
+    {
+      "scenario": "Analista para sem analista e retorno",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3946"
+        },
+        {
+          "ticket": "3947"
+        },
+        {
+          "ticket": "3960"
+        },
+        {
+          "ticket": "3961"
+        },
+        {
+          "ticket": "3966"
+        },
+        {
+          "ticket": "3967"
+        },
+        {
+          "ticket": "3972"
+        },
+        {
+          "ticket": "3974"
+        },
+        {
+          "ticket": "3977"
+        },
+        {
+          "ticket": "3978"
+        },
+        {
+          "ticket": "3979"
+        },
+        {
+          "ticket": "3980"
+        },
+        {
+          "ticket": "3986"
+        },
+        {
+          "ticket": "3987"
+        },
+        {
+          "ticket": "3988"
+        },
+        {
+          "ticket": "3995"
+        },
+        {
+          "ticket": "3996"
+        },
+        {
+          "ticket": "4002"
+        },
+        {
+          "ticket": "4010"
+        },
+        {
+          "ticket": "4019"
+        },
+        {
+          "ticket": "4026"
+        },
+        {
+          "ticket": "4027"
+        },
+        {
+          "ticket": "4028"
+        },
+        {
+          "ticket": "4037"
+        },
+        {
+          "ticket": "4049"
+        },
+        {
+          "ticket": "4055"
+        },
+        {
+          "ticket": "4056"
+        },
+        {
+          "ticket": "4057"
+        },
+        {
+          "ticket": "4061"
+        },
+        {
+          "ticket": "4062"
+        },
+        {
+          "ticket": "4063"
+        },
+        {
+          "ticket": "4064"
+        },
+        {
+          "ticket": "4065"
+        },
+        {
+          "ticket": "4066"
+        },
+        {
+          "ticket": "4067"
+        },
+        {
+          "ticket": "4068"
+        },
+        {
+          "ticket": "4070"
+        },
+        {
+          "ticket": "4072"
+        },
+        {
+          "ticket": "4075"
+        },
+        {
+          "ticket": "4080"
+        },
+        {
+          "ticket": "4087"
+        },
+        {
+          "ticket": "4092"
+        },
+        {
+          "ticket": "4093"
+        },
+        {
+          "ticket": "4107"
+        },
+        {
+          "ticket": "4117"
+        },
+        {
+          "ticket": "4118"
+        },
+        {
+          "ticket": "4125"
+        },
+        {
+          "ticket": "4127"
+        },
+        {
+          "ticket": "4128"
+        },
+        {
+          "ticket": "4146"
+        },
+        {
+          "ticket": "4148"
+        },
+        {
+          "ticket": "4174"
+        },
+        {
+          "ticket": "4183"
+        },
+        {
+          "ticket": "4187"
+        },
+        {
+          "ticket": "4189"
+        },
+        {
+          "ticket": "4190"
+        },
+        {
+          "ticket": "4191"
+        },
+        {
+          "ticket": "4201"
+        },
+        {
+          "ticket": "4215"
+        },
+        {
+          "ticket": "4218"
+        },
+        {
+          "ticket": "4220"
+        },
+        {
+          "ticket": "4247"
+        },
+        {
+          "ticket": "4251"
+        }
+      ]
+    },
+    {
+      "scenario": "Analista para sem analista e retorno",
+      "step_message": "e quantos estão sem analista?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 5
+        }
+      ]
+    },
+    {
+      "scenario": "Analista para sem analista e retorno",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3964"
+        },
+        {
+          "ticket": "3984"
+        },
+        {
+          "ticket": "4007"
+        },
+        {
+          "ticket": "4008"
+        },
+        {
+          "ticket": "4121"
+        }
+      ]
+    },
+    {
+      "scenario": "Analista para sem analista e retorno",
+      "step_message": "e quantos com o analista André Brito?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 63
+        }
+      ]
+    }
+  ]
+}

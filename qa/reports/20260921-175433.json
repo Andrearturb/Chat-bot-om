@@ -1,0 +1,110 @@
+{
+  "scenarios": 1,
+  "steps": 4,
+  "pass_count": 4,
+  "fail_count": 0,
+  "results": [
+    {
+      "scenario": "Categoria e troca de subcategoria",
+      "step_message": "Quantos chamados da categoria Infraestrutura / Estrutura Física estão em atendimento?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 86
+        }
+      ]
+    },
+    {
+      "scenario": "Categoria e troca de subcategoria",
+      "step_message": "e da subcategoria Pintura?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 20
+        }
+      ]
+    },
+    {
+      "scenario": "Categoria e troca de subcategoria",
+      "step_message": "e da subcategoria Móveis?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 19
+        }
+      ]
+    },
+    {
+      "scenario": "Categoria e troca de subcategoria",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3491"
+        },
+        {
+          "ticket": "4289"
+        },
+        {
+          "ticket": "4309"
+        },
+        {
+          "ticket": "4526"
+        },
+        {
+          "ticket": "4538"
+        },
+        {
+          "ticket": "4547"
+        },
+        {
+          "ticket": "4553"
+        },
+        {
+          "ticket": "4571"
+        },
+        {
+          "ticket": "4600"
+        },
+        {
+          "ticket": "4604"
+        },
+        {
+          "ticket": "4610"
+        },
+        {
+          "ticket": "4651"
+        },
+        {
+          "ticket": "4660"
+        },
+        {
+          "ticket": "4680"
+        },
+        {
+          "ticket": "4686"
+        },
+        {
+          "ticket": "4703"
+        },
+        {
+          "ticket": "4737"
+        },
+        {
+          "ticket": "4752"
+        },
+        {
+          "ticket": "4842"
+        }
+      ]
+    }
+  ]
+}

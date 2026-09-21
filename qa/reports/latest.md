@@ -1,0 +1,314 @@
+# GENTILEZA QA
+
+- Cenários: 26
+- Passos: 77
+- PASS: 77
+- FAIL: 0
+
+## PASS - Status ativos
+- Passo: Quantos chamados ativos existem atualmente?
+- Mensagem: OK
+
+## PASS - Status ativos
+- Passo: e quantos estão pendentes de aprovação?
+- Mensagem: OK
+
+## PASS - Status ativos
+- Passo: e quantos estão em aberto?
+- Mensagem: OK
+
+## PASS - Analista para sem analista e retorno
+- Passo: Quantos chamados foram abertos em julho de 2026 na praça Natal pelo analista André Brito?
+- Mensagem: OK
+
+## PASS - Analista para sem analista e retorno
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Analista para sem analista e retorno
+- Passo: e quantos estão sem analista?
+- Mensagem: OK
+
+## PASS - Analista para sem analista e retorno
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Analista para sem analista e retorno
+- Passo: e quantos com o analista André Brito?
+- Mensagem: OK
+
+## PASS - Analista responsável
+- Passo: Quantos chamados foram abertos em agosto de 2026 pelo analista André Brito?
+- Mensagem: OK
+
+## PASS - Analista responsável
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Analista responsável
+- Passo: e quantos do analista Fernando Alves?
+- Mensagem: OK
+
+## PASS - Categoria e troca de subcategoria
+- Passo: Quantos chamados da categoria Infraestrutura / Estrutura Física estão em atendimento?
+- Mensagem: OK
+
+## PASS - Categoria e troca de subcategoria
+- Passo: e da subcategoria Pintura?
+- Mensagem: OK
+
+## PASS - Categoria e troca de subcategoria
+- Passo: e da subcategoria Móveis?
+- Mensagem: OK
+
+## PASS - Categoria e troca de subcategoria
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Categoria / subcategoria
+- Passo: Quantos chamados da categoria Infraestrutura / Estrutura Física estão em atendimento?
+- Mensagem: OK
+
+## PASS - Categoria / subcategoria
+- Passo: e por subcategoria?
+- Mensagem: OK
+
+## PASS - Remoção do filtro de status
+- Passo: Quantos chamados estão em atendimento na loja Santa Inês?
+- Mensagem: OK
+
+## PASS - Remoção do filtro de status
+- Passo: agora considere todos os status
+- Mensagem: OK
+
+## PASS - Remoção do filtro de status
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Status encerrados
+- Passo: Quantos chamados encerrados existem atualmente?
+- Mensagem: OK
+
+## PASS - Status encerrados
+- Passo: e quantos estão concluídos?
+- Mensagem: OK
+
+## PASS - Status encerrados
+- Passo: e quantos não foram aprovados?
+- Mensagem: OK
+
+## PASS - Combinação de filtros
+- Passo: Quantos chamados estão em atendimento na praça Natal com o analista André Brito?
+- Mensagem: OK
+
+## PASS - Combinação de filtros
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Combinação de filtros
+- Passo: e os que estão em aberto?
+- Mensagem: OK
+
+## PASS - Continuidade
+- Passo: Quantos chamados estão em atendimento em Trairi?
+- Mensagem: OK
+
+## PASS - Continuidade
+- Passo: e em Maracaçumé?
+- Mensagem: OK
+
+## PASS - Status atual / localização
+- Passo: Quantos chamados estão em atendimento em Trairi?
+- Mensagem: OK
+
+## PASS - Status atual / localização
+- Passo: e em Maracaçumé?
+- Mensagem: OK
+
+## PASS - Status atual / localização
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Limpeza e substituição de filtros
+- Passo: Quantos chamados estão em atendimento na loja Santa Inês?
+- Mensagem: OK
+
+## PASS - Limpeza e substituição de filtros
+- Passo: agora quantos chamados foram abertos em agosto de 2026 na praça Natal?
+- Mensagem: OK
+
+## PASS - Limpeza e substituição de filtros
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Coorte histórica
+- Passo: Dos chamados criados em agosto de 2026 na praça Natal, quantos ainda estão em atendimento?
+- Mensagem: OK
+
+## PASS - Coorte histórica com múltiplos filtros
+- Passo: Dos chamados criados em agosto de 2026 na praça Natal pelo analista André Brito, quantos ainda estão em atendimento?
+- Mensagem: OK
+
+## PASS - Coorte histórica com múltiplos filtros
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Coorte histórica com múltiplos filtros
+- Passo: e quantos já foram concluídos?
+- Mensagem: OK
+
+## PASS - Chamados sem analista
+- Passo: Quantos chamados foram abertos em julho de 2026 na praça Natal sem analista?
+- Mensagem: OK
+
+## PASS - Chamados sem analista
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Chamados sem analista
+- Passo: e quantos em maio?
+- Mensagem: OK
+
+## PASS - Classificação ausente
+- Passo: Quantos chamados foram abertos em março de 2026 sem subcategoria?
+- Mensagem: OK
+
+## PASS - Classificação ausente
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Classificação ausente
+- Passo: e quantos sem categoria?
+- Mensagem: OK
+
+## PASS - Chamados sem fornecedor
+- Passo: Quantos chamados foram abertos em agosto de 2026 na praça Natal sem fornecedor?
+- Mensagem: OK
+
+## PASS - Chamados sem fornecedor
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Sem fornecedor para fornecedor específico
+- Passo: Quantos chamados estão em atendimento sem fornecedor?
+- Mensagem: OK
+
+## PASS - Sem fornecedor para fornecedor específico
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Sem fornecedor para fornecedor específico
+- Passo: e quantos com o fornecedor 43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA?
+- Mensagem: OK
+
+## PASS - Sem fornecedor para fornecedor específico
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Múltiplos status / loja explícita
+- Passo: todos os chamados em aberto e em atendimento da loja Santa Inês
+- Mensagem: OK
+
+## PASS - Múltiplos status / loja explícita
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Múltiplos status / loja explícita
+- Passo: quais os números dos chamados?
+- Mensagem: OK
+
+## PASS - Troca de praça explícita
+- Passo: Quantos chamados estão em atendimento na praça Natal?
+- Mensagem: OK
+
+## PASS - Troca de praça explícita
+- Passo: e na praça Oeste do Maranhão?
+- Mensagem: OK
+
+## PASS - Troca de praça explícita
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Ranking de lojas
+- Passo: Quais são as 5 lojas com mais chamados abertos em agosto de 2026 na praça Natal?
+- Mensagem: OK
+
+## PASS - Ranking de lojas
+- Passo: qual o total?
+- Mensagem: OK
+
+## PASS - Requisitante
+- Passo: Quantos chamados foram abertos em agosto de 2026 pela requisitante Vanessa Nascimento?
+- Mensagem: OK
+
+## PASS - Requisitante
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Requisitante
+- Passo: e quantos do requisitante Gabriel Macedo?
+- Mensagem: OK
+
+## PASS - Troca de loja explícita
+- Passo: Quantos chamados estão em atendimento na loja Santa Inês?
+- Mensagem: OK
+
+## PASS - Troca de loja explícita
+- Passo: e na loja Trairi?
+- Mensagem: OK
+
+## PASS - Troca de loja explícita
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Fornecedor
+- Passo: Quantos chamados foram abertos em agosto de 2026 com o fornecedor 43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA?
+- Mensagem: OK
+
+## PASS - Fornecedor
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Fornecedor
+- Passo: e quantos com o fornecedor 01.006.533/0002-24 - CAMPOS SERVICE LTDA?
+- Mensagem: OK
+
+## PASS - Fornecedor para sem fornecedor
+- Passo: Quantos chamados estão em atendimento com o fornecedor 43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA?
+- Mensagem: OK
+
+## PASS - Fornecedor para sem fornecedor
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Fornecedor para sem fornecedor
+- Passo: e quantos estão sem fornecedor?
+- Mensagem: OK
+
+## PASS - Fornecedor para sem fornecedor
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Eventos temporais
+- Passo: Quantos chamados foram abertos em agosto de 2026 na praça Natal?
+- Mensagem: OK
+
+## PASS - Eventos temporais
+- Passo: e quantos foram concluídos?
+- Mensagem: OK
+
+## PASS - Eventos temporais
+- Passo: e quantos estão em atendimento atualmente?
+- Mensagem: OK
+
+## PASS - Visitas
+- Passo: Quantos chamados foram visitados em agosto de 2026?
+- Mensagem: OK
+
+## PASS - Visitas
+- Passo: mostre os chamados
+- Mensagem: OK
+
+## PASS - Visitas
+- Passo: e em julho?
+- Mensagem: OK

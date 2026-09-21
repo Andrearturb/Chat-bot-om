@@ -1,0 +1,91 @@
+{
+  "id": "missing-classification-fields",
+  "name": "Classificação ausente",
+  "category": "missing_field",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos em março de 2026 sem subcategoria?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 3,
+        "missing_field": "subcategory"
+      },
+      "must_be_null": [
+        "category",
+        "subcategory",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-03-01' AND created_on < '2026-04-01' AND (subcategory IS NULL OR BTRIM(subcategory) = '');"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 3,
+        "missing_field": "subcategory"
+      },
+      "must_be_null": [
+        "category",
+        "subcategory",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE created_on >= '2026-03-01' AND created_on < '2026-04-01' AND (subcategory IS NULL OR BTRIM(subcategory) = '') ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "e quantos sem categoria?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 3,
+        "missing_field": "category"
+      },
+      "must_be_null": [
+        "category",
+        "subcategory",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-03-01' AND created_on < '2026-04-01' AND (category IS NULL OR BTRIM(category) = '');"
+      }
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "id": "explicit-store-switch",
+  "name": "Troca de loja explícita",
+  "category": "location",
+  "steps": [
+    {
+      "message": "Quantos chamados estão em atendimento na loja Santa Inês?",
+      "expected_state": {
+        "event": "current_status",
+        "store_name": "Santa Inês",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "praca",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(store_name)) = LOWER(BTRIM('Santa Inês'));"
+      }
+    },
+    {
+      "message": "e na loja Trairi?",
+      "expected_state": {
+        "event": "current_status",
+        "store_name": "Trairi",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "praca",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(store_name)) = LOWER(BTRIM('Trairi'));"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "current_status",
+        "store_name": "Trairi",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "praca",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(store_name)) = LOWER(BTRIM('Trairi')) ORDER BY ticket;"
+      }
+    }
+  ]
+}

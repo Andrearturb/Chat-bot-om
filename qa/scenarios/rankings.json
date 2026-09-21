@@ -1,0 +1,53 @@
+{
+  "id": "ranking-top-stores",
+  "name": "Ranking de lojas",
+  "category": "ranking",
+  "steps": [
+    {
+      "message": "Quais são as 5 lojas com mais chamados abertos em agosto de 2026 na praça Natal?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal",
+        "group_by": "store_name",
+        "limit": 5
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "missing_field"
+      ],
+      "oracle": {
+        "type": "ranking",
+        "sql": "SELECT store_name, COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) GROUP BY store_name ORDER BY total DESC LIMIT 5;"
+      }
+    },
+    {
+      "message": "qual o total?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal",
+        "group_by": null,
+        "limit": null
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "missing_field"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal'));"
+      }
+    }
+  ]
+}

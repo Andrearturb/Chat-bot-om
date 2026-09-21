@@ -1,0 +1,116 @@
+{
+  "scenarios": 1,
+  "steps": 4,
+  "pass_count": 4,
+  "fail_count": 0,
+  "results": [
+    {
+      "scenario": "Fornecedor para sem fornecedor",
+      "step_message": "Quantos chamados estão em atendimento com o fornecedor 43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 11
+        }
+      ]
+    },
+    {
+      "scenario": "Fornecedor para sem fornecedor",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3355"
+        },
+        {
+          "ticket": "3560"
+        },
+        {
+          "ticket": "3561"
+        },
+        {
+          "ticket": "3685"
+        },
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "4205"
+        },
+        {
+          "ticket": "4465"
+        },
+        {
+          "ticket": "4560"
+        },
+        {
+          "ticket": "4597"
+        },
+        {
+          "ticket": "4651"
+        },
+        {
+          "ticket": "4738"
+        }
+      ]
+    },
+    {
+      "scenario": "Fornecedor para sem fornecedor",
+      "step_message": "e quantos estão sem fornecedor?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 11
+        }
+      ]
+    },
+    {
+      "scenario": "Fornecedor para sem fornecedor",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3439"
+        },
+        {
+          "ticket": "4278"
+        },
+        {
+          "ticket": "4307"
+        },
+        {
+          "ticket": "4374"
+        },
+        {
+          "ticket": "4380"
+        },
+        {
+          "ticket": "4408"
+        },
+        {
+          "ticket": "4467"
+        },
+        {
+          "ticket": "4482"
+        },
+        {
+          "ticket": "4491"
+        },
+        {
+          "ticket": "4547"
+        },
+        {
+          "ticket": "4554"
+        }
+      ]
+    }
+  ]
+}

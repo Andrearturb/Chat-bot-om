@@ -1,0 +1,312 @@
+{
+  "scenarios": 8,
+  "steps": 18,
+  "pass_count": 18,
+  "fail_count": 0,
+  "results": [
+    {
+      "scenario": "Categoria / subcategoria",
+      "step_message": "Quantos chamados da categoria Infraestrutura / Estrutura Física estão em atendimento?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 86
+        }
+      ]
+    },
+    {
+      "scenario": "Categoria / subcategoria",
+      "step_message": "e por subcategoria?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "subcategory": "Pintura",
+          "total": 20
+        },
+        {
+          "subcategory": "Móveis",
+          "total": 19
+        },
+        {
+          "subcategory": "Piso",
+          "total": 13
+        },
+        {
+          "subcategory": "Fachada / Vitrine",
+          "total": 13
+        },
+        {
+          "subcategory": "Paredes / Gesso",
+          "total": 9
+        },
+        {
+          "subcategory": "Cobertura / Telhado",
+          "total": 8
+        },
+        {
+          "subcategory": "Sinalização de Ambientes",
+          "total": 3
+        },
+        {
+          "subcategory": null,
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Continuidade",
+      "step_message": "Quantos chamados estão em atendimento em Trairi?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Continuidade",
+      "step_message": "e em Maracaçumé?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 2
+        }
+      ]
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "Quantos chamados estão em atendimento em Trairi?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "e em Maracaçumé?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 2
+        }
+      ]
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4205"
+        },
+        {
+          "ticket": "3685"
+        }
+      ]
+    },
+    {
+      "scenario": "Coorte histórica",
+      "step_message": "Dos chamados criados em agosto de 2026 na praça Natal, quantos ainda estão em atendimento?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 6
+        }
+      ]
+    },
+    {
+      "scenario": "Chamados sem fornecedor",
+      "step_message": "Quantos chamados foram abertos em agosto de 2026 na praça Natal sem fornecedor?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 11
+        }
+      ]
+    },
+    {
+      "scenario": "Chamados sem fornecedor",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4324"
+        },
+        {
+          "ticket": "4363"
+        },
+        {
+          "ticket": "4393"
+        },
+        {
+          "ticket": "4405"
+        },
+        {
+          "ticket": "4451"
+        },
+        {
+          "ticket": "4459"
+        },
+        {
+          "ticket": "4460"
+        },
+        {
+          "ticket": "4466"
+        },
+        {
+          "ticket": "4495"
+        },
+        {
+          "ticket": "4519"
+        },
+        {
+          "ticket": "4521"
+        }
+      ]
+    },
+    {
+      "scenario": "Múltiplos status / loja explícita",
+      "step_message": "todos os chamados em aberto e em atendimento da loja Santa Inês",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "4868"
+        }
+      ]
+    },
+    {
+      "scenario": "Múltiplos status / loja explícita",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "4868"
+        }
+      ]
+    },
+    {
+      "scenario": "Múltiplos status / loja explícita",
+      "step_message": "quais os números dos chamados?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "4868"
+        }
+      ]
+    },
+    {
+      "scenario": "Ranking de lojas",
+      "step_message": "Quais são as 5 lojas com mais chamados abertos em agosto de 2026 na praça Natal?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "store_name": "ER Nevaldo Rocha",
+          "total": 11
+        },
+        {
+          "store_name": "ER Parnamirim",
+          "total": 8
+        },
+        {
+          "store_name": "Ferreira Costa",
+          "total": 4
+        },
+        {
+          "store_name": "Cidade Verde",
+          "total": 3
+        },
+        {
+          "store_name": "ER Norte Shopping",
+          "total": 3
+        }
+      ]
+    },
+    {
+      "scenario": "Ranking de lojas",
+      "step_message": "qual o total?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 48
+        }
+      ]
+    },
+    {
+      "scenario": "Eventos temporais",
+      "step_message": "Quantos chamados foram abertos em agosto de 2026 na praça Natal?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 48
+        }
+      ]
+    },
+    {
+      "scenario": "Eventos temporais",
+      "step_message": "e quantos foram concluídos?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 32
+        }
+      ]
+    },
+    {
+      "scenario": "Eventos temporais",
+      "step_message": "e quantos estão em atendimento atualmente?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 8
+        }
+      ]
+    }
+  ]
+}

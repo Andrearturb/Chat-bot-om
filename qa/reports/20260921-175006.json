@@ -1,0 +1,65 @@
+{
+  "scenarios": 1,
+  "steps": 3,
+  "pass_count": 3,
+  "fail_count": 0,
+  "results": [
+    {
+      "scenario": "Combinação de filtros",
+      "step_message": "Quantos chamados estão em atendimento na praça Natal com o analista André Brito?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 8
+        }
+      ]
+    },
+    {
+      "scenario": "Combinação de filtros",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3786"
+        },
+        {
+          "ticket": "4275"
+        },
+        {
+          "ticket": "4309"
+        },
+        {
+          "ticket": "4392"
+        },
+        {
+          "ticket": "4458"
+        },
+        {
+          "ticket": "4476"
+        },
+        {
+          "ticket": "4527"
+        },
+        {
+          "ticket": "4842"
+        }
+      ]
+    },
+    {
+      "scenario": "Combinação de filtros",
+      "step_message": "e os que estão em aberto?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 22
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "id": "historical-cohort-combined",
+  "name": "Coorte histórica com múltiplos filtros",
+  "category": "historical",
+  "steps": [
+    {
+      "message": "Dos chamados criados em agosto de 2026 na praça Natal pelo analista André Brito, quantos ainda estão em atendimento?",
+      "expected_state": {
+        "event": "current_status",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal",
+        "analyst_responsible": "André Brito",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "location_term",
+        "supplier",
+        "requester",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND LOWER(BTRIM(analyst_responsible)) = LOWER(BTRIM('André Brito')) AND status = 'Em atendimento';"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "current_status",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal",
+        "analyst_responsible": "André Brito",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "location_term",
+        "supplier",
+        "requester",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND LOWER(BTRIM(analyst_responsible)) = LOWER(BTRIM('André Brito')) AND status = 'Em atendimento' ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "e quantos já foram concluídos?",
+      "expected_state": {
+        "event": "current_status",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal",
+        "analyst_responsible": "André Brito",
+        "statuses": [
+          "Concluído"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "location_term",
+        "supplier",
+        "requester",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND LOWER(BTRIM(analyst_responsible)) = LOWER(BTRIM('André Brito')) AND status = 'Concluído';"
+      }
+    }
+  ]
+}

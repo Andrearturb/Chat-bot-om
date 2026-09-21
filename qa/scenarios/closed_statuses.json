@@ -1,0 +1,86 @@
+{
+  "id": "closed-statuses",
+  "name": "Status encerrados",
+  "category": "status",
+  "steps": [
+    {
+      "message": "Quantos chamados encerrados existem atualmente?",
+      "expected_state": {
+        "event": "current_status",
+        "statuses": [
+          "Não Aprovado",
+          "Concluído"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status IN ('Não Aprovado', 'Concluído');"
+      }
+    },
+    {
+      "message": "e quantos estão concluídos?",
+      "expected_state": {
+        "event": "current_status",
+        "statuses": [
+          "Concluído"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Concluído';"
+      }
+    },
+    {
+      "message": "e quantos não foram aprovados?",
+      "expected_state": {
+        "event": "current_status",
+        "statuses": [
+          "Não Aprovado"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Não Aprovado';"
+      }
+    }
+  ]
+}

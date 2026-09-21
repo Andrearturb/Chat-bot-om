@@ -1,0 +1,22 @@
+{
+  "id": "historical-cohort-current-status",
+  "name": "Coorte histórica",
+  "category": "historical",
+  "steps": [
+    {
+      "message": "Dos chamados criados em agosto de 2026 na praça Natal, quantos ainda estão em atendimento?",
+      "expected_state": {
+        "event": "current_status",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal",
+        "statuses": ["Em atendimento"]
+      },
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE EXTRACT(YEAR FROM created_on) = 2026 AND EXTRACT(MONTH FROM created_on) = 8 AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND status = 'Em atendimento';"
+      }
+    }
+  ]
+}

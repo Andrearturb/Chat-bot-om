@@ -5,6 +5,8 @@ from sqlglot.errors import ParseError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.services.qa_trace import register_qa_trace
+
 
 MAX_ROWS = 200
 
@@ -102,27 +104,46 @@ def validar_sql(sql: str) -> str:
 def executar_consulta_chatbot(
     db: Session,
     sql: str,
+    qa_trace_id: str | None = None,
 ) -> dict:
     sql_validado = validar_sql(sql)
+    filas = []
+    truncated = False
 
-    resultado = db.execute(text(sql_validado))
+    try:
+        resultado = db.execute(text(sql_validado))
+        colunas = list(resultado.keys())
 
-    colunas = list(resultado.keys())
-
-    # Busca uma linha extra para sabermos se truncamos o resultado
-    registros = resultado.mappings().fetchmany(MAX_ROWS + 1)
-
-    truncated = len(registros) > MAX_ROWS
-
-    if truncated:
-        registros = registros[:MAX_ROWS]
-
-    rows = [dict(registro) for registro in registros]
+        registros = resultado.mappings().fetchmany(MAX_ROWS + 1)
+        truncated = len(registros) > MAX_ROWS
+        if truncated:
+            registros = registros[:MAX_ROWS]
+        filas = [dict(registro) for registro in registros]
+        row_count = len(filas)
+        success = True
+        error = None
+    except Exception as exc:
+        colunas = []
+        row_count = 0
+        success = False
+        error = str(exc)
+        raise ChatbotQueryError(str(exc)) from exc
+    finally:
+        if qa_trace_id:
+            register_qa_trace(
+                trace_id=qa_trace_id,
+                sql=sql,
+                sql_validado=sql_validado,
+                success=success,
+                row_count=row_count,
+                truncated=truncated,
+                error=error,
+            )
 
     return {
-        "success": True,
-        "row_count": len(rows),
+        "success": success,
+        "row_count": row_count,
         "truncated": truncated,
         "columns": colunas,
-        "rows": rows,
+        "rows": filas,
     }

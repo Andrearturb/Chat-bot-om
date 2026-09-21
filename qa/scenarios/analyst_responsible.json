@@ -1,0 +1,82 @@
+{
+  "id": "analyst-responsible",
+  "name": "Analista responsável",
+  "category": "analyst",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos em agosto de 2026 pelo analista André Brito?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "analyst_responsible": "André Brito"
+      },
+      "must_be_null": [
+        "supplier",
+        "requester",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(analyst_responsible)) = LOWER(BTRIM('André Brito'));"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "analyst_responsible": "André Brito"
+      },
+      "must_be_null": [
+        "supplier",
+        "requester",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(analyst_responsible)) = LOWER(BTRIM('André Brito')) ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "e quantos do analista Fernando Alves?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "analyst_responsible": "Fernando Alves"
+      },
+      "must_be_null": [
+        "supplier",
+        "requester",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(analyst_responsible)) = LOWER(BTRIM('Fernando Alves'));"
+      }
+    }
+  ]
+}

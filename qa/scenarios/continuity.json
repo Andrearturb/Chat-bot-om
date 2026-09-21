@@ -1,0 +1,31 @@
+{
+  "id": "continuity-trairi-maracacume",
+  "name": "Continuidade",
+  "category": "continuity",
+  "steps": [
+    {
+      "message": "Quantos chamados estão em atendimento em Trairi?",
+      "expected_state": {
+        "event": "current_status",
+        "location_term": "Trairi",
+        "statuses": ["Em atendimento"]
+      },
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND (LOWER(BTRIM(store_name)) = LOWER(BTRIM('Trairi')) OR LOWER(BTRIM(praca)) = LOWER(BTRIM('Trairi')));"
+      }
+    },
+    {
+      "message": "e em Maracaçumé?",
+      "expected_state": {
+        "event": "current_status",
+        "location_term": "Maracaçumé",
+        "statuses": ["Em atendimento"]
+      },
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND (LOWER(BTRIM(store_name)) = LOWER(BTRIM('Maracaçumé')) OR LOWER(BTRIM(praca)) = LOWER(BTRIM('Maracaçumé')));"
+      }
+    }
+  ]
+}

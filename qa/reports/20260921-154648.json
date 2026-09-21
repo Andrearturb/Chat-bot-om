@@ -1,0 +1,134 @@
+{
+  "scenarios": 8,
+  "steps": 18,
+  "pass_count": 0,
+  "fail_count": 18,
+  "results": [
+    {
+      "scenario": "Categoria / subcategoria",
+      "step_message": "Quantos chamados da categoria Infraestrutura / Estrutura Física estão em atendimento?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Categoria / subcategoria",
+      "step_message": "e por subcategoria?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Continuidade",
+      "step_message": "Quantos chamados estão em atendimento em Trairi?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Continuidade",
+      "step_message": "e em Maracaçumé?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "Quantos chamados estão em atendimento em Trairi?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "e em Maracaçumé?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "mostre os chamados",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Coorte histórica",
+      "step_message": "Dos chamados criados em agosto de 2026 na praça Natal, quantos ainda estão em atendimento?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Chamados sem fornecedor",
+      "step_message": "Quantos chamados foram abertos em agosto de 2026 na praça Natal sem fornecedor?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Chamados sem fornecedor",
+      "step_message": "mostre os chamados",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Múltiplos status / loja explícita",
+      "step_message": "todos os chamados em aberto e em atendimento da loja Santa Inês",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Múltiplos status / loja explícita",
+      "step_message": "mostre os chamados",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Múltiplos status / loja explícita",
+      "step_message": "quais os números dos chamados?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Ranking de lojas",
+      "step_message": "Quais são as 5 lojas com mais chamados abertos em agosto de 2026 na praça Natal?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Ranking de lojas",
+      "step_message": "qual o total?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Eventos temporais",
+      "step_message": "Quantos chamados foram abertos em agosto de 2026 na praça Natal?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Eventos temporais",
+      "step_message": "e quantos foram concluídos?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    },
+    {
+      "scenario": "Eventos temporais",
+      "step_message": "e quantos estão em atendimento atualmente?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Oráculo não pode conter múltiplas instruções."
+    }
+  ]
+}

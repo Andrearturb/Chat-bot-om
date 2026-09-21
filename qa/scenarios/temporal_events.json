@@ -1,0 +1,77 @@
+{
+  "id": "temporal-events-opened-completed-current-status",
+  "name": "Eventos temporais",
+  "category": "temporal",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos em agosto de 2026 na praça Natal?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal"
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal'));"
+      }
+    },
+    {
+      "message": "e quantos foram concluídos?",
+      "expected_state": {
+        "event": "completed",
+        "date_field": "completion_date",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal"
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE completion_date >= '2026-08-01' AND completion_date < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal'));"
+      }
+    },
+    {
+      "message": "e quantos estão em atendimento atualmente?",
+      "expected_state": {
+        "event": "current_status",
+        "praca": "Natal",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "store_name",
+        "location_term",
+        "status",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal'));"
+      }
+    }
+  ]
+}

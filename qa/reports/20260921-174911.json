@@ -1,0 +1,65 @@
+{
+  "scenarios": 1,
+  "steps": 3,
+  "pass_count": 3,
+  "fail_count": 0,
+  "results": [
+    {
+      "scenario": "Classificação ausente",
+      "step_message": "Quantos chamados foram abertos em março de 2026 sem subcategoria?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 8
+        }
+      ]
+    },
+    {
+      "scenario": "Classificação ausente",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "2678"
+        },
+        {
+          "ticket": "2696"
+        },
+        {
+          "ticket": "2738"
+        },
+        {
+          "ticket": "2775"
+        },
+        {
+          "ticket": "2841"
+        },
+        {
+          "ticket": "2875"
+        },
+        {
+          "ticket": "2905"
+        },
+        {
+          "ticket": "2951"
+        }
+      ]
+    },
+    {
+      "scenario": "Classificação ausente",
+      "step_message": "e quantos sem categoria?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    }
+  ]
+}

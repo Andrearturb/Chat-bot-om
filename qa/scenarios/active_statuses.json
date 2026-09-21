@@ -1,0 +1,87 @@
+{
+  "id": "active-statuses",
+  "name": "Status ativos",
+  "category": "status",
+  "steps": [
+    {
+      "message": "Quantos chamados ativos existem atualmente?",
+      "expected_state": {
+        "event": "current_status",
+        "statuses": [
+          "Em Aberto",
+          "Em atendimento",
+          "Pendente de aprovação"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status IN ('Em Aberto', 'Em atendimento', 'Pendente de aprovação');"
+      }
+    },
+    {
+      "message": "e quantos estão pendentes de aprovação?",
+      "expected_state": {
+        "event": "current_status",
+        "statuses": [
+          "Pendente de aprovação"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Pendente de aprovação';"
+      }
+    },
+    {
+      "message": "e quantos estão em aberto?",
+      "expected_state": {
+        "event": "current_status",
+        "statuses": [
+          "Em Aberto"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em Aberto';"
+      }
+    }
+  ]
+}

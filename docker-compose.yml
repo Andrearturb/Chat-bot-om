@@ -15,6 +15,26 @@ services:
       volumes:
 
         - n8n_data:/home/node/.n8n
+    qa:
+      build:
+        context: .
+        dockerfile: qa/Dockerfile
+      profiles:
+        - qa
+      environment:
+        DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+        QA_N8N_WEBHOOK_URL: http://n8n:5678/webhook/9db5ead4-d4ca-4f5c-a1b4-3969e60cb8df/chat
+        QA_BACKEND_URL: http://backend:8000
+        API_KEY: ${API_KEY}
+      depends_on:
+        db:
+          condition: service_healthy
+        backend:
+          condition: service_started
+        n8n:
+          condition: service_started
+      volumes:
+      - ./qa/reports:/app/qa/reports
     db:
       image: postgres:16
       restart: unless-stopped

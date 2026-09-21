@@ -1,0 +1,82 @@
+{
+  "id": "requester-filter-continuity",
+  "name": "Requisitante",
+  "category": "requester",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos em agosto de 2026 pela requisitante Vanessa Nascimento?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "requester": "Vanessa Nascimento"
+      },
+      "must_be_null": [
+        "analyst_responsible",
+        "supplier",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(requester)) = LOWER(BTRIM('Vanessa Nascimento'));"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "requester": "Vanessa Nascimento"
+      },
+      "must_be_null": [
+        "analyst_responsible",
+        "supplier",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(requester)) = LOWER(BTRIM('Vanessa Nascimento')) ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "e quantos do requisitante Gabriel Macedo?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "requester": "Gabriel Macedo"
+      },
+      "must_be_null": [
+        "analyst_responsible",
+        "supplier",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(requester)) = LOWER(BTRIM('Gabriel Macedo'));"
+      }
+    }
+  ]
+}

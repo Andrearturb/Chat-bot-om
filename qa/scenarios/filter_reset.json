@@ -1,0 +1,81 @@
+{
+  "id": "filter-reset-and-replacement",
+  "name": "Limpeza e substituição de filtros",
+  "category": "continuity",
+  "steps": [
+    {
+      "message": "Quantos chamados estão em atendimento na loja Santa Inês?",
+      "expected_state": {
+        "event": "current_status",
+        "store_name": "Santa Inês",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "praca",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(store_name)) = LOWER(BTRIM('Santa Inês'));"
+      }
+    },
+    {
+      "message": "agora quantos chamados foram abertos em agosto de 2026 na praça Natal?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal"
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal'));"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal"
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) ORDER BY ticket;"
+      }
+    }
+  ]
+}

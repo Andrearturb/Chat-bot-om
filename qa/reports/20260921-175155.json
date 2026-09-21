@@ -1,0 +1,59 @@
+{
+  "scenarios": 1,
+  "steps": 3,
+  "pass_count": 3,
+  "fail_count": 0,
+  "results": [
+    {
+      "scenario": "Coorte histórica com múltiplos filtros",
+      "step_message": "Dos chamados criados em agosto de 2026 na praça Natal pelo analista André Brito, quantos ainda estão em atendimento?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 6
+        }
+      ]
+    },
+    {
+      "scenario": "Coorte histórica com múltiplos filtros",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4275"
+        },
+        {
+          "ticket": "4309"
+        },
+        {
+          "ticket": "4392"
+        },
+        {
+          "ticket": "4458"
+        },
+        {
+          "ticket": "4476"
+        },
+        {
+          "ticket": "4527"
+        }
+      ]
+    },
+    {
+      "scenario": "Coorte histórica com múltiplos filtros",
+      "step_message": "e quantos já foram concluídos?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 28
+        }
+      ]
+    }
+  ]
+}

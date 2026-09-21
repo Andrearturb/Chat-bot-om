@@ -1,0 +1,94 @@
+{
+  "id": "combined-filters",
+  "name": "Combinação de filtros",
+  "category": "combined",
+  "steps": [
+    {
+      "message": "Quantos chamados estão em atendimento na praça Natal com o analista André Brito?",
+      "expected_state": {
+        "event": "current_status",
+        "praca": "Natal",
+        "analyst_responsible": "André Brito",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "location_term",
+        "supplier",
+        "requester",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND LOWER(BTRIM(analyst_responsible)) = LOWER(BTRIM('André Brito'));"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "current_status",
+        "praca": "Natal",
+        "analyst_responsible": "André Brito",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "location_term",
+        "supplier",
+        "requester",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND LOWER(BTRIM(analyst_responsible)) = LOWER(BTRIM('André Brito')) ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "e os que estão em aberto?",
+      "expected_state": {
+        "event": "current_status",
+        "praca": "Natal",
+        "analyst_responsible": "André Brito",
+        "statuses": [
+          "Em Aberto"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "location_term",
+        "supplier",
+        "requester",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em Aberto' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND LOWER(BTRIM(analyst_responsible)) = LOWER(BTRIM('André Brito'));"
+      }
+    }
+  ]
+}

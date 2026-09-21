@@ -1,0 +1,3039 @@
+{
+  "scenarios": 26,
+  "steps": 77,
+  "pass_count": 77,
+  "fail_count": 0,
+  "results": [
+    {
+      "scenario": "Status ativos",
+      "step_message": "Quantos chamados ativos existem atualmente?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 282
+        }
+      ]
+    },
+    {
+      "scenario": "Status ativos",
+      "step_message": "e quantos estão pendentes de aprovação?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Status ativos",
+      "step_message": "e quantos estão em aberto?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 128
+        }
+      ]
+    },
+    {
+      "scenario": "Analista para sem analista e retorno",
+      "step_message": "Quantos chamados foram abertos em julho de 2026 na praça Natal pelo analista André Brito?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 63
+        }
+      ]
+    },
+    {
+      "scenario": "Analista para sem analista e retorno",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3946"
+        },
+        {
+          "ticket": "3947"
+        },
+        {
+          "ticket": "3960"
+        },
+        {
+          "ticket": "3961"
+        },
+        {
+          "ticket": "3966"
+        },
+        {
+          "ticket": "3967"
+        },
+        {
+          "ticket": "3972"
+        },
+        {
+          "ticket": "3974"
+        },
+        {
+          "ticket": "3977"
+        },
+        {
+          "ticket": "3978"
+        },
+        {
+          "ticket": "3979"
+        },
+        {
+          "ticket": "3980"
+        },
+        {
+          "ticket": "3986"
+        },
+        {
+          "ticket": "3987"
+        },
+        {
+          "ticket": "3988"
+        },
+        {
+          "ticket": "3995"
+        },
+        {
+          "ticket": "3996"
+        },
+        {
+          "ticket": "4002"
+        },
+        {
+          "ticket": "4010"
+        },
+        {
+          "ticket": "4019"
+        },
+        {
+          "ticket": "4026"
+        },
+        {
+          "ticket": "4027"
+        },
+        {
+          "ticket": "4028"
+        },
+        {
+          "ticket": "4037"
+        },
+        {
+          "ticket": "4049"
+        },
+        {
+          "ticket": "4055"
+        },
+        {
+          "ticket": "4056"
+        },
+        {
+          "ticket": "4057"
+        },
+        {
+          "ticket": "4061"
+        },
+        {
+          "ticket": "4062"
+        },
+        {
+          "ticket": "4063"
+        },
+        {
+          "ticket": "4064"
+        },
+        {
+          "ticket": "4065"
+        },
+        {
+          "ticket": "4066"
+        },
+        {
+          "ticket": "4067"
+        },
+        {
+          "ticket": "4068"
+        },
+        {
+          "ticket": "4070"
+        },
+        {
+          "ticket": "4072"
+        },
+        {
+          "ticket": "4075"
+        },
+        {
+          "ticket": "4080"
+        },
+        {
+          "ticket": "4087"
+        },
+        {
+          "ticket": "4092"
+        },
+        {
+          "ticket": "4093"
+        },
+        {
+          "ticket": "4107"
+        },
+        {
+          "ticket": "4117"
+        },
+        {
+          "ticket": "4118"
+        },
+        {
+          "ticket": "4125"
+        },
+        {
+          "ticket": "4127"
+        },
+        {
+          "ticket": "4128"
+        },
+        {
+          "ticket": "4146"
+        },
+        {
+          "ticket": "4148"
+        },
+        {
+          "ticket": "4174"
+        },
+        {
+          "ticket": "4183"
+        },
+        {
+          "ticket": "4187"
+        },
+        {
+          "ticket": "4189"
+        },
+        {
+          "ticket": "4190"
+        },
+        {
+          "ticket": "4191"
+        },
+        {
+          "ticket": "4201"
+        },
+        {
+          "ticket": "4215"
+        },
+        {
+          "ticket": "4218"
+        },
+        {
+          "ticket": "4220"
+        },
+        {
+          "ticket": "4247"
+        },
+        {
+          "ticket": "4251"
+        }
+      ]
+    },
+    {
+      "scenario": "Analista para sem analista e retorno",
+      "step_message": "e quantos estão sem analista?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 5
+        }
+      ]
+    },
+    {
+      "scenario": "Analista para sem analista e retorno",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3964"
+        },
+        {
+          "ticket": "3984"
+        },
+        {
+          "ticket": "4007"
+        },
+        {
+          "ticket": "4008"
+        },
+        {
+          "ticket": "4121"
+        }
+      ]
+    },
+    {
+      "scenario": "Analista para sem analista e retorno",
+      "step_message": "e quantos com o analista André Brito?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 63
+        }
+      ]
+    },
+    {
+      "scenario": "Analista responsável",
+      "step_message": "Quantos chamados foram abertos em agosto de 2026 pelo analista André Brito?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 169
+        }
+      ]
+    },
+    {
+      "scenario": "Analista responsável",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4267"
+        },
+        {
+          "ticket": "4268"
+        },
+        {
+          "ticket": "4269"
+        },
+        {
+          "ticket": "4272"
+        },
+        {
+          "ticket": "4273"
+        },
+        {
+          "ticket": "4274"
+        },
+        {
+          "ticket": "4275"
+        },
+        {
+          "ticket": "4276"
+        },
+        {
+          "ticket": "4278"
+        },
+        {
+          "ticket": "4279"
+        },
+        {
+          "ticket": "4280"
+        },
+        {
+          "ticket": "4283"
+        },
+        {
+          "ticket": "4285"
+        },
+        {
+          "ticket": "4286"
+        },
+        {
+          "ticket": "4289"
+        },
+        {
+          "ticket": "4290"
+        },
+        {
+          "ticket": "4292"
+        },
+        {
+          "ticket": "4293"
+        },
+        {
+          "ticket": "4295"
+        },
+        {
+          "ticket": "4296"
+        },
+        {
+          "ticket": "4297"
+        },
+        {
+          "ticket": "4298"
+        },
+        {
+          "ticket": "4299"
+        },
+        {
+          "ticket": "4300"
+        },
+        {
+          "ticket": "4301"
+        },
+        {
+          "ticket": "4307"
+        },
+        {
+          "ticket": "4309"
+        },
+        {
+          "ticket": "4311"
+        },
+        {
+          "ticket": "4312"
+        },
+        {
+          "ticket": "4316"
+        },
+        {
+          "ticket": "4317"
+        },
+        {
+          "ticket": "4318"
+        },
+        {
+          "ticket": "4320"
+        },
+        {
+          "ticket": "4321"
+        },
+        {
+          "ticket": "4322"
+        },
+        {
+          "ticket": "4323"
+        },
+        {
+          "ticket": "4324"
+        },
+        {
+          "ticket": "4325"
+        },
+        {
+          "ticket": "4326"
+        },
+        {
+          "ticket": "4327"
+        },
+        {
+          "ticket": "4328"
+        },
+        {
+          "ticket": "4329"
+        },
+        {
+          "ticket": "4330"
+        },
+        {
+          "ticket": "4333"
+        },
+        {
+          "ticket": "4336"
+        },
+        {
+          "ticket": "4337"
+        },
+        {
+          "ticket": "4338"
+        },
+        {
+          "ticket": "4339"
+        },
+        {
+          "ticket": "4340"
+        },
+        {
+          "ticket": "4342"
+        },
+        {
+          "ticket": "4343"
+        },
+        {
+          "ticket": "4344"
+        },
+        {
+          "ticket": "4345"
+        },
+        {
+          "ticket": "4346"
+        },
+        {
+          "ticket": "4347"
+        },
+        {
+          "ticket": "4360"
+        },
+        {
+          "ticket": "4361"
+        },
+        {
+          "ticket": "4362"
+        },
+        {
+          "ticket": "4363"
+        },
+        {
+          "ticket": "4365"
+        },
+        {
+          "ticket": "4366"
+        },
+        {
+          "ticket": "4367"
+        },
+        {
+          "ticket": "4368"
+        },
+        {
+          "ticket": "4369"
+        },
+        {
+          "ticket": "4370"
+        },
+        {
+          "ticket": "4371"
+        },
+        {
+          "ticket": "4373"
+        },
+        {
+          "ticket": "4378"
+        },
+        {
+          "ticket": "4379"
+        },
+        {
+          "ticket": "4380"
+        },
+        {
+          "ticket": "4381"
+        },
+        {
+          "ticket": "4382"
+        },
+        {
+          "ticket": "4387"
+        },
+        {
+          "ticket": "4389"
+        },
+        {
+          "ticket": "4390"
+        },
+        {
+          "ticket": "4392"
+        },
+        {
+          "ticket": "4393"
+        },
+        {
+          "ticket": "4397"
+        },
+        {
+          "ticket": "4400"
+        },
+        {
+          "ticket": "4401"
+        },
+        {
+          "ticket": "4402"
+        },
+        {
+          "ticket": "4404"
+        },
+        {
+          "ticket": "4405"
+        },
+        {
+          "ticket": "4406"
+        },
+        {
+          "ticket": "4410"
+        },
+        {
+          "ticket": "4411"
+        },
+        {
+          "ticket": "4412"
+        },
+        {
+          "ticket": "4415"
+        },
+        {
+          "ticket": "4419"
+        },
+        {
+          "ticket": "4424"
+        },
+        {
+          "ticket": "4427"
+        },
+        {
+          "ticket": "4429"
+        },
+        {
+          "ticket": "4432"
+        },
+        {
+          "ticket": "4434"
+        },
+        {
+          "ticket": "4435"
+        },
+        {
+          "ticket": "4437"
+        },
+        {
+          "ticket": "4449"
+        },
+        {
+          "ticket": "4450"
+        },
+        {
+          "ticket": "4451"
+        },
+        {
+          "ticket": "4452"
+        },
+        {
+          "ticket": "4453"
+        },
+        {
+          "ticket": "4457"
+        },
+        {
+          "ticket": "4458"
+        },
+        {
+          "ticket": "4459"
+        },
+        {
+          "ticket": "4460"
+        },
+        {
+          "ticket": "4461"
+        },
+        {
+          "ticket": "4462"
+        },
+        {
+          "ticket": "4463"
+        },
+        {
+          "ticket": "4466"
+        },
+        {
+          "ticket": "4467"
+        },
+        {
+          "ticket": "4468"
+        },
+        {
+          "ticket": "4470"
+        },
+        {
+          "ticket": "4471"
+        },
+        {
+          "ticket": "4472"
+        },
+        {
+          "ticket": "4473"
+        },
+        {
+          "ticket": "4476"
+        },
+        {
+          "ticket": "4478"
+        },
+        {
+          "ticket": "4479"
+        },
+        {
+          "ticket": "4483"
+        },
+        {
+          "ticket": "4485"
+        },
+        {
+          "ticket": "4489"
+        },
+        {
+          "ticket": "4495"
+        },
+        {
+          "ticket": "4497"
+        },
+        {
+          "ticket": "4499"
+        },
+        {
+          "ticket": "4500"
+        },
+        {
+          "ticket": "4501"
+        },
+        {
+          "ticket": "4502"
+        },
+        {
+          "ticket": "4503"
+        },
+        {
+          "ticket": "4504"
+        },
+        {
+          "ticket": "4505"
+        },
+        {
+          "ticket": "4506"
+        },
+        {
+          "ticket": "4508"
+        },
+        {
+          "ticket": "4509"
+        },
+        {
+          "ticket": "4512"
+        },
+        {
+          "ticket": "4513"
+        },
+        {
+          "ticket": "4514"
+        },
+        {
+          "ticket": "4519"
+        },
+        {
+          "ticket": "4520"
+        },
+        {
+          "ticket": "4521"
+        },
+        {
+          "ticket": "4522"
+        },
+        {
+          "ticket": "4523"
+        },
+        {
+          "ticket": "4524"
+        },
+        {
+          "ticket": "4525"
+        },
+        {
+          "ticket": "4527"
+        },
+        {
+          "ticket": "4528"
+        },
+        {
+          "ticket": "4529"
+        },
+        {
+          "ticket": "4530"
+        },
+        {
+          "ticket": "4531"
+        },
+        {
+          "ticket": "4533"
+        },
+        {
+          "ticket": "4534"
+        },
+        {
+          "ticket": "4535"
+        },
+        {
+          "ticket": "4536"
+        },
+        {
+          "ticket": "4537"
+        },
+        {
+          "ticket": "4538"
+        },
+        {
+          "ticket": "4539"
+        },
+        {
+          "ticket": "4542"
+        },
+        {
+          "ticket": "4546"
+        },
+        {
+          "ticket": "4547"
+        },
+        {
+          "ticket": "4548"
+        },
+        {
+          "ticket": "4549"
+        },
+        {
+          "ticket": "4550"
+        },
+        {
+          "ticket": "4551"
+        },
+        {
+          "ticket": "4552"
+        },
+        {
+          "ticket": "4553"
+        },
+        {
+          "ticket": "4555"
+        },
+        {
+          "ticket": "4556"
+        },
+        {
+          "ticket": "4557"
+        },
+        {
+          "ticket": "4558"
+        },
+        {
+          "ticket": "4559"
+        }
+      ]
+    },
+    {
+      "scenario": "Analista responsável",
+      "step_message": "e quantos do analista Fernando Alves?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 0
+        }
+      ]
+    },
+    {
+      "scenario": "Categoria e troca de subcategoria",
+      "step_message": "Quantos chamados da categoria Infraestrutura / Estrutura Física estão em atendimento?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 86
+        }
+      ]
+    },
+    {
+      "scenario": "Categoria e troca de subcategoria",
+      "step_message": "e da subcategoria Pintura?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 20
+        }
+      ]
+    },
+    {
+      "scenario": "Categoria e troca de subcategoria",
+      "step_message": "e da subcategoria Móveis?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 19
+        }
+      ]
+    },
+    {
+      "scenario": "Categoria e troca de subcategoria",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3491"
+        },
+        {
+          "ticket": "4289"
+        },
+        {
+          "ticket": "4309"
+        },
+        {
+          "ticket": "4526"
+        },
+        {
+          "ticket": "4538"
+        },
+        {
+          "ticket": "4547"
+        },
+        {
+          "ticket": "4553"
+        },
+        {
+          "ticket": "4571"
+        },
+        {
+          "ticket": "4600"
+        },
+        {
+          "ticket": "4604"
+        },
+        {
+          "ticket": "4610"
+        },
+        {
+          "ticket": "4651"
+        },
+        {
+          "ticket": "4660"
+        },
+        {
+          "ticket": "4680"
+        },
+        {
+          "ticket": "4686"
+        },
+        {
+          "ticket": "4703"
+        },
+        {
+          "ticket": "4737"
+        },
+        {
+          "ticket": "4752"
+        },
+        {
+          "ticket": "4842"
+        }
+      ]
+    },
+    {
+      "scenario": "Categoria / subcategoria",
+      "step_message": "Quantos chamados da categoria Infraestrutura / Estrutura Física estão em atendimento?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 86
+        }
+      ]
+    },
+    {
+      "scenario": "Categoria / subcategoria",
+      "step_message": "e por subcategoria?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "subcategory": "Pintura",
+          "total": 20
+        },
+        {
+          "subcategory": "Móveis",
+          "total": 19
+        },
+        {
+          "subcategory": "Piso",
+          "total": 13
+        },
+        {
+          "subcategory": "Fachada / Vitrine",
+          "total": 12
+        },
+        {
+          "subcategory": "Paredes / Gesso",
+          "total": 9
+        },
+        {
+          "subcategory": "Cobertura / Telhado",
+          "total": 8
+        },
+        {
+          "subcategory": "Sinalização de Ambientes",
+          "total": 4
+        },
+        {
+          "subcategory": null,
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Remoção do filtro de status",
+      "step_message": "Quantos chamados estão em atendimento na loja Santa Inês?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Remoção do filtro de status",
+      "step_message": "agora considere todos os status",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 111
+        }
+      ]
+    },
+    {
+      "scenario": "Remoção do filtro de status",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "1010"
+        },
+        {
+          "ticket": "1023"
+        },
+        {
+          "ticket": "1060"
+        },
+        {
+          "ticket": "1074"
+        },
+        {
+          "ticket": "1361"
+        },
+        {
+          "ticket": "1365"
+        },
+        {
+          "ticket": "1376"
+        },
+        {
+          "ticket": "1387"
+        },
+        {
+          "ticket": "1397"
+        },
+        {
+          "ticket": "1451"
+        },
+        {
+          "ticket": "1501"
+        },
+        {
+          "ticket": "1548"
+        },
+        {
+          "ticket": "1554"
+        },
+        {
+          "ticket": "1555"
+        },
+        {
+          "ticket": "1589"
+        },
+        {
+          "ticket": "1590"
+        },
+        {
+          "ticket": "1591"
+        },
+        {
+          "ticket": "1593"
+        },
+        {
+          "ticket": "1628"
+        },
+        {
+          "ticket": "1687"
+        },
+        {
+          "ticket": "1760"
+        },
+        {
+          "ticket": "1856"
+        },
+        {
+          "ticket": "1881"
+        },
+        {
+          "ticket": "1883"
+        },
+        {
+          "ticket": "1885"
+        },
+        {
+          "ticket": "1887"
+        },
+        {
+          "ticket": "1926"
+        },
+        {
+          "ticket": "1964"
+        },
+        {
+          "ticket": "2027"
+        },
+        {
+          "ticket": "2116"
+        },
+        {
+          "ticket": "2117"
+        },
+        {
+          "ticket": "2118"
+        },
+        {
+          "ticket": "2119"
+        },
+        {
+          "ticket": "2276"
+        },
+        {
+          "ticket": "2287"
+        },
+        {
+          "ticket": "2289"
+        },
+        {
+          "ticket": "2299"
+        },
+        {
+          "ticket": "2310"
+        },
+        {
+          "ticket": "2345"
+        },
+        {
+          "ticket": "2381"
+        },
+        {
+          "ticket": "2445"
+        },
+        {
+          "ticket": "2574"
+        },
+        {
+          "ticket": "2575"
+        },
+        {
+          "ticket": "2642"
+        },
+        {
+          "ticket": "2643"
+        },
+        {
+          "ticket": "2644"
+        },
+        {
+          "ticket": "2653"
+        },
+        {
+          "ticket": "2660"
+        },
+        {
+          "ticket": "2661"
+        },
+        {
+          "ticket": "2662"
+        },
+        {
+          "ticket": "2666"
+        },
+        {
+          "ticket": "2667"
+        },
+        {
+          "ticket": "2676"
+        },
+        {
+          "ticket": "2746"
+        },
+        {
+          "ticket": "2781"
+        },
+        {
+          "ticket": "2782"
+        },
+        {
+          "ticket": "2842"
+        },
+        {
+          "ticket": "2845"
+        },
+        {
+          "ticket": "2921"
+        },
+        {
+          "ticket": "2922"
+        },
+        {
+          "ticket": "3009"
+        },
+        {
+          "ticket": "3041"
+        },
+        {
+          "ticket": "311"
+        },
+        {
+          "ticket": "315"
+        },
+        {
+          "ticket": "3150"
+        },
+        {
+          "ticket": "3243"
+        },
+        {
+          "ticket": "3244"
+        },
+        {
+          "ticket": "3245"
+        },
+        {
+          "ticket": "3354"
+        },
+        {
+          "ticket": "3356"
+        },
+        {
+          "ticket": "3397"
+        },
+        {
+          "ticket": "3398"
+        },
+        {
+          "ticket": "3426"
+        },
+        {
+          "ticket": "3428"
+        },
+        {
+          "ticket": "346"
+        },
+        {
+          "ticket": "3503"
+        },
+        {
+          "ticket": "3533"
+        },
+        {
+          "ticket": "3576"
+        },
+        {
+          "ticket": "3577"
+        },
+        {
+          "ticket": "3581"
+        },
+        {
+          "ticket": "3635"
+        },
+        {
+          "ticket": "3683"
+        },
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "3714"
+        },
+        {
+          "ticket": "3801"
+        },
+        {
+          "ticket": "3871"
+        },
+        {
+          "ticket": "4013"
+        },
+        {
+          "ticket": "4206"
+        },
+        {
+          "ticket": "4245"
+        },
+        {
+          "ticket": "4246"
+        },
+        {
+          "ticket": "4332"
+        },
+        {
+          "ticket": "4430"
+        },
+        {
+          "ticket": "4438"
+        },
+        {
+          "ticket": "4566"
+        },
+        {
+          "ticket": "4567"
+        },
+        {
+          "ticket": "4568"
+        },
+        {
+          "ticket": "4569"
+        },
+        {
+          "ticket": "4575"
+        },
+        {
+          "ticket": "4577"
+        },
+        {
+          "ticket": "4618"
+        },
+        {
+          "ticket": "4868"
+        },
+        {
+          "ticket": "638"
+        },
+        {
+          "ticket": "680"
+        },
+        {
+          "ticket": "746"
+        },
+        {
+          "ticket": "875"
+        },
+        {
+          "ticket": "915"
+        },
+        {
+          "ticket": "951"
+        },
+        {
+          "ticket": "983"
+        },
+        {
+          "ticket": "984"
+        },
+        {
+          "ticket": "985"
+        },
+        {
+          "ticket": "986"
+        }
+      ]
+    },
+    {
+      "scenario": "Status encerrados",
+      "step_message": "Quantos chamados encerrados existem atualmente?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 4501
+        }
+      ]
+    },
+    {
+      "scenario": "Status encerrados",
+      "step_message": "e quantos estão concluídos?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 3599
+        }
+      ]
+    },
+    {
+      "scenario": "Status encerrados",
+      "step_message": "e quantos não foram aprovados?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 902
+        }
+      ]
+    },
+    {
+      "scenario": "Combinação de filtros",
+      "step_message": "Quantos chamados estão em atendimento na praça Natal com o analista André Brito?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 8
+        }
+      ]
+    },
+    {
+      "scenario": "Combinação de filtros",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3786"
+        },
+        {
+          "ticket": "4275"
+        },
+        {
+          "ticket": "4309"
+        },
+        {
+          "ticket": "4392"
+        },
+        {
+          "ticket": "4458"
+        },
+        {
+          "ticket": "4476"
+        },
+        {
+          "ticket": "4527"
+        },
+        {
+          "ticket": "4842"
+        }
+      ]
+    },
+    {
+      "scenario": "Combinação de filtros",
+      "step_message": "e os que estão em aberto?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 22
+        }
+      ]
+    },
+    {
+      "scenario": "Continuidade",
+      "step_message": "Quantos chamados estão em atendimento em Trairi?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Continuidade",
+      "step_message": "e em Maracaçumé?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 2
+        }
+      ]
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "Quantos chamados estão em atendimento em Trairi?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "e em Maracaçumé?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 2
+        }
+      ]
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4205"
+        },
+        {
+          "ticket": "3685"
+        }
+      ]
+    },
+    {
+      "scenario": "Limpeza e substituição de filtros",
+      "step_message": "Quantos chamados estão em atendimento na loja Santa Inês?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Limpeza e substituição de filtros",
+      "step_message": "agora quantos chamados foram abertos em agosto de 2026 na praça Natal?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 48
+        }
+      ]
+    },
+    {
+      "scenario": "Limpeza e substituição de filtros",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4272"
+        },
+        {
+          "ticket": "4273"
+        },
+        {
+          "ticket": "4275"
+        },
+        {
+          "ticket": "4280"
+        },
+        {
+          "ticket": "4283"
+        },
+        {
+          "ticket": "4293"
+        },
+        {
+          "ticket": "4309"
+        },
+        {
+          "ticket": "4311"
+        },
+        {
+          "ticket": "4320"
+        },
+        {
+          "ticket": "4324"
+        },
+        {
+          "ticket": "4326"
+        },
+        {
+          "ticket": "4339"
+        },
+        {
+          "ticket": "4363"
+        },
+        {
+          "ticket": "4387"
+        },
+        {
+          "ticket": "4392"
+        },
+        {
+          "ticket": "4393"
+        },
+        {
+          "ticket": "4401"
+        },
+        {
+          "ticket": "4405"
+        },
+        {
+          "ticket": "4406"
+        },
+        {
+          "ticket": "4410"
+        },
+        {
+          "ticket": "4412"
+        },
+        {
+          "ticket": "4432"
+        },
+        {
+          "ticket": "4450"
+        },
+        {
+          "ticket": "4451"
+        },
+        {
+          "ticket": "4453"
+        },
+        {
+          "ticket": "4457"
+        },
+        {
+          "ticket": "4458"
+        },
+        {
+          "ticket": "4459"
+        },
+        {
+          "ticket": "4460"
+        },
+        {
+          "ticket": "4461"
+        },
+        {
+          "ticket": "4462"
+        },
+        {
+          "ticket": "4466"
+        },
+        {
+          "ticket": "4470"
+        },
+        {
+          "ticket": "4476"
+        },
+        {
+          "ticket": "4485"
+        },
+        {
+          "ticket": "4489"
+        },
+        {
+          "ticket": "4495"
+        },
+        {
+          "ticket": "4497"
+        },
+        {
+          "ticket": "4505"
+        },
+        {
+          "ticket": "4508"
+        },
+        {
+          "ticket": "4509"
+        },
+        {
+          "ticket": "4519"
+        },
+        {
+          "ticket": "4520"
+        },
+        {
+          "ticket": "4521"
+        },
+        {
+          "ticket": "4527"
+        },
+        {
+          "ticket": "4546"
+        },
+        {
+          "ticket": "4551"
+        },
+        {
+          "ticket": "4555"
+        }
+      ]
+    },
+    {
+      "scenario": "Coorte histórica",
+      "step_message": "Dos chamados criados em agosto de 2026 na praça Natal, quantos ainda estão em atendimento?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 6
+        }
+      ]
+    },
+    {
+      "scenario": "Coorte histórica com múltiplos filtros",
+      "step_message": "Dos chamados criados em agosto de 2026 na praça Natal pelo analista André Brito, quantos ainda estão em atendimento?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 6
+        }
+      ]
+    },
+    {
+      "scenario": "Coorte histórica com múltiplos filtros",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4275"
+        },
+        {
+          "ticket": "4309"
+        },
+        {
+          "ticket": "4392"
+        },
+        {
+          "ticket": "4458"
+        },
+        {
+          "ticket": "4476"
+        },
+        {
+          "ticket": "4527"
+        }
+      ]
+    },
+    {
+      "scenario": "Coorte histórica com múltiplos filtros",
+      "step_message": "e quantos já foram concluídos?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 28
+        }
+      ]
+    },
+    {
+      "scenario": "Chamados sem analista",
+      "step_message": "Quantos chamados foram abertos em julho de 2026 na praça Natal sem analista?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 5
+        }
+      ]
+    },
+    {
+      "scenario": "Chamados sem analista",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3964"
+        },
+        {
+          "ticket": "3984"
+        },
+        {
+          "ticket": "4007"
+        },
+        {
+          "ticket": "4008"
+        },
+        {
+          "ticket": "4121"
+        }
+      ]
+    },
+    {
+      "scenario": "Chamados sem analista",
+      "step_message": "e quantos em maio?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 3
+        }
+      ]
+    },
+    {
+      "scenario": "Classificação ausente",
+      "step_message": "Quantos chamados foram abertos em março de 2026 sem subcategoria?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 8
+        }
+      ]
+    },
+    {
+      "scenario": "Classificação ausente",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "2678"
+        },
+        {
+          "ticket": "2696"
+        },
+        {
+          "ticket": "2738"
+        },
+        {
+          "ticket": "2775"
+        },
+        {
+          "ticket": "2841"
+        },
+        {
+          "ticket": "2875"
+        },
+        {
+          "ticket": "2905"
+        },
+        {
+          "ticket": "2951"
+        }
+      ]
+    },
+    {
+      "scenario": "Classificação ausente",
+      "step_message": "e quantos sem categoria?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Chamados sem fornecedor",
+      "step_message": "Quantos chamados foram abertos em agosto de 2026 na praça Natal sem fornecedor?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 11
+        }
+      ]
+    },
+    {
+      "scenario": "Chamados sem fornecedor",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4324"
+        },
+        {
+          "ticket": "4363"
+        },
+        {
+          "ticket": "4393"
+        },
+        {
+          "ticket": "4405"
+        },
+        {
+          "ticket": "4451"
+        },
+        {
+          "ticket": "4459"
+        },
+        {
+          "ticket": "4460"
+        },
+        {
+          "ticket": "4466"
+        },
+        {
+          "ticket": "4495"
+        },
+        {
+          "ticket": "4519"
+        },
+        {
+          "ticket": "4521"
+        }
+      ]
+    },
+    {
+      "scenario": "Sem fornecedor para fornecedor específico",
+      "step_message": "Quantos chamados estão em atendimento sem fornecedor?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 11
+        }
+      ]
+    },
+    {
+      "scenario": "Sem fornecedor para fornecedor específico",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3439"
+        },
+        {
+          "ticket": "4278"
+        },
+        {
+          "ticket": "4307"
+        },
+        {
+          "ticket": "4374"
+        },
+        {
+          "ticket": "4380"
+        },
+        {
+          "ticket": "4408"
+        },
+        {
+          "ticket": "4467"
+        },
+        {
+          "ticket": "4482"
+        },
+        {
+          "ticket": "4491"
+        },
+        {
+          "ticket": "4547"
+        },
+        {
+          "ticket": "4554"
+        }
+      ]
+    },
+    {
+      "scenario": "Sem fornecedor para fornecedor específico",
+      "step_message": "e quantos com o fornecedor 43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 11
+        }
+      ]
+    },
+    {
+      "scenario": "Sem fornecedor para fornecedor específico",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3355"
+        },
+        {
+          "ticket": "3560"
+        },
+        {
+          "ticket": "3561"
+        },
+        {
+          "ticket": "3685"
+        },
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "4205"
+        },
+        {
+          "ticket": "4465"
+        },
+        {
+          "ticket": "4560"
+        },
+        {
+          "ticket": "4597"
+        },
+        {
+          "ticket": "4651"
+        },
+        {
+          "ticket": "4738"
+        }
+      ]
+    },
+    {
+      "scenario": "Múltiplos status / loja explícita",
+      "step_message": "todos os chamados em aberto e em atendimento da loja Santa Inês",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "4868"
+        }
+      ]
+    },
+    {
+      "scenario": "Múltiplos status / loja explícita",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "4868"
+        }
+      ]
+    },
+    {
+      "scenario": "Múltiplos status / loja explícita",
+      "step_message": "quais os números dos chamados?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "4868"
+        }
+      ]
+    },
+    {
+      "scenario": "Troca de praça explícita",
+      "step_message": "Quantos chamados estão em atendimento na praça Natal?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 8
+        }
+      ]
+    },
+    {
+      "scenario": "Troca de praça explícita",
+      "step_message": "e na praça Oeste do Maranhão?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 11
+        }
+      ]
+    },
+    {
+      "scenario": "Troca de praça explícita",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3355"
+        },
+        {
+          "ticket": "3560"
+        },
+        {
+          "ticket": "3561"
+        },
+        {
+          "ticket": "3685"
+        },
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "4205"
+        },
+        {
+          "ticket": "4465"
+        },
+        {
+          "ticket": "4560"
+        },
+        {
+          "ticket": "4597"
+        },
+        {
+          "ticket": "4651"
+        },
+        {
+          "ticket": "4738"
+        }
+      ]
+    },
+    {
+      "scenario": "Ranking de lojas",
+      "step_message": "Quais são as 5 lojas com mais chamados abertos em agosto de 2026 na praça Natal?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "store_name": "ER Nevaldo Rocha",
+          "total": 11
+        },
+        {
+          "store_name": "ER Parnamirim",
+          "total": 8
+        },
+        {
+          "store_name": "Ferreira Costa",
+          "total": 4
+        },
+        {
+          "store_name": "Cidade Verde",
+          "total": 3
+        },
+        {
+          "store_name": "ER Norte Shopping",
+          "total": 3
+        }
+      ]
+    },
+    {
+      "scenario": "Ranking de lojas",
+      "step_message": "qual o total?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 48
+        }
+      ]
+    },
+    {
+      "scenario": "Requisitante",
+      "step_message": "Quantos chamados foram abertos em agosto de 2026 pela requisitante Vanessa Nascimento?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 14
+        }
+      ]
+    },
+    {
+      "scenario": "Requisitante",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4288"
+        },
+        {
+          "ticket": "4304"
+        },
+        {
+          "ticket": "4314"
+        },
+        {
+          "ticket": "4319"
+        },
+        {
+          "ticket": "4349"
+        },
+        {
+          "ticket": "4357"
+        },
+        {
+          "ticket": "4391"
+        },
+        {
+          "ticket": "4418"
+        },
+        {
+          "ticket": "4433"
+        },
+        {
+          "ticket": "4475"
+        },
+        {
+          "ticket": "4488"
+        },
+        {
+          "ticket": "4515"
+        },
+        {
+          "ticket": "4516"
+        },
+        {
+          "ticket": "4517"
+        }
+      ]
+    },
+    {
+      "scenario": "Requisitante",
+      "step_message": "e quantos do requisitante Gabriel Macedo?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 5
+        }
+      ]
+    },
+    {
+      "scenario": "Troca de loja explícita",
+      "step_message": "Quantos chamados estão em atendimento na loja Santa Inês?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Troca de loja explícita",
+      "step_message": "e na loja Trairi?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 1
+        }
+      ]
+    },
+    {
+      "scenario": "Troca de loja explícita",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4238"
+        }
+      ]
+    },
+    {
+      "scenario": "Fornecedor",
+      "step_message": "Quantos chamados foram abertos em agosto de 2026 com o fornecedor 43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 9
+        }
+      ]
+    },
+    {
+      "scenario": "Fornecedor",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "4294"
+        },
+        {
+          "ticket": "4306"
+        },
+        {
+          "ticket": "4315"
+        },
+        {
+          "ticket": "4332"
+        },
+        {
+          "ticket": "4430"
+        },
+        {
+          "ticket": "4464"
+        },
+        {
+          "ticket": "4465"
+        },
+        {
+          "ticket": "4494"
+        },
+        {
+          "ticket": "4496"
+        }
+      ]
+    },
+    {
+      "scenario": "Fornecedor",
+      "step_message": "e quantos com o fornecedor 01.006.533/0002-24 - CAMPOS SERVICE LTDA?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 6
+        }
+      ]
+    },
+    {
+      "scenario": "Fornecedor para sem fornecedor",
+      "step_message": "Quantos chamados estão em atendimento com o fornecedor 43.449.745/0001-45 - GB SERVICOS E REFRIGERACAO LTDA?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 11
+        }
+      ]
+    },
+    {
+      "scenario": "Fornecedor para sem fornecedor",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3355"
+        },
+        {
+          "ticket": "3560"
+        },
+        {
+          "ticket": "3561"
+        },
+        {
+          "ticket": "3685"
+        },
+        {
+          "ticket": "3713"
+        },
+        {
+          "ticket": "4205"
+        },
+        {
+          "ticket": "4465"
+        },
+        {
+          "ticket": "4560"
+        },
+        {
+          "ticket": "4597"
+        },
+        {
+          "ticket": "4651"
+        },
+        {
+          "ticket": "4738"
+        }
+      ]
+    },
+    {
+      "scenario": "Fornecedor para sem fornecedor",
+      "step_message": "e quantos estão sem fornecedor?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 11
+        }
+      ]
+    },
+    {
+      "scenario": "Fornecedor para sem fornecedor",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "3439"
+        },
+        {
+          "ticket": "4278"
+        },
+        {
+          "ticket": "4307"
+        },
+        {
+          "ticket": "4374"
+        },
+        {
+          "ticket": "4380"
+        },
+        {
+          "ticket": "4408"
+        },
+        {
+          "ticket": "4467"
+        },
+        {
+          "ticket": "4482"
+        },
+        {
+          "ticket": "4491"
+        },
+        {
+          "ticket": "4547"
+        },
+        {
+          "ticket": "4554"
+        }
+      ]
+    },
+    {
+      "scenario": "Eventos temporais",
+      "step_message": "Quantos chamados foram abertos em agosto de 2026 na praça Natal?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 48
+        }
+      ]
+    },
+    {
+      "scenario": "Eventos temporais",
+      "step_message": "e quantos foram concluídos?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 32
+        }
+      ]
+    },
+    {
+      "scenario": "Eventos temporais",
+      "step_message": "e quantos estão em atendimento atualmente?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 8
+        }
+      ]
+    },
+    {
+      "scenario": "Visitas",
+      "step_message": "Quantos chamados foram visitados em agosto de 2026?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 171
+        }
+      ]
+    },
+    {
+      "scenario": "Visitas",
+      "step_message": "mostre os chamados",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "ticket": "2386"
+        },
+        {
+          "ticket": "2492"
+        },
+        {
+          "ticket": "2924"
+        },
+        {
+          "ticket": "3338"
+        },
+        {
+          "ticket": "3461"
+        },
+        {
+          "ticket": "3491"
+        },
+        {
+          "ticket": "3735"
+        },
+        {
+          "ticket": "4017"
+        },
+        {
+          "ticket": "4022"
+        },
+        {
+          "ticket": "4032"
+        },
+        {
+          "ticket": "4046"
+        },
+        {
+          "ticket": "4051"
+        },
+        {
+          "ticket": "4096"
+        },
+        {
+          "ticket": "4118"
+        },
+        {
+          "ticket": "4168"
+        },
+        {
+          "ticket": "4189"
+        },
+        {
+          "ticket": "4191"
+        },
+        {
+          "ticket": "4195"
+        },
+        {
+          "ticket": "4198"
+        },
+        {
+          "ticket": "4201"
+        },
+        {
+          "ticket": "4207"
+        },
+        {
+          "ticket": "4216"
+        },
+        {
+          "ticket": "4218"
+        },
+        {
+          "ticket": "4221"
+        },
+        {
+          "ticket": "4222"
+        },
+        {
+          "ticket": "4224"
+        },
+        {
+          "ticket": "4237"
+        },
+        {
+          "ticket": "4247"
+        },
+        {
+          "ticket": "4248"
+        },
+        {
+          "ticket": "4252"
+        },
+        {
+          "ticket": "4253"
+        },
+        {
+          "ticket": "4254"
+        },
+        {
+          "ticket": "4256"
+        },
+        {
+          "ticket": "4257"
+        },
+        {
+          "ticket": "4259"
+        },
+        {
+          "ticket": "4260"
+        },
+        {
+          "ticket": "4264"
+        },
+        {
+          "ticket": "4266"
+        },
+        {
+          "ticket": "4267"
+        },
+        {
+          "ticket": "4269"
+        },
+        {
+          "ticket": "4270"
+        },
+        {
+          "ticket": "4271"
+        },
+        {
+          "ticket": "4272"
+        },
+        {
+          "ticket": "4273"
+        },
+        {
+          "ticket": "4274"
+        },
+        {
+          "ticket": "4275"
+        },
+        {
+          "ticket": "4276"
+        },
+        {
+          "ticket": "4277"
+        },
+        {
+          "ticket": "4280"
+        },
+        {
+          "ticket": "4281"
+        },
+        {
+          "ticket": "4282"
+        },
+        {
+          "ticket": "4283"
+        },
+        {
+          "ticket": "4284"
+        },
+        {
+          "ticket": "4285"
+        },
+        {
+          "ticket": "4288"
+        },
+        {
+          "ticket": "4291"
+        },
+        {
+          "ticket": "4293"
+        },
+        {
+          "ticket": "4294"
+        },
+        {
+          "ticket": "4297"
+        },
+        {
+          "ticket": "4298"
+        },
+        {
+          "ticket": "4303"
+        },
+        {
+          "ticket": "4304"
+        },
+        {
+          "ticket": "4305"
+        },
+        {
+          "ticket": "4306"
+        },
+        {
+          "ticket": "4308"
+        },
+        {
+          "ticket": "4309"
+        },
+        {
+          "ticket": "4310"
+        },
+        {
+          "ticket": "4313"
+        },
+        {
+          "ticket": "4314"
+        },
+        {
+          "ticket": "4315"
+        },
+        {
+          "ticket": "4317"
+        },
+        {
+          "ticket": "4325"
+        },
+        {
+          "ticket": "4326"
+        },
+        {
+          "ticket": "4329"
+        },
+        {
+          "ticket": "4332"
+        },
+        {
+          "ticket": "4334"
+        },
+        {
+          "ticket": "4335"
+        },
+        {
+          "ticket": "4336"
+        },
+        {
+          "ticket": "4337"
+        },
+        {
+          "ticket": "4340"
+        },
+        {
+          "ticket": "4341"
+        },
+        {
+          "ticket": "4347"
+        },
+        {
+          "ticket": "4348"
+        },
+        {
+          "ticket": "4349"
+        },
+        {
+          "ticket": "4351"
+        },
+        {
+          "ticket": "4352"
+        },
+        {
+          "ticket": "4353"
+        },
+        {
+          "ticket": "4354"
+        },
+        {
+          "ticket": "4355"
+        },
+        {
+          "ticket": "4356"
+        },
+        {
+          "ticket": "4357"
+        },
+        {
+          "ticket": "4358"
+        },
+        {
+          "ticket": "4359"
+        },
+        {
+          "ticket": "4361"
+        },
+        {
+          "ticket": "4364"
+        },
+        {
+          "ticket": "4365"
+        },
+        {
+          "ticket": "4366"
+        },
+        {
+          "ticket": "4368"
+        },
+        {
+          "ticket": "4369"
+        },
+        {
+          "ticket": "4370"
+        },
+        {
+          "ticket": "4371"
+        },
+        {
+          "ticket": "4372"
+        },
+        {
+          "ticket": "4375"
+        },
+        {
+          "ticket": "4376"
+        },
+        {
+          "ticket": "4377"
+        },
+        {
+          "ticket": "4383"
+        },
+        {
+          "ticket": "4384"
+        },
+        {
+          "ticket": "4385"
+        },
+        {
+          "ticket": "4386"
+        },
+        {
+          "ticket": "4387"
+        },
+        {
+          "ticket": "4388"
+        },
+        {
+          "ticket": "4391"
+        },
+        {
+          "ticket": "4392"
+        },
+        {
+          "ticket": "4394"
+        },
+        {
+          "ticket": "4395"
+        },
+        {
+          "ticket": "4396"
+        },
+        {
+          "ticket": "4398"
+        },
+        {
+          "ticket": "4399"
+        },
+        {
+          "ticket": "4400"
+        },
+        {
+          "ticket": "4401"
+        },
+        {
+          "ticket": "4403"
+        },
+        {
+          "ticket": "4404"
+        },
+        {
+          "ticket": "4406"
+        },
+        {
+          "ticket": "4407"
+        },
+        {
+          "ticket": "4412"
+        },
+        {
+          "ticket": "4413"
+        },
+        {
+          "ticket": "4415"
+        },
+        {
+          "ticket": "4418"
+        },
+        {
+          "ticket": "4419"
+        },
+        {
+          "ticket": "4421"
+        },
+        {
+          "ticket": "4422"
+        },
+        {
+          "ticket": "4423"
+        },
+        {
+          "ticket": "4425"
+        },
+        {
+          "ticket": "4428"
+        },
+        {
+          "ticket": "4430"
+        },
+        {
+          "ticket": "4433"
+        },
+        {
+          "ticket": "4435"
+        },
+        {
+          "ticket": "4437"
+        },
+        {
+          "ticket": "4439"
+        },
+        {
+          "ticket": "4442"
+        },
+        {
+          "ticket": "4444"
+        },
+        {
+          "ticket": "4446"
+        },
+        {
+          "ticket": "4447"
+        },
+        {
+          "ticket": "4448"
+        },
+        {
+          "ticket": "4449"
+        },
+        {
+          "ticket": "4450"
+        },
+        {
+          "ticket": "4453"
+        },
+        {
+          "ticket": "4454"
+        },
+        {
+          "ticket": "4455"
+        },
+        {
+          "ticket": "4456"
+        },
+        {
+          "ticket": "4457"
+        },
+        {
+          "ticket": "4458"
+        },
+        {
+          "ticket": "4461"
+        },
+        {
+          "ticket": "4462"
+        },
+        {
+          "ticket": "4464"
+        },
+        {
+          "ticket": "4468"
+        },
+        {
+          "ticket": "4469"
+        },
+        {
+          "ticket": "4470"
+        },
+        {
+          "ticket": "4473"
+        },
+        {
+          "ticket": "4474"
+        },
+        {
+          "ticket": "4477"
+        },
+        {
+          "ticket": "4480"
+        },
+        {
+          "ticket": "4492"
+        },
+        {
+          "ticket": "4493"
+        },
+        {
+          "ticket": "4496"
+        },
+        {
+          "ticket": "4497"
+        },
+        {
+          "ticket": "4502"
+        },
+        {
+          "ticket": "4505"
+        },
+        {
+          "ticket": "4513"
+        },
+        {
+          "ticket": "4537"
+        },
+        {
+          "ticket": "4548"
+        }
+      ]
+    },
+    {
+      "scenario": "Visitas",
+      "step_message": "e em julho?",
+      "passed": true,
+      "layer": null,
+      "message": "OK",
+      "oracle_rows": [
+        {
+          "total": 254
+        }
+      ]
+    }
+  ]
+}

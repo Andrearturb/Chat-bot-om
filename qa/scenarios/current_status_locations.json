@@ -1,0 +1,44 @@
+{
+  "id": "current-status-location-continuity",
+  "name": "Status atual / localização",
+  "category": "current_status",
+  "steps": [
+    {
+      "message": "Quantos chamados estão em atendimento em Trairi?",
+      "expected_state": {
+        "event": "current_status",
+        "location_term": "Trairi",
+        "statuses": ["Em atendimento"]
+      },
+      "must_be_null": ["store_name", "praca", "date_field", "year", "month"],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND (LOWER(BTRIM(store_name)) = LOWER(BTRIM('Trairi')) OR LOWER(BTRIM(praca)) = LOWER(BTRIM('Trairi')));"
+      }
+    },
+    {
+      "message": "e em Maracaçumé?",
+      "expected_state": {
+        "event": "current_status",
+        "location_term": "Maracaçumé",
+        "statuses": ["Em atendimento"]
+      },
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND (LOWER(BTRIM(store_name)) = LOWER(BTRIM('Maracaçumé')) OR LOWER(BTRIM(praca)) = LOWER(BTRIM('Maracaçumé')));"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "current_status",
+        "location_term": "Maracaçumé",
+        "statuses": ["Em atendimento"]
+      },
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE status = 'Em atendimento' AND (LOWER(BTRIM(store_name)) = LOWER(BTRIM('Maracaçumé')) OR LOWER(BTRIM(praca)) = LOWER(BTRIM('Maracaçumé')));"
+      }
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "id": "explicit-praca-switch",
+  "name": "Troca de praça explícita",
+  "category": "location",
+  "steps": [
+    {
+      "message": "Quantos chamados estão em atendimento na praça Natal?",
+      "expected_state": {
+        "event": "current_status",
+        "praca": "Natal",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal'));"
+      }
+    },
+    {
+      "message": "e na praça Oeste do Maranhão?",
+      "expected_state": {
+        "event": "current_status",
+        "praca": "Oeste do Maranhão",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Oeste do Maranhão'));"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "current_status",
+        "praca": "Oeste do Maranhão",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "store_name",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Oeste do Maranhão')) ORDER BY ticket;"
+      }
+    }
+  ]
+}

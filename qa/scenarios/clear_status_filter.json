@@ -1,0 +1,81 @@
+{
+  "id": "clear-status-filter",
+  "name": "Remoção do filtro de status",
+  "category": "continuity",
+  "steps": [
+    {
+      "message": "Quantos chamados estão em atendimento na loja Santa Inês?",
+      "expected_state": {
+        "event": "current_status",
+        "store_name": "Santa Inês",
+        "statuses": [
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "praca",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE status = 'Em atendimento' AND LOWER(BTRIM(store_name)) = LOWER(BTRIM('Santa Inês'));"
+      }
+    },
+    {
+      "message": "agora considere todos os status",
+      "expected_state": {
+        "event": "current_status",
+        "store_name": "Santa Inês"
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "praca",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE LOWER(BTRIM(store_name)) = LOWER(BTRIM('Santa Inês'));"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "current_status",
+        "store_name": "Santa Inês"
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "praca",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE LOWER(BTRIM(store_name)) = LOWER(BTRIM('Santa Inês')) ORDER BY ticket;"
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "id": "missing-field-supplier",
+  "name": "Chamados sem fornecedor",
+  "category": "missing_field",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos em agosto de 2026 na praça Natal sem fornecedor?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal",
+        "missing_field": "supplier"
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND (supplier IS NULL OR BTRIM(supplier) = '');"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "praca": "Natal",
+        "missing_field": "supplier"
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "location_term",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' AND LOWER(BTRIM(praca)) = LOWER(BTRIM('Natal')) AND (supplier IS NULL OR BTRIM(supplier) = '') ORDER BY ticket;"
+      }
+    }
+  ]
+}

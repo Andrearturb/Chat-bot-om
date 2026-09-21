@@ -1,0 +1,29 @@
+{
+  "scenarios": 1,
+  "steps": 3,
+  "pass_count": 0,
+  "fail_count": 3,
+  "results": [
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "Quantos chamados estão em atendimento em Trairi?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Could not locate column in row for column '_mapping'"
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "e em Maracaçumé?",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Could not locate column in row for column '_mapping'"
+    },
+    {
+      "scenario": "Status atual / localização",
+      "step_message": "mostre os chamados",
+      "passed": false,
+      "layer": "DATABASE_QUERY",
+      "message": "Erro no oráculo: Could not locate column in row for column '_mapping'"
+    }
+  ]
+}

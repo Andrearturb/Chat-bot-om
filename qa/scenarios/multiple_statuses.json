@@ -1,0 +1,88 @@
+{
+  "id": "multiple-statuses-store-explicit",
+  "name": "Múltiplos status / loja explícita",
+  "category": "status",
+  "steps": [
+    {
+      "message": "todos os chamados em aberto e em atendimento da loja Santa Inês",
+      "expected_state": {
+        "event": "current_status",
+        "store_name": "Santa Inês",
+        "statuses": [
+          "Em Aberto",
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "praca",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE status IN ('Em Aberto', 'Em atendimento') AND LOWER(BTRIM(store_name)) = LOWER(BTRIM('Santa Inês')) ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "current_status",
+        "store_name": "Santa Inês",
+        "statuses": [
+          "Em Aberto",
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "praca",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE status IN ('Em Aberto', 'Em atendimento') AND LOWER(BTRIM(store_name)) = LOWER(BTRIM('Santa Inês')) ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "quais os números dos chamados?",
+      "expected_state": {
+        "event": "current_status",
+        "store_name": "Santa Inês",
+        "statuses": [
+          "Em Aberto",
+          "Em atendimento"
+        ]
+      },
+      "must_be_null": [
+        "status",
+        "praca",
+        "location_term",
+        "date_field",
+        "year",
+        "month",
+        "start_date",
+        "end_date",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE status IN ('Em Aberto', 'Em atendimento') AND LOWER(BTRIM(store_name)) = LOWER(BTRIM('Santa Inês')) ORDER BY ticket;"
+      }
+    }
+  ]
+}

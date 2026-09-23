@@ -1,0 +1,97 @@
+{
+  "id": "year-switch",
+  "name": "Consulta por ano e troca de ano",
+  "category": "temporal",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos em 2026?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026
+      },
+      "must_be_null": [
+        "month",
+        "start_date",
+        "end_date",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-01-01' AND created_on < '2027-01-01';"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026
+      },
+      "must_be_null": [
+        "month",
+        "start_date",
+        "end_date",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE created_on >= '2026-01-01' AND created_on < '2027-01-01' ORDER BY ticket;"
+      }
+    },
+    {
+      "message": "e em 2025?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2025
+      },
+      "must_be_null": [
+        "month",
+        "start_date",
+        "end_date",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2025-01-01' AND created_on < '2026-01-01';"
+      }
+    }
+  ]
+}

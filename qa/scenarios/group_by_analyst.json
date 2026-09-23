@@ -1,0 +1,67 @@
+{
+  "id": "group-by-analyst",
+  "name": "Agrupamento por analista",
+  "category": "grouping",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos em agosto de 2026 por analista responsável?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "group_by": "analyst_responsible"
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "start_date",
+        "end_date",
+        "limit"
+      ],
+      "oracle": {
+        "type": "ranking",
+        "sql": "SELECT analyst_responsible, COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' GROUP BY analyst_responsible ORDER BY total DESC, analyst_responsible;"
+      }
+    },
+    {
+      "message": "qual o total?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "group_by": null,
+        "limit": null
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "start_date",
+        "end_date"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01';"
+      }
+    }
+  ]
+}

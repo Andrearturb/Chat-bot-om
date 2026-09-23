@@ -1,0 +1,67 @@
+{
+  "id": "group-by-category",
+  "name": "Agrupamento por categoria",
+  "category": "grouping",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos em agosto de 2026 por categoria?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "group_by": "category"
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "start_date",
+        "end_date",
+        "limit"
+      ],
+      "oracle": {
+        "type": "ranking",
+        "sql": "SELECT category, COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01' GROUP BY category ORDER BY total DESC, category;"
+      }
+    },
+    {
+      "message": "qual o total?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 8,
+        "group_by": null,
+        "limit": null
+      },
+      "must_be_null": [
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "start_date",
+        "end_date"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-01' AND created_on < '2026-09-01';"
+      }
+    }
+  ]
+}

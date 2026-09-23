@@ -1,0 +1,97 @@
+{
+  "id": "visit-to-completed-switch",
+  "name": "Troca de visita para conclusão",
+  "category": "temporal",
+  "steps": [
+    {
+      "message": "Quantos chamados foram visitados em agosto de 2026?",
+      "expected_state": {
+        "event": "visited",
+        "date_field": "visit_date",
+        "year": 2026,
+        "month": 8
+      },
+      "must_be_null": [
+        "start_date",
+        "end_date",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE visit_date >= '2026-08-01' AND visit_date < '2026-09-01';"
+      }
+    },
+    {
+      "message": "e quantos foram concluídos em agosto de 2026?",
+      "expected_state": {
+        "event": "completed",
+        "date_field": "completion_date",
+        "year": 2026,
+        "month": 8
+      },
+      "must_be_null": [
+        "start_date",
+        "end_date",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE completion_date >= '2026-08-01' AND completion_date < '2026-09-01';"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "completed",
+        "date_field": "completion_date",
+        "year": 2026,
+        "month": 8
+      },
+      "must_be_null": [
+        "start_date",
+        "end_date",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE completion_date >= '2026-08-01' AND completion_date < '2026-09-01' ORDER BY ticket;"
+      }
+    }
+  ]
+}

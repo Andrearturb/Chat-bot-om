@@ -1,0 +1,97 @@
+{
+  "id": "date-range-to-month",
+  "name": "Intervalo de datas para mês",
+  "category": "temporal",
+  "steps": [
+    {
+      "message": "Quantos chamados foram abertos entre 10 e 20 de agosto de 2026?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "start_date": "2026-08-10",
+        "end_date": "2026-08-20"
+      },
+      "must_be_null": [
+        "year",
+        "month",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-08-10' AND created_on < '2026-08-21';"
+      }
+    },
+    {
+      "message": "e em setembro de 2026?",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 9
+      },
+      "must_be_null": [
+        "start_date",
+        "end_date",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "count",
+        "sql": "SELECT COUNT(*) AS total FROM services WHERE created_on >= '2026-09-01' AND created_on < '2026-10-01';"
+      }
+    },
+    {
+      "message": "mostre os chamados",
+      "expected_state": {
+        "event": "opened",
+        "date_field": "created_on",
+        "year": 2026,
+        "month": 9
+      },
+      "must_be_null": [
+        "start_date",
+        "end_date",
+        "statuses",
+        "status",
+        "store_name",
+        "praca",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "missing_field",
+        "group_by",
+        "limit"
+      ],
+      "oracle": {
+        "type": "tickets",
+        "sql": "SELECT ticket FROM services WHERE created_on >= '2026-09-01' AND created_on < '2026-10-01' ORDER BY ticket;"
+      }
+    }
+  ]
+}

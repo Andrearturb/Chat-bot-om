@@ -171,3 +171,219 @@ def test_list_tem_limite_de_seguranca(structured_db):
     result = execute_structured_query(structured_db, request("list"))
     assert result["truncated"] is False
     assert result["row_count"] == 5
+
+
+def comparison_request(dimension: str, items: list[dict], **state) -> StructuredQueryRequest:
+    return StructuredQueryRequest(
+        query_shape="comparison",
+        state=state,
+        comparison={"dimension": dimension, "items": items},
+    )
+
+
+def test_comparison_periodos_calcula_diferenca_e_percentual(structured_db):
+    result = execute_structured_query(
+        structured_db,
+        comparison_request(
+            "period",
+            [
+                {"label": "Julho de 2026", "year": 2026, "month": 7},
+                {"label": "Agosto de 2026", "year": 2026, "month": 8},
+            ],
+            event="opened",
+            date_field="created_on",
+        ),
+    )
+
+    assert result["rows"] == [
+        {"label": "Julho de 2026", "total": 1},
+        {"label": "Agosto de 2026", "total": 3},
+    ]
+    assert result["comparison"] == {
+        "dimension": "period",
+        "base_label": "Julho de 2026",
+        "target_label": "Agosto de 2026",
+        "difference": 2,
+        "percentage_change": 200.0,
+        "direction": "increase",
+    }
+
+
+def test_comparison_pracas_preserva_filtro_comum_de_status(structured_db):
+    result = execute_structured_query(
+        structured_db,
+        comparison_request(
+            "praca",
+            [
+                {"label": "Natal", "value": "Natal"},
+                {"label": "Fortaleza", "value": "Fortaleza"},
+            ],
+            event="current_status",
+            statuses=["Em atendimento"],
+        ),
+    )
+
+    assert result["rows"] == [
+        {"label": "Natal", "total": 1},
+        {"label": "Fortaleza", "total": 1},
+    ]
+    assert result["comparison"]["difference"] == 0
+    assert result["comparison"]["percentage_change"] == 0.0
+    assert result["comparison"]["direction"] == "stable"
+
+
+def test_comparison_statuses_forca_status_atual(structured_db):
+    result = execute_structured_query(
+        structured_db,
+        comparison_request(
+            "status",
+            [
+                {"label": "Em Aberto", "value": "Em Aberto"},
+                {"label": "Concluído", "value": "Concluído"},
+            ],
+        ),
+    )
+
+    assert result["rows"] == [
+        {"label": "Em Aberto", "total": 1},
+        {"label": "Concluído", "total": 1},
+    ]
+
+
+def test_comparison_percentual_nulo_quando_base_zero(structured_db):
+    result = execute_structured_query(
+        structured_db,
+        comparison_request(
+            "praca",
+            [
+                {"label": "Inexistente", "value": "Inexistente"},
+                {"label": "Natal", "value": "Natal"},
+            ],
+            event="current_status",
+        ),
+    )
+
+    assert result["comparison"]["difference"] == 3
+    assert result["comparison"]["percentage_change"] is None
+    assert result["comparison"]["direction"] == "increase"
+
+
+def test_comparison_periodo_exige_date_field():
+    payload = comparison_request(
+        "period",
+        [
+            {"year": 2026, "month": 7},
+            {"year": 2026, "month": 8},
+        ],
+    )
+
+    with pytest.raises(StructuredQueryError, match="exige date_field"):
+        execute_structured_query(None, payload)
+
+
+def test_comparison_exige_exatamente_dois_itens_no_schema():
+    with pytest.raises(ValueError):
+        comparison_request(
+            "praca",
+            [{"label": "Natal", "value": "Natal"}],
+            event="current_status",
+        )
+
+
+def test_comparison_breakdown_por_loja_ordena_maiores_reducoes(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="comparison",
+        state={"event": "opened", "date_field": "created_on"},
+        comparison={
+            "dimension": "period",
+            "items": [
+                {"label": "Julho de 2026", "year": 2026, "month": 7},
+                {"label": "Agosto de 2026", "year": 2026, "month": 8},
+            ],
+            "breakdown_by": "store_name",
+            "breakdown_order": "decrease",
+            "breakdown_limit": 5,
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+
+    assert result["comparison"]["breakdown_by"] == "store_name"
+    assert result["comparison"]["breakdown_order"] == "decrease"
+    assert result["breakdown"] == [
+        {
+            "label": "Trairi Central",
+            "base_total": 1,
+            "target_total": 0,
+            "difference": -1,
+            "percentage_change": -100.0,
+            "direction": "decrease",
+        }
+    ]
+
+
+def test_comparison_breakdown_maior_variacao_com_limite(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="comparison",
+        state={"event": "opened", "date_field": "created_on"},
+        comparison={
+            "dimension": "period",
+            "items": [
+                {"label": "Julho de 2026", "year": 2026, "month": 7},
+                {"label": "Agosto de 2026", "year": 2026, "month": 8},
+            ],
+            "breakdown_by": "store_name",
+            "breakdown_order": "absolute_change",
+            "breakdown_limit": 1,
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+
+    assert result["breakdown"] == [
+        {
+            "label": "Loja A",
+            "base_total": 0,
+            "target_total": 2,
+            "difference": 2,
+            "percentage_change": None,
+            "direction": "increase",
+        }
+    ]
+
+
+def test_comparison_breakdown_rejeita_mesma_dimensao(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="comparison",
+        state={"event": "current_status"},
+        comparison={
+            "dimension": "praca",
+            "items": [
+                {"label": "Natal", "value": "Natal"},
+                {"label": "Fortaleza", "value": "Fortaleza"},
+            ],
+            "breakdown_by": "praca",
+            "breakdown_order": "absolute_change",
+        },
+    )
+
+    with pytest.raises(StructuredQueryError, match="não pode repetir"):
+        execute_structured_query(structured_db, payload)
+
+
+def test_comparison_breakdown_order_exige_breakdown_by(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="comparison",
+        state={"event": "opened", "date_field": "created_on"},
+        comparison={
+            "dimension": "period",
+            "items": [
+                {"label": "Julho de 2026", "year": 2026, "month": 7},
+                {"label": "Agosto de 2026", "year": 2026, "month": 8},
+            ],
+            "breakdown_order": "decrease",
+        },
+    )
+
+    with pytest.raises(StructuredQueryError, match="exigem comparison.breakdown_by"):
+        execute_structured_query(structured_db, payload)

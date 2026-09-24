@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.models.service import Service
 from app.schemas.structured_query import (
+    BREAKDOWN_DIMENSIONS,
+    BREAKDOWN_ORDERS,
+    COMPARISON_DIMENSIONS,
     QUERY_SHAPES,
+    ComparisonItem,
+    ComparisonSpec,
     StructuredQueryRequest,
     StructuredQueryState,
 )
@@ -61,6 +66,21 @@ EVENT_DATE_FIELDS = {
     "visited": "visit_date",
 }
 
+PORTUGUESE_MONTHS = {
+    1: "Janeiro",
+    2: "Fevereiro",
+    3: "Março",
+    4: "Abril",
+    5: "Maio",
+    6: "Junho",
+    7: "Julho",
+    8: "Agosto",
+    9: "Setembro",
+    10: "Outubro",
+    11: "Novembro",
+    12: "Dezembro",
+}
+
 
 class StructuredQueryError(ValueError):
     pass
@@ -85,7 +105,8 @@ def _next_month(year: int, month: int) -> date:
 def _validate_state(query_shape: str, state: StructuredQueryState) -> None:
     if query_shape not in QUERY_SHAPES:
         raise StructuredQueryError(
-            f"query_shape inválido: {query_shape}. Use count, list, group ou ranking."
+            "query_shape inválido: "
+            f"{query_shape}. Use count, list, group, ranking ou comparison."
         )
 
     if state.statuses is not None:
@@ -111,7 +132,9 @@ def _validate_state(query_shape: str, state: StructuredQueryState) -> None:
         raise StructuredQueryError("ranking exige limit.")
 
     if state.start_date and state.end_date:
-        if _parse_date(state.end_date, "end_date") < _parse_date(state.start_date, "start_date"):
+        if _parse_date(state.end_date, "end_date") < _parse_date(
+            state.start_date, "start_date"
+        ):
             raise StructuredQueryError("end_date não pode ser anterior a start_date.")
 
     if state.year is not None and state.month is None and not 1 <= state.year <= 9999:
@@ -122,6 +145,91 @@ def _validate_state(query_shape: str, state: StructuredQueryState) -> None:
         raise StructuredQueryError(
             f"event={state.event} exige date_field={expected_date_field}."
         )
+
+
+def _validate_comparison_item(dimension: str, item: ComparisonItem, position: int) -> None:
+    prefix = f"comparison.items[{position}]"
+
+    if dimension == "period":
+        has_calendar_period = item.year is not None or item.month is not None
+        has_date_range = item.start_date is not None or item.end_date is not None
+
+        if not has_calendar_period and not has_date_range:
+            raise StructuredQueryError(
+                f"{prefix} deve informar year/month ou start_date/end_date para comparação por período."
+            )
+
+        if item.month is not None and item.year is None:
+            raise StructuredQueryError(f"{prefix}.month exige year.")
+
+        if item.start_date and item.end_date:
+            if _parse_date(item.end_date, f"{prefix}.end_date") < _parse_date(
+                item.start_date, f"{prefix}.start_date"
+            ):
+                raise StructuredQueryError(
+                    f"{prefix}.end_date não pode ser anterior a start_date."
+                )
+        return
+
+    if item.value is None or not item.value.strip():
+        raise StructuredQueryError(
+            f"{prefix}.value é obrigatório para comparação por {dimension}."
+        )
+
+    if dimension == "status" and item.value not in CANONICAL_STATUSES:
+        raise StructuredQueryError(
+            f"{prefix}.value contém status inválido: {item.value}."
+        )
+
+
+def _validate_comparison(
+    query_shape: str,
+    state: StructuredQueryState,
+    comparison: ComparisonSpec | None,
+) -> None:
+    if query_shape != "comparison":
+        return
+
+    if comparison is None:
+        raise StructuredQueryError("comparison é obrigatório quando query_shape=comparison.")
+
+    if comparison.dimension not in COMPARISON_DIMENSIONS:
+        raise StructuredQueryError(
+            f"comparison.dimension inválido: {comparison.dimension}."
+        )
+
+    if len(comparison.items) != 2:
+        raise StructuredQueryError("comparison exige exatamente dois itens.")
+
+    if comparison.dimension == "period" and state.date_field is None:
+        raise StructuredQueryError(
+            "comparison por período exige date_field no estado comum."
+        )
+
+    if comparison.breakdown_by is not None:
+        if comparison.breakdown_by not in BREAKDOWN_DIMENSIONS:
+            raise StructuredQueryError(
+                f"comparison.breakdown_by inválido: {comparison.breakdown_by}."
+            )
+        if comparison.breakdown_by == comparison.dimension:
+            raise StructuredQueryError(
+                "comparison.breakdown_by não pode repetir a dimensão comparada."
+            )
+    elif comparison.breakdown_order is not None or comparison.breakdown_limit is not None:
+        raise StructuredQueryError(
+            "breakdown_order/breakdown_limit exigem comparison.breakdown_by."
+        )
+
+    if (
+        comparison.breakdown_order is not None
+        and comparison.breakdown_order not in BREAKDOWN_ORDERS
+    ):
+        raise StructuredQueryError(
+            f"comparison.breakdown_order inválido: {comparison.breakdown_order}."
+        )
+
+    for index, item in enumerate(comparison.items):
+        _validate_comparison_item(comparison.dimension, item, index)
 
 
 def _date_predicates(state: StructuredQueryState) -> list[Any]:
@@ -140,7 +248,11 @@ def _date_predicates(state: StructuredQueryState) -> list[Any]:
 
     if state.year is not None:
         start = date(state.year, state.month or 1, 1)
-        end = _next_month(state.year, state.month) if state.month else date(state.year + 1, 1, 1)
+        end = (
+            _next_month(state.year, state.month)
+            if state.month
+            else date(state.year + 1, 1, 1)
+        )
         predicates.extend((column >= start, column < end))
 
     if state.start_date is not None:
@@ -156,10 +268,10 @@ def _date_predicates(state: StructuredQueryState) -> list[Any]:
 def _build_predicates(state: StructuredQueryState) -> list[Any]:
     predicates = _date_predicates(state)
 
-    for field_name, value in TEXT_FIELDS.items():
+    for field_name, column in TEXT_FIELDS.items():
         field_value = getattr(state, field_name)
         if field_value is not None:
-            predicates.append(_exact_text(value, field_value))
+            predicates.append(_exact_text(column, field_value))
 
     if state.location_term is not None:
         predicates.append(
@@ -182,10 +294,255 @@ def _build_predicates(state: StructuredQueryState) -> list[Any]:
     return predicates
 
 
+def _label_for_comparison_item(dimension: str, item: ComparisonItem) -> str:
+    if item.label and item.label.strip():
+        return item.label.strip()
+
+    if dimension != "period":
+        return (item.value or "Item").strip()
+
+    if item.year is not None and item.month is not None:
+        month_name = PORTUGUESE_MONTHS.get(item.month, str(item.month))
+        return f"{month_name} de {item.year}"
+
+    if item.year is not None:
+        return str(item.year)
+
+    if item.start_date is not None and item.end_date is not None:
+        start = _parse_date(item.start_date, "start_date").strftime("%d/%m/%Y")
+        end = _parse_date(item.end_date, "end_date").strftime("%d/%m/%Y")
+        return f"{start} a {end}"
+
+    if item.start_date is not None:
+        start = _parse_date(item.start_date, "start_date").strftime("%d/%m/%Y")
+        return f"A partir de {start}"
+
+    if item.end_date is not None:
+        end = _parse_date(item.end_date, "end_date").strftime("%d/%m/%Y")
+        return f"Até {end}"
+
+    return "Período"
+
+
+def _state_for_comparison_item(
+    base_state: StructuredQueryState,
+    dimension: str,
+    item: ComparisonItem,
+) -> StructuredQueryState:
+    data = base_state.model_dump()
+
+    # Estrutura de group/ranking não participa de comparação de totais.
+    data["group_by"] = None
+    data["limit"] = None
+
+    if dimension == "period":
+        data["year"] = item.year
+        data["month"] = item.month
+        data["start_date"] = item.start_date
+        data["end_date"] = item.end_date
+
+    elif dimension in {"praca", "store_name", "location_term"}:
+        # Essas dimensões são mutuamente exclusivas no estado comum.
+        data["praca"] = None
+        data["store_name"] = None
+        data["location_term"] = None
+        data[dimension] = item.value
+
+    elif dimension == "status":
+        data["status"] = None
+        data["statuses"] = [item.value]
+        data["event"] = "current_status"
+
+    else:
+        data[dimension] = item.value
+
+    state = StructuredQueryState.model_validate(data)
+    _validate_state("count", state)
+    return state
+
+
+def _count_for_state(db: Session, state: StructuredQueryState) -> int:
+    predicates = _build_predicates(state)
+    statement = select(func.count().label("total")).select_from(Service)
+
+    if predicates:
+        statement = statement.where(and_(*predicates))
+
+    value = db.execute(statement).scalar_one()
+    return int(value or 0)
+
+
+def _normalize_group_label(value: Any) -> str:
+    if value is None:
+        return "Não informado"
+    text = str(value).strip()
+    return text or "Não informado"
+
+
+def _group_counts_for_state(
+    db: Session,
+    state: StructuredQueryState,
+    group_by: str,
+) -> dict[str, int]:
+    column = GROUP_FIELDS[group_by]
+    predicates = _build_predicates(state)
+    statement = (
+        select(column.label("group_value"), func.count().label("total"))
+        .select_from(Service)
+        .group_by(column)
+    )
+
+    if predicates:
+        statement = statement.where(and_(*predicates))
+
+    totals: dict[str, int] = {}
+    for row in db.execute(statement).mappings().all():
+        label = _normalize_group_label(row["group_value"])
+        totals[label] = totals.get(label, 0) + int(row["total"] or 0)
+
+    return totals
+
+
+def _direction_for_difference(difference: int) -> str:
+    if difference > 0:
+        return "increase"
+    if difference < 0:
+        return "decrease"
+    return "stable"
+
+
+def _percentage_change(base_total: int, target_total: int) -> float | None:
+    difference = target_total - base_total
+    if base_total == 0:
+        return 0.0 if target_total == 0 else None
+    return round((difference / base_total) * 100, 2)
+
+
+def _comparison_breakdown(
+    db: Session,
+    request: StructuredQueryRequest,
+) -> list[dict[str, Any]] | None:
+    comparison = request.comparison
+    if comparison is None or comparison.breakdown_by is None:
+        return None
+
+    base_state = _state_for_comparison_item(
+        request.state, comparison.dimension, comparison.items[0]
+    )
+    target_state = _state_for_comparison_item(
+        request.state, comparison.dimension, comparison.items[1]
+    )
+
+    base_counts = _group_counts_for_state(db, base_state, comparison.breakdown_by)
+    target_counts = _group_counts_for_state(db, target_state, comparison.breakdown_by)
+
+    rows: list[dict[str, Any]] = []
+    for label in sorted(set(base_counts) | set(target_counts)):
+        base_total = base_counts.get(label, 0)
+        target_total = target_counts.get(label, 0)
+        difference = target_total - base_total
+        rows.append(
+            {
+                "label": label,
+                "base_total": base_total,
+                "target_total": target_total,
+                "difference": difference,
+                "percentage_change": _percentage_change(base_total, target_total),
+                "direction": _direction_for_difference(difference),
+            }
+        )
+
+    order = comparison.breakdown_order or "absolute_change"
+    if order == "decrease":
+        rows = [row for row in rows if row["difference"] < 0]
+        rows.sort(key=lambda row: (row["difference"], row["label"].lower()))
+    elif order == "increase":
+        rows = [row for row in rows if row["difference"] > 0]
+        rows.sort(key=lambda row: (-row["difference"], row["label"].lower()))
+    else:
+        rows.sort(
+            key=lambda row: (
+                -abs(row["difference"]),
+                row["label"].lower(),
+            )
+        )
+
+    if comparison.breakdown_limit is not None:
+        rows = rows[: comparison.breakdown_limit]
+
+    return rows
+
+
+def _execute_comparison(
+    db: Session,
+    request: StructuredQueryRequest,
+) -> dict[str, Any]:
+    comparison = request.comparison
+    if comparison is None:
+        raise StructuredQueryError("comparison é obrigatório quando query_shape=comparison.")
+
+    totals: list[tuple[str, int]] = []
+
+    for item in comparison.items:
+        item_state = _state_for_comparison_item(
+            request.state,
+            comparison.dimension,
+            item,
+        )
+        label = _label_for_comparison_item(comparison.dimension, item)
+        total = _count_for_state(db, item_state)
+        totals.append((label, total))
+
+    base_label, base_total = totals[0]
+    target_label, target_total = totals[1]
+    difference = target_total - base_total
+    direction = _direction_for_difference(difference)
+    percentage_change = _percentage_change(base_total, target_total)
+    breakdown = _comparison_breakdown(db, request)
+
+    rows = [
+        {"label": base_label, "total": base_total},
+        {"label": target_label, "total": target_total},
+    ]
+
+    comparison_result: dict[str, Any] = {
+        "dimension": comparison.dimension,
+        "base_label": base_label,
+        "target_label": target_label,
+        "difference": difference,
+        "percentage_change": percentage_change,
+        "direction": direction,
+    }
+
+    if comparison.breakdown_by is not None:
+        comparison_result["breakdown_by"] = comparison.breakdown_by
+        comparison_result["breakdown_order"] = (
+            comparison.breakdown_order or "absolute_change"
+        )
+
+    return {
+        "success": True,
+        "query_shape": "comparison",
+        "row_count": len(rows),
+        "truncated": False,
+        "columns": ["label", "total"],
+        "rows": rows,
+        "comparison": comparison_result,
+        "breakdown": breakdown,
+    }
+
+
 def build_structured_query(
     request: StructuredQueryRequest,
 ) -> tuple[Select[Any], bool]:
     _validate_state(request.query_shape, request.state)
+    _validate_comparison(request.query_shape, request.state, request.comparison)
+
+    if request.query_shape == "comparison":
+        raise StructuredQueryError(
+            "comparison produz duas consultas e deve ser executado por execute_structured_query."
+        )
+
     state = request.state
     predicates = _build_predicates(state)
     where_clause = and_(*predicates) if predicates else None
@@ -216,6 +573,12 @@ def execute_structured_query(
     db: Session,
     request: StructuredQueryRequest,
 ) -> dict[str, Any]:
+    _validate_state(request.query_shape, request.state)
+    _validate_comparison(request.query_shape, request.state, request.comparison)
+
+    if request.query_shape == "comparison":
+        return _execute_comparison(db, request)
+
     statement, is_list = build_structured_query(request)
     result = db.execute(statement)
     columns = list(result.keys())
@@ -230,4 +593,6 @@ def execute_structured_query(
         "truncated": truncated,
         "columns": columns,
         "rows": rows,
+        "comparison": None,
+        "breakdown": None,
     }

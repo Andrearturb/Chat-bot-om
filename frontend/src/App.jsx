@@ -138,6 +138,7 @@ function App() {
   const [draftConversation, setDraftConversation] = useState(() => createDraftConversation())
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
+  const [thinkingStartedAt, setThinkingStartedAt] = useState(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const requestControllerRef = useRef(null)
 
@@ -173,6 +174,7 @@ function App() {
     requestControllerRef.current?.controller?.abort()
     requestControllerRef.current = null
     setLoading(false)
+    setThinkingStartedAt(null)
   }
 
   function createNewConversation() {
@@ -256,6 +258,8 @@ function App() {
     }
     setPrompt('')
     setLoading(true)
+    const startedAt = performance.now()
+    setThinkingStartedAt(startedAt)
 
     const controller = new AbortController()
     requestControllerRef.current = { controller, conversationId: conversationIdAtSend }
@@ -274,20 +278,32 @@ function App() {
       updateConversation(conversationIdAtSend, (conversation) => ({
         ...conversation,
         updatedAt: new Date().toISOString(),
-        messages: [...conversation.messages, { id: `${Date.now()}-assistant`, role: 'assistant', content: extractResponse(data) }],
+        messages: [...conversation.messages, {
+          id: `${Date.now()}-assistant`,
+          role: 'assistant',
+          content: extractResponse(data),
+          responseTime: Math.max(0, (performance.now() - startedAt) / 1000),
+        }],
       }))
     } catch (error) {
       if (error.name === 'AbortError' || requestControllerRef.current?.controller !== controller) return
       updateConversation(conversationIdAtSend, (conversation) => ({
         ...conversation,
         updatedAt: new Date().toISOString(),
-        messages: [...conversation.messages, { id: `${Date.now()}-error`, role: 'assistant', content: 'Não consegui conectar ao assistente agora. Verifique se o n8n está disponível e tente novamente.' }],
+        messages: [...conversation.messages, {
+          id: `${Date.now()}-error`,
+          role: 'assistant',
+          content: 'Não consegui conectar ao assistente agora. Verifique se o n8n está disponível e tente novamente.',
+          responseTime: Math.max(0, (performance.now() - startedAt) / 1000),
+          isError: true,
+        }],
       }))
       console.error('Falha ao enviar mensagem para o n8n:', error)
     } finally {
       if (requestControllerRef.current?.controller === controller) {
         requestControllerRef.current = null
         setLoading(false)
+        setThinkingStartedAt(null)
       }
     }
   }
@@ -321,7 +337,12 @@ function App() {
             {active && <button className="new-conversation" type="button" onClick={createNewConversation}>+ Nova conversa</button>}
           </header>
           <HeroAssistant active={active} />
-          <ChatArea messages={messages} active={active} />
+          <ChatArea
+            messages={messages}
+            active={active}
+            loading={loading}
+            thinkingStartedAt={thinkingStartedAt}
+          />
           <div className="interaction-zone">
             {!active && <SuggestionChips onSelect={(selectedPrompt) => sendMessage(null, selectedPrompt)} active={active} />}
             <ChatComposer value={prompt} onChange={setPrompt} onSubmit={sendMessage} loading={loading} />

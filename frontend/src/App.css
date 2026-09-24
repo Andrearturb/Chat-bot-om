@@ -109,7 +109,8 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
 .message { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0; animation: rise .25s ease both; }
 .message--user { justify-content: flex-end; }
 .message__avatar { width: 27px; height: 27px; flex: 0 0 27px; object-fit: cover; object-position: top; border-radius: 50%; }
-.message__content { max-width: 72%; min-width: 0; padding: 13px 17px; color: var(--text); background: #fff; border: 1px solid var(--border); border-radius: 17px 17px 17px 4px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.message__body { max-width: 72%; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.message__content { max-width: 100%; min-width: 0; padding: 13px 17px; color: var(--text); background: #fff; border: 1px solid var(--border); border-radius: 17px 17px 17px 4px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
 .message__markdown > :first-child { margin-top: 0; }
 .message__markdown > :last-child { margin-bottom: 0; }
 .message__markdown p { margin: 0 0 12px; }
@@ -133,7 +134,21 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
 .message__suggestions button { padding: 7px 10px; color: var(--navy-soft); border: 1px solid #d8e2f2; border-radius: 999px; background: #f7faff; font-size: 11px; font-weight: 700; }
 .message__suggestions button:hover, .message__suggestions button:focus-visible { border-color: #b7c9e8; outline: none; }
 .message--assistant .message__markdown { overflow-x: auto; }
+.message--user .message__body { align-items: flex-end; }
 .message--user .message__content { color: #fff; background: var(--navy); border: 0; border-radius: 17px 17px 4px 17px; }
+.message__actions { min-height: 26px; display: flex; align-items: center; gap: 10px; margin-top: 5px; padding: 0 3px; color: #8a96ab; font-size: 10px; font-weight: 600; }
+.message__response-time { white-space: nowrap; }
+.message__response-time--error { color: #a86b6b; }
+.message__copy { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 3px 6px; color: #7f8ca3; border: 0; border-radius: 7px; background: transparent; font: inherit; cursor: pointer; transition: color .18s, background .18s; }
+.message__copy svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.message__copy:hover, .message__copy:focus-visible { color: var(--navy); background: #f2f5fa; outline: none; }
+.message__copy--copied { color: #4c8c70; }
+.message--thinking { margin-top: 8px; }
+.message__thinking { display: inline-flex; align-items: center; gap: 9px; color: #65738d; font-size: 12px; font-weight: 700; }
+.thinking-dots { display: inline-flex; align-items: center; gap: 3px; }
+.thinking-dots i { width: 5px; height: 5px; display: block; border-radius: 50%; background: #7d92bd; animation: thinking-pulse 1.1s ease-in-out infinite; }
+.thinking-dots i:nth-child(2) { animation-delay: .14s; }
+.thinking-dots i:nth-child(3) { animation-delay: .28s; }
 
 .interaction-zone { width: min(760px, 72%); flex: 0 0 auto; margin: 0 auto; padding: 0 0 22px; }
 .suggestions { display: flex; flex-wrap: nowrap; justify-content: center; align-items: center; gap: 10px; margin: 0 auto 14px; }
@@ -177,6 +192,7 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
 .conversation-item__delete:hover, .conversation-item__delete:focus-visible { color: #bd5a5a; background: #fff; outline: none; }
 @keyframes rise { from { opacity: 0; } to { opacity: 1; } }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes thinking-pulse { 0%, 65%, 100% { opacity: .32; transform: translateY(0); } 32% { opacity: 1; transform: translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 
 @media (max-height: 860px) and (min-width: 1000px) {
@@ -227,7 +243,8 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
   .suggestions--active { flex-wrap: nowrap; }
   .suggestion { flex: 0 0 auto; }
   .composer { min-height: 100px; }
-  .message__content { max-width: 84%; }
+  .message__body { max-width: 84%; }
+  .message__content { max-width: 100%; }
   .app-panel::after { right: auto; left: 78px; bottom: 7px; font-size: 8px; }
   .conversation-history { left: 62px; width: calc(100vw - 62px); max-width: 350px; }
 }

@@ -676,3 +676,98 @@ def test_contextual_selection_comparison_items(structured_db):
 
     assert result["rows"] == [{"total": 4}]
     assert result["resolved_selection"]["values"] == ["Natal", "Fortaleza"]
+
+
+def test_drilldown_explicit_category_filter_with_store_breakdown(structured_db):
+    """Preserva a comparação e aprofunda uma categoria por loja."""
+    payload = StructuredQueryRequest(
+        query_shape="comparison",
+        state={
+            "event": "opened",
+            "date_field": "created_on",
+            "category": "Elétrica",
+        },
+        comparison={
+            "dimension": "period",
+            "items": [
+                {"label": "Julho de 2026", "year": 2026, "month": 7},
+                {"label": "Agosto de 2026", "year": 2026, "month": 8},
+            ],
+            "breakdown_by": "store_name",
+            "breakdown_order": "increase",
+            "breakdown_limit": 5,
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+
+    assert result["rows"] == [
+        {"label": "Julho de 2026", "total": 1},
+        {"label": "Agosto de 2026", "total": 2},
+    ]
+    assert result["comparison"]["breakdown_by"] == "store_name"
+    assert result["comparison"]["breakdown_order"] == "increase"
+    assert result["breakdown"] == [
+        {
+            "label": "Loja A",
+            "base_total": 0,
+            "target_total": 2,
+            "difference": 2,
+            "percentage_change": None,
+            "direction": "increase",
+        }
+    ]
+
+
+def test_drilldown_contextual_top_category_then_breakdown_by_store(structured_db):
+    """Permite usar a primeira categoria driver como filtro e aprofundar por loja."""
+    payload = StructuredQueryRequest(
+        query_shape="comparison",
+        state={"event": "opened", "date_field": "created_on"},
+        comparison={
+            "dimension": "period",
+            "items": [
+                {"label": "Julho de 2026", "year": 2026, "month": 7},
+                {"label": "Agosto de 2026", "year": 2026, "month": 8},
+            ],
+            "breakdown_by": "store_name",
+            "breakdown_order": "increase",
+            "breakdown_limit": 5,
+        },
+        selection_context={
+            "source": "previous_comparison",
+            "mode": "top_drivers",
+            "dimension": "category",
+            "limit": 1,
+            "source_state": {"event": "opened", "date_field": "created_on"},
+            "source_comparison": {
+                "dimension": "period",
+                "items": [
+                    {"label": "Julho de 2026", "year": 2026, "month": 7},
+                    {"label": "Agosto de 2026", "year": 2026, "month": 8},
+                ],
+                "analysis_mode": "drivers",
+                "driver_dimensions": ["category"],
+                "driver_limit": 3,
+            },
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+
+    assert result["resolved_selection"]["dimension"] == "category"
+    assert result["resolved_selection"]["values"] == ["Civil"]
+    assert result["rows"] == [
+        {"label": "Julho de 2026", "total": 0},
+        {"label": "Agosto de 2026", "total": 1},
+    ]
+    assert result["breakdown"] == [
+        {
+            "label": "Loja B",
+            "base_total": 0,
+            "target_total": 1,
+            "difference": 1,
+            "percentage_change": None,
+            "direction": "increase",
+        }
+    ]

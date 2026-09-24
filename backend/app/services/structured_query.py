@@ -14,11 +14,14 @@ from app.schemas.structured_query import (
     QUERY_SHAPES,
     ComparisonItem,
     ComparisonSpec,
+    SelectionContextSpec,
     StructuredQueryRequest,
     StructuredQueryState,
 )
 
 MAX_LIST_ROWS = 200
+DEFAULT_DRIVER_DIMENSIONS = ("category", "store_name")
+DEFAULT_DRIVER_LIMIT = 3
 CANONICAL_STATUSES = {
     "Em Aberto",
     "Em atendimento",
@@ -88,6 +91,50 @@ class StructuredQueryError(ValueError):
 
 def _exact_text(column: Any, value: str) -> Any:
     return func.lower(func.trim(column)) == func.lower(func.trim(value))
+
+
+def _text_values_predicate(column: Any, values: list[str]) -> Any:
+    """Case-insensitive OR match for multiple text values.
+
+    The synthetic label "Não informado" also matches NULL/blank values so
+    contextual selections can reuse labels produced by grouped analyses.
+    """
+
+    regular_values: list[str] = []
+    include_missing = False
+
+    for raw_value in values:
+        value = str(raw_value).strip()
+        if not value:
+            continue
+
+        if value.casefold() == "não informado".casefold():
+            include_missing = True
+            continue
+
+        regular_values.append(value)
+
+    predicates: list[Any] = []
+
+    if regular_values:
+        predicates.append(or_(*[_exact_text(column, value) for value in regular_values]))
+
+    if include_missing:
+        predicates.append(or_(column.is_(None), func.trim(column) == ""))
+
+    if not predicates:
+        # A predicate that is always false is safer than accidentally removing
+        # the filter when an empty selection reaches the backend.
+        return column.is_(None) & (column.is_not(None))
+
+    return or_(*predicates)
+
+
+def _location_values_predicate(values: list[str]) -> Any:
+    return or_(
+        _text_values_predicate(Service.store_name, values),
+        _text_values_predicate(Service.praca, values),
+    )
 
 
 def _parse_date(value: date | datetime, field_name: str) -> date:
@@ -228,6 +275,28 @@ def _validate_comparison(
             f"comparison.breakdown_order inválido: {comparison.breakdown_order}."
         )
 
+    if comparison.analysis_mode is None:
+        if comparison.driver_dimensions is not None or comparison.driver_limit is not None:
+            raise StructuredQueryError(
+                "driver_dimensions/driver_limit exigem comparison.analysis_mode=drivers."
+            )
+    elif comparison.analysis_mode == "drivers":
+        if comparison.breakdown_by is not None:
+            raise StructuredQueryError(
+                "analysis_mode=drivers não deve ser combinado com comparison.breakdown_by."
+            )
+
+        if comparison.driver_dimensions is not None:
+            for dimension in comparison.driver_dimensions:
+                if dimension not in BREAKDOWN_DIMENSIONS:
+                    raise StructuredQueryError(
+                        f"driver dimension inválida: {dimension}."
+                    )
+                if dimension == comparison.dimension:
+                    raise StructuredQueryError(
+                        "driver_dimensions não pode repetir a dimensão comparada."
+                    )
+
     for index, item in enumerate(comparison.items):
         _validate_comparison_item(comparison.dimension, item, index)
 
@@ -286,6 +355,25 @@ def _build_predicates(state: StructuredQueryState) -> list[Any]:
         statuses = [state.status]
     if statuses:
         predicates.append(Service.status.in_(statuses))
+
+    if state.multi_filters is not None:
+        multi_filters = state.multi_filters.model_dump(exclude_none=True)
+
+        for dimension, values in multi_filters.items():
+            if not values:
+                continue
+
+            if dimension == "location_term":
+                predicates.append(_location_values_predicate(values))
+                continue
+
+            column = TEXT_FIELDS.get(dimension)
+            if column is None:
+                raise StructuredQueryError(
+                    f"multi_filters contém dimensão inválida: {dimension}."
+                )
+
+            predicates.append(_text_values_predicate(column, values))
 
     if state.missing_field is not None:
         column = TEXT_FIELDS[state.missing_field]
@@ -473,6 +561,327 @@ def _comparison_breakdown(
     return rows
 
 
+def _driver_dimensions_for_comparison(comparison: ComparisonSpec) -> list[str]:
+    requested = list(comparison.driver_dimensions or DEFAULT_DRIVER_DIMENSIONS)
+    dimensions = [
+        dimension
+        for dimension in requested
+        if dimension in BREAKDOWN_DIMENSIONS and dimension != comparison.dimension
+    ]
+
+    if dimensions:
+        return list(dict.fromkeys(dimensions))
+
+    # Fallback seguro caso a dimensão comparada também seja uma das dimensões padrão.
+    for candidate in ("category", "store_name", "praca", "analyst_responsible", "supplier"):
+        if candidate != comparison.dimension:
+            return [candidate]
+
+    return []
+
+
+def _driver_contribution_pct(difference: int, net_difference: int) -> float | None:
+    if net_difference == 0:
+        return None
+    return round((difference / net_difference) * 100, 2)
+
+
+def _comparison_driver_analysis(
+    db: Session,
+    request: StructuredQueryRequest,
+    net_difference: int,
+    direction: str,
+) -> dict[str, Any] | None:
+    comparison = request.comparison
+    if comparison is None or comparison.analysis_mode != "drivers":
+        return None
+
+    base_state = _state_for_comparison_item(
+        request.state, comparison.dimension, comparison.items[0]
+    )
+    target_state = _state_for_comparison_item(
+        request.state, comparison.dimension, comparison.items[1]
+    )
+
+    dimensions = _driver_dimensions_for_comparison(comparison)
+    limit = comparison.driver_limit or DEFAULT_DRIVER_LIMIT
+    dimension_results: list[dict[str, Any]] = []
+
+    for dimension in dimensions:
+        base_counts = _group_counts_for_state(db, base_state, dimension)
+        target_counts = _group_counts_for_state(db, target_state, dimension)
+
+        changes: list[dict[str, Any]] = []
+        for label in sorted(set(base_counts) | set(target_counts)):
+            base_total = base_counts.get(label, 0)
+            target_total = target_counts.get(label, 0)
+            difference = target_total - base_total
+            if difference == 0:
+                continue
+
+            changes.append(
+                {
+                    "label": label,
+                    "base_total": base_total,
+                    "target_total": target_total,
+                    "difference": difference,
+                    "percentage_change": _percentage_change(base_total, target_total),
+                    "direction": _direction_for_difference(difference),
+                    # A soma dessa métrica em todos os grupos da dimensão é 100%
+                    # quando a variação líquida é diferente de zero. Movimentos
+                    # contrários ao saldo possuem contribuição negativa.
+                    "contribution_pct": _driver_contribution_pct(
+                        difference, net_difference
+                    ),
+                }
+            )
+
+        if direction == "decrease":
+            aligned = [row for row in changes if row["difference"] < 0]
+            offsets = [row for row in changes if row["difference"] > 0]
+            aligned.sort(key=lambda row: (row["difference"], row["label"].lower()))
+            offsets.sort(key=lambda row: (-row["difference"], row["label"].lower()))
+        elif direction == "increase":
+            aligned = [row for row in changes if row["difference"] > 0]
+            offsets = [row for row in changes if row["difference"] < 0]
+            aligned.sort(key=lambda row: (-row["difference"], row["label"].lower()))
+            offsets.sort(key=lambda row: (row["difference"], row["label"].lower()))
+        else:
+            # Quando o total ficou estável, mostramos os maiores movimentos
+            # internos, pois aumentos e reduções se compensaram.
+            aligned = sorted(
+                changes,
+                key=lambda row: (-abs(row["difference"]), row["label"].lower()),
+            )
+            offsets = []
+
+        if direction == "decrease":
+            gross_driver_change = sum(abs(row["difference"]) for row in aligned)
+            gross_offset_change = sum(abs(row["difference"]) for row in offsets)
+        elif direction == "increase":
+            gross_driver_change = sum(abs(row["difference"]) for row in aligned)
+            gross_offset_change = sum(abs(row["difference"]) for row in offsets)
+        else:
+            gross_driver_change = sum(
+                row["difference"] for row in changes if row["difference"] > 0
+            )
+            gross_offset_change = sum(
+                abs(row["difference"]) for row in changes if row["difference"] < 0
+            )
+
+        dimension_results.append(
+            {
+                "dimension": dimension,
+                "gross_driver_change": gross_driver_change,
+                "gross_offset_change": gross_offset_change,
+                "top_drivers": aligned[:limit],
+                "offsets": offsets[:limit],
+            }
+        )
+
+    return {
+        "mode": "drivers",
+        "net_difference": net_difference,
+        "direction": direction,
+        "dimensions": dimension_results,
+    }
+
+
+def _selection_scope_predicate(context: SelectionContextSpec) -> Any | None:
+    comparison = context.source_comparison
+    dimension = comparison.dimension
+    items = comparison.items
+
+    if dimension == "period":
+        date_field = context.source_state.date_field
+        if date_field is None:
+            raise StructuredQueryError(
+                "selection_context herdado de comparação por período exige date_field."
+            )
+
+        item_predicates: list[Any] = []
+        for item in items:
+            scope_state = StructuredQueryState(
+                date_field=date_field,
+                year=item.year,
+                month=item.month,
+                start_date=item.start_date,
+                end_date=item.end_date,
+            )
+            predicates = _date_predicates(scope_state)
+            if predicates:
+                item_predicates.append(and_(*predicates))
+
+        return or_(*item_predicates) if item_predicates else None
+
+    values = [
+        item.value.strip()
+        for item in items
+        if item.value is not None and item.value.strip()
+    ]
+
+    if not values:
+        return None
+
+    if dimension == "status":
+        return Service.status.in_(values)
+
+    if dimension == "location_term":
+        return _location_values_predicate(values)
+
+    column = TEXT_FIELDS.get(dimension)
+    if column is None:
+        return None
+
+    return _text_values_predicate(column, values)
+
+
+def _comparison_for_selection(context: SelectionContextSpec) -> ComparisonSpec:
+    source = context.source_comparison.model_dump()
+    limit = context.limit
+
+    if context.mode in {"top_drivers", "offsets"}:
+        if context.dimension == context.source_comparison.dimension:
+            raise StructuredQueryError(
+                "selection_context de drivers não pode repetir a dimensão comparada."
+            )
+
+        source.update(
+            {
+                "breakdown_by": None,
+                "breakdown_order": None,
+                "breakdown_limit": None,
+                "analysis_mode": "drivers",
+                "driver_dimensions": [context.dimension],
+                "driver_limit": limit or context.source_comparison.driver_limit or DEFAULT_DRIVER_LIMIT,
+            }
+        )
+
+    elif context.mode == "breakdown":
+        if context.dimension == context.source_comparison.dimension:
+            raise StructuredQueryError(
+                "selection_context de breakdown não pode repetir a dimensão comparada."
+            )
+
+        source.update(
+            {
+                "breakdown_by": context.dimension,
+                "breakdown_order": context.source_comparison.breakdown_order
+                or "absolute_change",
+                "breakdown_limit": limit
+                or context.source_comparison.breakdown_limit
+                or DEFAULT_DRIVER_LIMIT,
+                "analysis_mode": None,
+                "driver_dimensions": None,
+                "driver_limit": None,
+            }
+        )
+
+    return ComparisonSpec.model_validate(source)
+
+
+def _resolve_selection_values(
+    db: Session,
+    context: SelectionContextSpec,
+) -> list[str]:
+    if context.mode == "comparison_items":
+        if context.dimension != context.source_comparison.dimension:
+            raise StructuredQueryError(
+                "selection_context comparison_items exige a mesma dimensão da comparação anterior."
+            )
+        if context.dimension == "period":
+            raise StructuredQueryError(
+                "comparison_items não pode ser usado como filtro textual para períodos."
+            )
+
+        values = [
+            item.value.strip()
+            for item in context.source_comparison.items
+            if item.value is not None and item.value.strip()
+        ]
+        return list(dict.fromkeys(values))[: context.limit or 100]
+
+    comparison = _comparison_for_selection(context)
+    source_request = StructuredQueryRequest(
+        query_shape="comparison",
+        state=context.source_state,
+        comparison=comparison,
+    )
+    result = _execute_comparison(db, source_request)
+
+    if context.mode in {"top_drivers", "offsets"}:
+        analysis = result.get("driver_analysis") or {}
+        dimensions = analysis.get("dimensions") or []
+        dimension_result = next(
+            (
+                item
+                for item in dimensions
+                if item.get("dimension") == context.dimension
+            ),
+            None,
+        )
+        if dimension_result is None:
+            return []
+
+        key = "top_drivers" if context.mode == "top_drivers" else "offsets"
+        rows = dimension_result.get(key) or []
+        values = [str(row.get("label", "")).strip() for row in rows]
+        return [value for value in values if value]
+
+    breakdown = result.get("breakdown") or []
+    values = [str(row.get("label", "")).strip() for row in breakdown]
+    return [value for value in values if value]
+
+
+def _state_with_selection_values(
+    state: StructuredQueryState,
+    dimension: str,
+    values: list[str],
+) -> StructuredQueryState:
+    data = state.model_dump()
+
+    if dimension == "status":
+        data["status"] = None
+        data["statuses"] = values or None
+        if values:
+            data["event"] = "current_status"
+        return StructuredQueryState.model_validate(data)
+
+    multi_filters = dict(data.get("multi_filters") or {})
+    multi_filters[dimension] = values or ["__SEM_RESULTADO_CONTEXTUAL__"]
+    data["multi_filters"] = multi_filters
+
+    # O filtro múltiplo substitui apenas o singular da mesma dimensão.
+    # Outros filtros permanecem ativos e podem restringir o conjunto.
+    if dimension in data:
+        data[dimension] = None
+
+    return StructuredQueryState.model_validate(data)
+
+
+def _resolve_selection_context(
+    db: Session,
+    state: StructuredQueryState,
+    context: SelectionContextSpec | None,
+) -> tuple[StructuredQueryState, Any | None, dict[str, Any] | None]:
+    if context is None:
+        return state, None, None
+
+    values = _resolve_selection_values(db, context)
+    effective_state = _state_with_selection_values(state, context.dimension, values)
+    scope_predicate = _selection_scope_predicate(context)
+
+    resolved = {
+        "source": "previous_comparison",
+        "mode": context.mode,
+        "dimension": context.dimension,
+        "values": values,
+        "inherited_comparison_scope": scope_predicate is not None,
+    }
+
+    return effective_state, scope_predicate, resolved
+
+
 def _execute_comparison(
     db: Session,
     request: StructuredQueryRequest,
@@ -499,6 +908,9 @@ def _execute_comparison(
     direction = _direction_for_difference(difference)
     percentage_change = _percentage_change(base_total, target_total)
     breakdown = _comparison_breakdown(db, request)
+    driver_analysis = _comparison_driver_analysis(
+        db, request, difference, direction
+    )
 
     rows = [
         {"label": base_label, "total": base_total},
@@ -520,6 +932,15 @@ def _execute_comparison(
             comparison.breakdown_order or "absolute_change"
         )
 
+    if comparison.analysis_mode == "drivers":
+        comparison_result["analysis_mode"] = "drivers"
+        comparison_result["driver_dimensions"] = _driver_dimensions_for_comparison(
+            comparison
+        )
+        comparison_result["driver_limit"] = (
+            comparison.driver_limit or DEFAULT_DRIVER_LIMIT
+        )
+
     return {
         "success": True,
         "query_shape": "comparison",
@@ -529,11 +950,13 @@ def _execute_comparison(
         "rows": rows,
         "comparison": comparison_result,
         "breakdown": breakdown,
+        "driver_analysis": driver_analysis,
     }
 
 
 def build_structured_query(
     request: StructuredQueryRequest,
+    additional_predicate: Any | None = None,
 ) -> tuple[Select[Any], bool]:
     _validate_state(request.query_shape, request.state)
     _validate_comparison(request.query_shape, request.state, request.comparison)
@@ -545,6 +968,8 @@ def build_structured_query(
 
     state = request.state
     predicates = _build_predicates(state)
+    if additional_predicate is not None:
+        predicates.append(additional_predicate)
     where_clause = and_(*predicates) if predicates else None
 
     if request.query_shape == "count":
@@ -576,10 +1001,32 @@ def execute_structured_query(
     _validate_state(request.query_shape, request.state)
     _validate_comparison(request.query_shape, request.state, request.comparison)
 
-    if request.query_shape == "comparison":
-        return _execute_comparison(db, request)
+    effective_state, scope_predicate, resolved_selection = _resolve_selection_context(
+        db, request.state, request.selection_context
+    )
+    effective_request = request.model_copy(
+        update={
+            "state": effective_state,
+            "selection_context": None,
+        }
+    )
 
-    statement, is_list = build_structured_query(request)
+    _validate_state(effective_request.query_shape, effective_request.state)
+    _validate_comparison(
+        effective_request.query_shape,
+        effective_request.state,
+        effective_request.comparison,
+    )
+
+    if effective_request.query_shape == "comparison":
+        response = _execute_comparison(db, effective_request)
+        response["resolved_selection"] = resolved_selection
+        return response
+
+    statement, is_list = build_structured_query(
+        effective_request,
+        additional_predicate=scope_predicate,
+    )
     result = db.execute(statement)
     columns = list(result.keys())
     raw_rows = [dict(row) for row in result.mappings().all()]
@@ -588,11 +1035,13 @@ def execute_structured_query(
 
     return {
         "success": True,
-        "query_shape": request.query_shape,
+        "query_shape": effective_request.query_shape,
         "row_count": len(rows),
         "truncated": truncated,
         "columns": columns,
         "rows": rows,
         "comparison": None,
         "breakdown": None,
+        "driver_analysis": None,
+        "resolved_selection": resolved_selection,
     }

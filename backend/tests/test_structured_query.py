@@ -387,3 +387,292 @@ def test_comparison_breakdown_order_exige_breakdown_by(structured_db):
 
     with pytest.raises(StructuredQueryError, match="exigem comparison.breakdown_by"):
         execute_structured_query(structured_db, payload)
+
+
+def test_comparison_drivers_padrao_decompoe_categoria_e_loja(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="comparison",
+        state={"event": "opened", "date_field": "created_on"},
+        comparison={
+            "dimension": "period",
+            "items": [
+                {"label": "Julho de 2026", "year": 2026, "month": 7},
+                {"label": "Agosto de 2026", "year": 2026, "month": 8},
+            ],
+            "analysis_mode": "drivers",
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+
+    assert result["comparison"]["analysis_mode"] == "drivers"
+    assert result["comparison"]["driver_dimensions"] == ["category", "store_name"]
+    assert result["comparison"]["driver_limit"] == 3
+
+    analysis = result["driver_analysis"]
+    assert analysis["mode"] == "drivers"
+    assert analysis["net_difference"] == 2
+    assert analysis["direction"] == "increase"
+
+    category = analysis["dimensions"][0]
+    assert category["dimension"] == "category"
+    assert category["gross_driver_change"] == 2
+    assert category["gross_offset_change"] == 0
+    assert category["top_drivers"] == [
+        {
+            "label": "Civil",
+            "base_total": 0,
+            "target_total": 1,
+            "difference": 1,
+            "percentage_change": None,
+            "direction": "increase",
+            "contribution_pct": 50.0,
+        },
+        {
+            "label": "Elétrica",
+            "base_total": 1,
+            "target_total": 2,
+            "difference": 1,
+            "percentage_change": 100.0,
+            "direction": "increase",
+            "contribution_pct": 50.0,
+        },
+    ]
+
+    store = analysis["dimensions"][1]
+    assert store["dimension"] == "store_name"
+    assert store["gross_driver_change"] == 3
+    assert store["gross_offset_change"] == 1
+    assert store["top_drivers"][0]["label"] == "Loja A"
+    assert store["top_drivers"][0]["difference"] == 2
+    assert store["top_drivers"][0]["contribution_pct"] == 100.0
+    assert store["offsets"] == [
+        {
+            "label": "Trairi Central",
+            "base_total": 1,
+            "target_total": 0,
+            "difference": -1,
+            "percentage_change": -100.0,
+            "direction": "decrease",
+            "contribution_pct": -50.0,
+        }
+    ]
+
+
+def test_comparison_drivers_respeita_dimensao_e_limite(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="comparison",
+        state={"event": "opened", "date_field": "created_on"},
+        comparison={
+            "dimension": "period",
+            "items": [
+                {"label": "Julho de 2026", "year": 2026, "month": 7},
+                {"label": "Agosto de 2026", "year": 2026, "month": 8},
+            ],
+            "analysis_mode": "drivers",
+            "driver_dimensions": ["store_name"],
+            "driver_limit": 1,
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+    analysis = result["driver_analysis"]
+
+    assert result["comparison"]["driver_dimensions"] == ["store_name"]
+    assert result["comparison"]["driver_limit"] == 1
+    assert len(analysis["dimensions"]) == 1
+    assert len(analysis["dimensions"][0]["top_drivers"]) == 1
+    assert len(analysis["dimensions"][0]["offsets"]) == 1
+
+
+def test_comparison_drivers_estavel_mostra_movimentos_sem_contribuicao(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="comparison",
+        state={"event": "current_status", "statuses": ["Em atendimento"]},
+        comparison={
+            "dimension": "praca",
+            "items": [
+                {"label": "Natal", "value": "Natal"},
+                {"label": "Fortaleza", "value": "Fortaleza"},
+            ],
+            "analysis_mode": "drivers",
+            "driver_dimensions": ["store_name"],
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+    analysis = result["driver_analysis"]
+
+    assert analysis["net_difference"] == 0
+    assert analysis["direction"] == "stable"
+    assert all(
+        row["contribution_pct"] is None
+        for row in analysis["dimensions"][0]["top_drivers"]
+    )
+
+
+def test_comparison_drivers_rejeita_breakdown_simultaneo(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="comparison",
+        state={"event": "opened", "date_field": "created_on"},
+        comparison={
+            "dimension": "period",
+            "items": [
+                {"label": "Julho de 2026", "year": 2026, "month": 7},
+                {"label": "Agosto de 2026", "year": 2026, "month": 8},
+            ],
+            "breakdown_by": "category",
+            "analysis_mode": "drivers",
+            "driver_dimensions": ["category"],
+        },
+    )
+
+    with pytest.raises(StructuredQueryError, match="não deve ser combinado"):
+        execute_structured_query(structured_db, payload)
+
+
+def test_multi_filters_store_name_funciona_com_or(structured_db):
+    result = execute_structured_query(
+        structured_db,
+        request(
+            "list",
+            event="current_status",
+            multi_filters={"store_name": ["Loja A", "Loja B"]},
+        ),
+    )
+
+    assert [row["ticket"] for row in result["rows"]] == ["1001", "1002", "1003"]
+
+
+def test_multi_filters_combinam_dimensoes_com_and(structured_db):
+    result = execute_structured_query(
+        structured_db,
+        request(
+            "list",
+            event="current_status",
+            multi_filters={
+                "category": ["Elétrica", "Civil"],
+                "supplier": ["Acme", "Beta"],
+            },
+        ),
+    )
+
+    assert [row["ticket"] for row in result["rows"]] == ["1001", "1003"]
+
+
+def test_contextual_selection_top_driver_vira_filtro_multiplo(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="list",
+        state={"event": "opened", "date_field": "created_on"},
+        selection_context={
+            "source": "previous_comparison",
+            "mode": "top_drivers",
+            "dimension": "store_name",
+            "limit": 1,
+            "source_state": {"event": "opened", "date_field": "created_on"},
+            "source_comparison": {
+                "dimension": "period",
+                "items": [
+                    {"label": "Julho de 2026", "year": 2026, "month": 7},
+                    {"label": "Agosto de 2026", "year": 2026, "month": 8},
+                ],
+                "analysis_mode": "drivers",
+                "driver_dimensions": ["store_name"],
+                "driver_limit": 1,
+            },
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+
+    assert [row["ticket"] for row in result["rows"]] == ["1001", "1002"]
+    assert result["resolved_selection"] == {
+        "source": "previous_comparison",
+        "mode": "top_drivers",
+        "dimension": "store_name",
+        "values": ["Loja A"],
+        "inherited_comparison_scope": True,
+    }
+
+
+def test_contextual_selection_offsets_preserva_escopo_da_comparacao(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="list",
+        state={"event": "opened", "date_field": "created_on"},
+        selection_context={
+            "source": "previous_comparison",
+            "mode": "offsets",
+            "dimension": "store_name",
+            "limit": 1,
+            "source_state": {"event": "opened", "date_field": "created_on"},
+            "source_comparison": {
+                "dimension": "period",
+                "items": [
+                    {"label": "Julho de 2026", "year": 2026, "month": 7},
+                    {"label": "Agosto de 2026", "year": 2026, "month": 8},
+                ],
+                "analysis_mode": "drivers",
+                "driver_dimensions": ["store_name"],
+                "driver_limit": 1,
+            },
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+
+    assert [row["ticket"] for row in result["rows"]] == ["1004"]
+    assert result["resolved_selection"]["values"] == ["Trairi Central"]
+
+
+def test_contextual_selection_breakdown_reutiliza_resultado_anterior(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="count",
+        state={"event": "opened", "date_field": "created_on"},
+        selection_context={
+            "source": "previous_comparison",
+            "mode": "breakdown",
+            "dimension": "store_name",
+            "limit": 1,
+            "source_state": {"event": "opened", "date_field": "created_on"},
+            "source_comparison": {
+                "dimension": "period",
+                "items": [
+                    {"label": "Julho de 2026", "year": 2026, "month": 7},
+                    {"label": "Agosto de 2026", "year": 2026, "month": 8},
+                ],
+                "breakdown_by": "store_name",
+                "breakdown_order": "decrease",
+                "breakdown_limit": 1,
+            },
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+
+    assert result["rows"] == [{"total": 1}]
+    assert result["resolved_selection"]["values"] == ["Trairi Central"]
+
+
+def test_contextual_selection_comparison_items(structured_db):
+    payload = StructuredQueryRequest(
+        query_shape="count",
+        state={"event": "current_status"},
+        selection_context={
+            "source": "previous_comparison",
+            "mode": "comparison_items",
+            "dimension": "praca",
+            "source_state": {"event": "current_status"},
+            "source_comparison": {
+                "dimension": "praca",
+                "items": [
+                    {"label": "Natal", "value": "Natal"},
+                    {"label": "Fortaleza", "value": "Fortaleza"},
+                ],
+            },
+        },
+    )
+
+    result = execute_structured_query(structured_db, payload)
+
+    assert result["rows"] == [{"total": 4}]
+    assert result["resolved_selection"]["values"] == ["Natal", "Fortaleza"]

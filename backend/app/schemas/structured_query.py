@@ -30,6 +30,61 @@ BREAKDOWN_DIMENSIONS = {
     "status",
 }
 BREAKDOWN_ORDERS = {"absolute_change", "increase", "decrease"}
+MULTI_FILTER_DIMENSIONS = {
+    "praca",
+    "store_name",
+    "location_term",
+    "analyst_responsible",
+    "supplier",
+    "requester",
+    "category",
+    "subcategory",
+}
+SELECTION_MODES = {"comparison_items", "top_drivers", "offsets", "breakdown"}
+
+
+class MultiFilterSpec(BaseModel):
+    """Filtros OR por dimensão, combinados com AND entre dimensões."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    praca: list[str] | None = Field(default=None, max_length=100)
+    store_name: list[str] | None = Field(default=None, max_length=100)
+    location_term: list[str] | None = Field(default=None, max_length=100)
+    analyst_responsible: list[str] | None = Field(default=None, max_length=100)
+    supplier: list[str] | None = Field(default=None, max_length=100)
+    requester: list[str] | None = Field(default=None, max_length=100)
+    category: list[str] | None = Field(default=None, max_length=100)
+    subcategory: list[str] | None = Field(default=None, max_length=100)
+
+    @field_validator(
+        "praca",
+        "store_name",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+    )
+    @classmethod
+    def normalize_values(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for item in value:
+            text = str(item).strip()
+            if not text:
+                continue
+            key = text.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized.append(text)
+
+        return normalized or None
 
 
 class StructuredQueryState(BaseModel):
@@ -53,6 +108,9 @@ class StructuredQueryState(BaseModel):
     requester: str | None = None
     category: str | None = None
     subcategory: str | None = None
+
+    # Filtros múltiplos: OR dentro da dimensão, AND entre dimensões.
+    multi_filters: MultiFilterSpec | None = None
 
     missing_field: str | None = None
     group_by: str | None = None
@@ -89,6 +147,8 @@ class ComparisonSpec(BaseModel):
         "status",
     ]
     items: list[ComparisonItem] = Field(min_length=2, max_length=2)
+
+    # Detalhamento simples de uma unica dimensao.
     breakdown_by: Literal[
         "praca",
         "store_name",
@@ -106,11 +166,60 @@ class ComparisonSpec(BaseModel):
     ] | None = None
     breakdown_limit: int | None = Field(default=None, ge=1, le=100)
 
+    # Analise deterministica de drivers da variacao.
+    # Continua dentro de comparison para ser persistida na mesma coluna da Data Table.
+    analysis_mode: Literal["drivers"] | None = None
+    driver_dimensions: list[
+        Literal[
+            "praca",
+            "store_name",
+            "analyst_responsible",
+            "supplier",
+            "requester",
+            "category",
+            "subcategory",
+            "status",
+        ]
+    ] | None = Field(default=None, min_length=1, max_length=5)
+    driver_limit: int | None = Field(default=None, ge=1, le=10)
+
+    @field_validator("driver_dimensions")
+    @classmethod
+    def unique_driver_dimensions(
+        cls,
+        value: list[str] | None,
+    ) -> list[str] | None:
+        if value is None:
+            return None
+        return list(dict.fromkeys(value))
+
+
+class SelectionContextSpec(BaseModel):
+    """Referência persistente a grupos produzidos por uma comparação anterior."""
+
+    source: Literal["previous_comparison"] = "previous_comparison"
+    mode: Literal["comparison_items", "top_drivers", "offsets", "breakdown"]
+    dimension: Literal[
+        "praca",
+        "store_name",
+        "location_term",
+        "analyst_responsible",
+        "supplier",
+        "requester",
+        "category",
+        "subcategory",
+        "status",
+    ]
+    limit: int | None = Field(default=None, ge=1, le=100)
+    source_state: StructuredQueryState
+    source_comparison: ComparisonSpec
+
 
 class StructuredQueryRequest(BaseModel):
     query_shape: str
     state: StructuredQueryState
     comparison: ComparisonSpec | None = None
+    selection_context: SelectionContextSpec | None = None
 
 
 class ComparisonBreakdownRow(BaseModel):
@@ -122,6 +231,31 @@ class ComparisonBreakdownRow(BaseModel):
     direction: Literal["increase", "decrease", "stable"]
 
 
+class ComparisonDriverRow(BaseModel):
+    label: str
+    base_total: int
+    target_total: int
+    difference: int
+    percentage_change: float | None
+    direction: Literal["increase", "decrease", "stable"]
+    contribution_pct: float | None
+
+
+class ComparisonDriverDimension(BaseModel):
+    dimension: str
+    gross_driver_change: int
+    gross_offset_change: int
+    top_drivers: list[ComparisonDriverRow]
+    offsets: list[ComparisonDriverRow]
+
+
+class ComparisonDriverAnalysis(BaseModel):
+    mode: Literal["drivers"]
+    net_difference: int
+    direction: Literal["increase", "decrease", "stable"]
+    dimensions: list[ComparisonDriverDimension]
+
+
 class ComparisonResult(BaseModel):
     dimension: str
     base_label: str
@@ -131,6 +265,17 @@ class ComparisonResult(BaseModel):
     direction: Literal["increase", "decrease", "stable"]
     breakdown_by: str | None = None
     breakdown_order: str | None = None
+    analysis_mode: str | None = None
+    driver_dimensions: list[str] | None = None
+    driver_limit: int | None = None
+
+
+class ResolvedSelectionResult(BaseModel):
+    source: Literal["previous_comparison"]
+    mode: str
+    dimension: str
+    values: list[str]
+    inherited_comparison_scope: bool
 
 
 class StructuredQueryResponse(BaseModel):
@@ -142,3 +287,5 @@ class StructuredQueryResponse(BaseModel):
     rows: list[dict[str, Any]]
     comparison: ComparisonResult | None = None
     breakdown: list[ComparisonBreakdownRow] | None = None
+    driver_analysis: ComparisonDriverAnalysis | None = None
+    resolved_selection: ResolvedSelectionResult | None = None

@@ -7,11 +7,19 @@ from app.schemas.chatbot import (
     ChatbotQueryRequest,
     ChatbotQueryResponse,
 )
+from app.schemas.structured_query import (
+    StructuredQueryRequest,
+    StructuredQueryResponse,
+)
 from app.services.chatbot_query import (
     ChatbotQueryError,
     executar_consulta_chatbot,
 )
 from app.services.qa_trace import get_qa_trace
+from app.services.structured_query import (
+    StructuredQueryError,
+    execute_structured_query,
+)
 
 
 router = APIRouter(
@@ -64,3 +72,26 @@ def listar_qa_trace(
             detail="Trace de QA não encontrado.",
         )
     return trace
+
+
+@router.post(
+    "/structured-query",
+    response_model=StructuredQueryResponse,
+)
+def executar_structured_query(
+    payload: StructuredQueryRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        return execute_structured_query(db=db, request=payload)
+    except StructuredQueryError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Erro ao executar consulta estruturada.",
+        ) from exc

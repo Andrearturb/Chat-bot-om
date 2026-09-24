@@ -34,6 +34,42 @@ def test_consultas_validas_sao_aceitas(sql):
     assert validar_sql(sql).strip().endswith(";") is False
 
 
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT ticket FROM services;",
+        "SELECT\n    ticket\nFROM services;",
+        "SELECT\n    ticket,\n    status\nFROM services;",
+        "SELECT\n\tticket\nFROM services;",
+        "SELECT\t ticket FROM services;",
+        "WITH recentes AS (\n    SELECT ticket FROM services\n)\nSELECT * FROM recentes;",
+        "WITH\nrecentes AS (\n    SELECT ticket FROM services\n)\nSELECT * FROM recentes;",
+    ],
+)
+def test_select_e_with_aceitam_whitespace_apos_palavra_chave(sql):
+    assert validar_sql(sql).startswith(("SELECT", "WITH"))
+
+
+def test_sql_multiline_real_do_n8n_e_aceito():
+    sql = """SELECT
+    ticket,
+    status,
+    store_name,
+    praca,
+    category,
+    subcategory,
+    created_on,
+    analyst_responsible,
+    supplier
+FROM services
+WHERE LOWER(BTRIM(praca)) = LOWER(BTRIM('natal'))
+  AND status IN ('Em Aberto', 'Em atendimento')
+ORDER BY ticket;
+"""
+
+    assert validar_sql(sql).startswith("SELECT")
+
+
 def test_tabela_nao_permitida_e_bloqueada():
     with pytest.raises(ChatbotQueryError, match="users"):
         validar_sql("SELECT * FROM users")

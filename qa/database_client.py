@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import sqlglot
 
 from typing import Any
@@ -28,12 +30,7 @@ def execute_oracle_query(sql: str) -> dict[str, Any]:
     if not normalized:
         raise OracleQueryError("SQL do oráculo vazio.")
 
-    lowered = normalized.lower()
-
-    if not (
-        lowered.startswith("select ")
-        or lowered.startswith("with ")
-    ):
+    if not re.match(r"^(select|with)\b", normalized, re.IGNORECASE):
         raise OracleQueryError(
             "A consulta oráculo deve ser somente leitura."
         )

@@ -46,16 +46,13 @@ def validar_sql(sql: str) -> str:
     if not sql_limpo:
         raise ChatbotQueryError("A consulta SQL está vazia.")
 
-    sql_lower = sql_limpo.lower()
-
     # Nesta aplicação o chatbot só pode realizar consultas
-    if not (
-        sql_lower.startswith("select ")
-        or sql_lower.startswith("with ")
-    ):
+    if not re.match(r"^(select|with)\b", sql_limpo, re.IGNORECASE):
         raise ChatbotQueryError(
             "Somente consultas SELECT ou WITH ... SELECT são permitidas."
         )
+
+    sql_lower = sql_limpo.lower()
 
     # Impede múltiplas instruções
     if ";" in sql_limpo:

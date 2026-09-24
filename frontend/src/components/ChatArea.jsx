@@ -1,29 +1,33 @@
 import { useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { assistantImage } from '../assets/assistantImage'
 
-function formatMarkdown(content) {
-  const escaped = content
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
+function Message({ message, suggestions = [] }) {
+  const isAssistant = message.role === 'assistant'
 
-  return escaped
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/\n/g, '<br />')
-}
-
-function Message({ message }) {
   return (
     <article className={`message message--${message.role}`}>
-      {message.role === 'assistant' && <img className="message__avatar" src={assistantImage} alt="" />}
-      <div className="message__content" dangerouslySetInnerHTML={{ __html: formatMarkdown(message.content) }} />
+      {isAssistant && <img className="message__avatar" src={assistantImage} alt="" />}
+      <div className="message__content">
+        {isAssistant ? (
+          <div className="message__markdown">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content || ''}</ReactMarkdown>
+          </div>
+        ) : message.content}
+        {isAssistant && suggestions.length > 0 && (
+          <div className="message__suggestions" aria-label="Sugestões relacionadas">
+            {suggestions.map((suggestion) => (
+              <button key={suggestion} type="button">{suggestion}</button>
+            ))}
+          </div>
+        )}
+      </div>
     </article>
   )
 }
 
-export default function ChatArea({ messages, active }) {
+export default function ChatArea({ messages, active, suggestions = [] }) {
   const messagesRef = useRef(null)
 
   useEffect(() => {
@@ -43,7 +47,9 @@ export default function ChatArea({ messages, active }) {
         <div><strong>Gentileza</strong><span><i /> Assistente de Obras &amp; Manutenções · Online</span></div>
       </div>
       <div className="messages" ref={messagesRef}>
-        {messages.map((message) => <Message key={message.id} message={message} />)}
+        {messages.map((message) => (
+          <Message key={message.id} message={message} suggestions={message.role === 'assistant' ? suggestions : []} />
+        ))}
       </div>
     </section>
   )

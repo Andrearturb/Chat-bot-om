@@ -109,9 +109,30 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
 .message { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0; animation: rise .25s ease both; }
 .message--user { justify-content: flex-end; }
 .message__avatar { width: 27px; height: 27px; flex: 0 0 27px; object-fit: cover; object-position: top; border-radius: 50%; }
-.message__content { max-width: 72%; padding: 13px 17px; color: var(--text); background: #fff; border: 1px solid var(--border); border-radius: 17px 17px 17px 4px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
-.message__content strong { font-weight: 800; }
-.message__content code { padding: 2px 5px; color: var(--navy); border-radius: 4px; background: #edf1f8; font-size: .9em; }
+.message__content { max-width: 72%; min-width: 0; padding: 13px 17px; color: var(--text); background: #fff; border: 1px solid var(--border); border-radius: 17px 17px 17px 4px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.message__markdown > :first-child { margin-top: 0; }
+.message__markdown > :last-child { margin-bottom: 0; }
+.message__markdown p { margin: 0 0 12px; }
+.message__markdown h1, .message__markdown h2, .message__markdown h3 { margin: 0 0 10px; color: var(--navy); line-height: 1.25; letter-spacing: -.02em; }
+.message__markdown h1 { font-size: 1.25em; }
+.message__markdown h2 { font-size: 1.12em; }
+.message__markdown h3 { font-size: 1em; }
+.message__markdown strong { font-weight: 800; }
+.message__markdown ul, .message__markdown ol { margin: 8px 0 13px; padding-left: 23px; }
+.message__markdown li + li { margin-top: 4px; }
+.message__markdown blockquote { margin: 12px 0; padding: 8px 12px; color: #61708a; border-left: 3px solid var(--yellow); background: #fffaf0; }
+.message__markdown code { padding: 2px 5px; color: var(--navy); border-radius: 4px; background: #edf1f8; font-size: .9em; }
+.message__markdown pre { max-width: 100%; margin: 12px 0; padding: 12px 14px; overflow-x: auto; color: #edf3ff; border-radius: 9px; background: #17244d; font-size: .88em; line-height: 1.5; }
+.message__markdown pre code { padding: 0; color: inherit; background: transparent; font-size: inherit; }
+.message__markdown table { width: max-content; min-width: 100%; margin: 12px 0; border-collapse: collapse; font-size: .93em; }
+.message__markdown th, .message__markdown td { padding: 7px 10px; border: 1px solid #e1e7f0; text-align: left; }
+.message__markdown th { color: var(--navy); background: #f2f6fc; font-weight: 800; }
+.message__markdown tr:nth-child(even) td { background: #fbfcfe; }
+.message__markdown a { color: var(--navy-soft); font-weight: 700; }
+.message__suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.message__suggestions button { padding: 7px 10px; color: var(--navy-soft); border: 1px solid #d8e2f2; border-radius: 999px; background: #f7faff; font-size: 11px; font-weight: 700; }
+.message__suggestions button:hover, .message__suggestions button:focus-visible { border-color: #b7c9e8; outline: none; }
+.message--assistant .message__markdown { overflow-x: auto; }
 .message--user .message__content { color: #fff; background: var(--navy); border: 0; border-radius: 17px 17px 4px 17px; }
 
 .interaction-zone { width: min(760px, 72%); flex: 0 0 auto; margin: 0 auto; padding: 0 0 22px; }

@@ -24,6 +24,7 @@ class ServiceItemResponse(BaseModel):
     service_description: str | None
     supplier: str | None
     visit_date: datetime | None
+    in_attendance_date: datetime | None
     solution_text: str | None
     signature_status: str | None
     signed_pdf_url: str | None

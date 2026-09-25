@@ -1,28 +1,53 @@
 import { assistantImage } from '../assets/assistantImage'
 
 const navigation = [
-  ['⌂', 'Assistente'],
-  ['◌', 'Conversas'],
-  ['▥', 'Indicadores'],
-  ['⚙', 'Configurações'],
+  ['⌂', 'Assistente', 'assistant'],
+  ['◌', 'Conversas', 'conversations'],
+  ['▥', 'Indicadores', 'indicators'],
+  ['⚙', 'Configurações', 'settings'],
 ]
 
-export default function Sidebar({ onNewConversation, onOpenConversations, onGoHome, historyOpen, homeActive }) {
+export default function Sidebar({
+  activeSection,
+  onNewConversation,
+  onOpenConversations,
+  onGoAssistant,
+  onOpenIndicators,
+  historyOpen,
+}) {
   return (
     <aside className="sidebar">
       <div className="sidebar__avatar" aria-label="Assistente de Obras & Manutenções">
         <img src={assistantImage} alt="" />
       </div>
       <nav className="sidebar__nav" aria-label="Navegação principal">
-        {navigation.map(([icon, label], index) => {
-          const isActive = index === 0 ? homeActive : index === 1 ? historyOpen : false
-          const onClick = index === 0 ? onGoHome : index === 1 ? onOpenConversations : undefined
+        {navigation.map(([icon, label, section]) => {
+          const isActive = section === 'conversations'
+            ? historyOpen
+            : !historyOpen && activeSection === section
+
+          const onClick = section === 'assistant'
+            ? onGoAssistant
+            : section === 'conversations'
+              ? onOpenConversations
+              : section === 'indicators'
+                ? onOpenIndicators
+                : undefined
 
           return (
-          <button className={`nav-button ${isActive ? 'nav-button--active' : ''}`} key={label} type="button" title={label} aria-label={label} aria-current={isActive ? 'page' : undefined} data-history-toggle={index === 1 ? 'true' : undefined} onClick={onClick}>
-            <span aria-hidden="true">{icon}</span>
-            <small>{label}</small>
-          </button>
+            <button
+              className={`nav-button ${isActive ? 'nav-button--active' : ''}`}
+              key={label}
+              type="button"
+              title={label}
+              aria-label={label}
+              aria-current={isActive ? 'page' : undefined}
+              data-history-toggle={section === 'conversations' ? 'true' : undefined}
+              onClick={onClick}
+            >
+              <span aria-hidden="true">{icon}</span>
+              <small>{label}</small>
+            </button>
           )
         })}
       </nav>

@@ -52,6 +52,9 @@ class Service(Base):
 
     created_on: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # Data de início do atendimento (field 672479 da Tape)
+    in_attendance_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     # Data de conclusão do chamado (field 615596 da Tape)
     completion_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

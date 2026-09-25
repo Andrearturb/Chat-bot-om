@@ -68,6 +68,7 @@ def listar_servicos(db: Session = Depends(get_db)) -> ServiceListResponse:
             service_description=service.service_description,
             supplier=service.supplier,
             visit_date=service.visit_date,
+            in_attendance_date=service.in_attendance_date,
             solution_text=service.solution_text,
             signature_status=service.signature_status,
             signed_pdf_url=service.signed_pdf_url,

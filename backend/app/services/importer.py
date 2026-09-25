@@ -48,6 +48,7 @@ CAMPOS_SINCRONIZADOS: tuple[str, ...] = (
     "service_description",
     "supplier",
     "visit_date",
+    "in_attendance_date",
     "solution_text",
     "signature_status",
     "signed_pdf_url",
@@ -403,6 +404,13 @@ def extrair_campos_negocio(linha: dict[str, object]) -> dict[str, Any]:
         ),
         "supplier": supplier,
         "visit_date": visit_date,
+        "in_attendance_date": converter_data(
+            obter_valor_campo(
+                linha,
+                "in_attendance_date",
+                obter_field_id_por_alias("in_attendance_date"),
+            )
+        ),
         "solution_text": normalizar_texto(
             obter_valor_campo(linha, "solution_text", obter_field_id_por_alias("solution_text"))
         ),

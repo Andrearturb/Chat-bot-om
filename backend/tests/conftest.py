@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
 from app.models.service import Service  # noqa: F401 — garante criação da tabela
@@ -23,6 +24,7 @@ def db() -> Session:
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     Base.metadata.create_all(engine)
     SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -56,6 +58,7 @@ def make_linha(
     praca: str | None = "Nordeste",
     supplier: str | None = None,
     visit_date: str | None = None,
+    in_attendance_date: str | None = None,
     service_description: str | None = "Descrição padrão",
     solution_text: str | None = None,
     signature_status: str | None = None,
@@ -75,6 +78,7 @@ def make_linha(
             "service_description":  {"field_id": 638539, "label": "Descrição do Serviço",          "value": service_description},
             "supplier":             {"field_id": 603575, "label": "Fornecedor",                    "value": supplier},
             "visit_date":           {"field_id": 622874, "label": "Data da Visita",                "value": visit_date},
+            "in_attendance_date":   {"field_id": 672479, "label": "data_inicio_atendimento",        "value": in_attendance_date},
             "solution_text":        {"field_id": 623224, "label": "Solução",                       "value": solution_text},
             "raw_signature":        {"field_id": 645992, "label": "Status da Assinatura",          "value": None},
             "requester":            {"field_id": 580436, "label": "Requisitante",                  "value": requester},

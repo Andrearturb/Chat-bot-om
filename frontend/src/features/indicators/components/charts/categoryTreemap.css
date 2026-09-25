@@ -1,0 +1,117 @@
+.indicators-page .chart-card--treemap {
+  background: #ffffff;
+}
+
+.indicators-page .treemap-shell {
+  margin-top: 16px;
+  width: 100%;
+  min-height: 580px;
+  padding: 0;
+  border: 1px solid rgba(5, 56, 98, 0.1);
+  border-radius: 28px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(248, 251, 252, 0.96), #ffffff 42%),
+    #ffffff;
+}
+
+.indicators-page .treemap-shell .recharts-wrapper {
+  overflow: visible;
+}
+
+.indicators-page .chart-card--treemap .recharts-tooltip-wrapper {
+  outline: none !important;
+  z-index: 10;
+}
+
+.indicators-page .chart-card--treemap .recharts-responsive-container {
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+.indicators-page .chart-card--treemap svg text {
+  user-select: none;
+}
+
+.indicators-page .chart-card--treemap svg rect {
+  transition:
+    opacity 0.18s ease,
+    filter 0.18s ease;
+}
+
+.indicators-page .chart-card--treemap svg g:hover rect {
+  filter: brightness(0.98);
+}
+
+.indicators-page .treemap-legendless-note {
+  margin-top: 14px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.indicators-page .chart-card--treemap svg g {
+  isolation: isolate;
+}
+
+.indicators-page .category-treemap-tooltip {
+  min-width: 260px;
+  max-width: 340px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #082b5b;
+  color: #ffffff;
+  box-shadow: 0 18px 38px rgba(5, 16, 35, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.indicators-page .category-treemap-tooltip__title {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #ffffff;
+}
+
+.indicators-page .category-treemap-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 18px;
+  padding: 5px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.indicators-page .category-treemap-tooltip__row span {
+  color: rgba(255, 255, 255, 0.76);
+  font-weight: 500;
+}
+
+.indicators-page .category-treemap-tooltip__row strong {
+  color: #ffffff;
+  font-weight: 800;
+  text-align: right;
+}
+
+.indicators-page .category-treemap-tooltip__value--primary {
+  color: #21d6b2 !important;
+}
+
+@media (max-width: 900px) {
+  .indicators-page .treemap-shell {
+    min-height: 520px;
+    padding: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .indicators-page .treemap-shell {
+    min-height: 460px;
+    padding: 0;
+    border-radius: 20px;
+  }
+
+  .indicators-page .category-treemap-tooltip {
+    min-width: 220px;
+  }
+}

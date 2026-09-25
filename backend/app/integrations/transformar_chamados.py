@@ -113,6 +113,10 @@ FIELD_ALIASES: dict[str, dict[str, Any]] = {
         "field_ids": [622874],
         "labels": ["Data da Visita"],
     },
+    "in_attendance_date": {
+        "field_ids": [672479],
+        "labels": ["data_inicio_atendimento", "Data início atendimento", "Data inicio atendimento"],
+    },
     "solution_text": {
         "field_ids": [623224],
         "labels": ["Solução", "Solucao"],

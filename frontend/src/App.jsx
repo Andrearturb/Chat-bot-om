@@ -6,6 +6,7 @@ import ConversationHistory from './components/ConversationHistory'
 import HeroAssistant from './components/HeroAssistant'
 import Sidebar from './components/Sidebar'
 import SuggestionChips from './components/SuggestionChips'
+import IndicatorsPage from './features/indicators/IndicatorsPage'
 
 const WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL?.trim()
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL?.trim()?.replace(/\/$/, '')
@@ -143,6 +144,7 @@ function App() {
   const [thinkingStartedAt, setThinkingStartedAt] = useState(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [serviceStatus, setServiceStatus] = useState('checking')
+  const [activeSection, setActiveSection] = useState('assistant')
   const requestControllerRef = useRef(null)
 
   const { conversations, activeConversationId } = conversationStore
@@ -226,14 +228,17 @@ function App() {
     }))
     setPrompt('')
     setHistoryOpen(false)
+    setActiveSection('assistant')
   }
 
-  function goToAssistantHome() {
-    abortCurrentRequest()
-    setDraftConversation(createDraftConversation())
-    setConversationStore((current) => ({ ...current, activeConversationId: null }))
-    setPrompt('')
+  function goToAssistant() {
     setHistoryOpen(false)
+    setActiveSection('assistant')
+  }
+
+  function openIndicators() {
+    setHistoryOpen(false)
+    setActiveSection('indicators')
   }
 
   function selectConversation(conversationId) {
@@ -242,6 +247,7 @@ function App() {
     setDraftConversation(createDraftConversation())
     setConversationStore((current) => ({ ...current, activeConversationId: conversationId }))
     setHistoryOpen(false)
+    setActiveSection('assistant')
   }
 
   function deleteConversation(conversationId) {
@@ -377,11 +383,12 @@ function App() {
       <div className="ambient-glow ambient-glow--yellow" />
       <div className="app-panel">
         <Sidebar
+          activeSection={activeSection}
           onNewConversation={createNewConversation}
           onOpenConversations={() => setHistoryOpen((current) => !current)}
-          onGoHome={goToAssistantHome}
+          onGoAssistant={goToAssistant}
+          onOpenIndicators={openIndicators}
           historyOpen={historyOpen}
-          homeActive={!active && !historyOpen}
         />
         {historyOpen && (
           <ConversationHistory
@@ -393,24 +400,31 @@ function App() {
             onClose={() => setHistoryOpen(false)}
           />
         )}
-        <div className={`workspace ${active ? 'workspace--active' : ''}`}>
+        <div className={`workspace ${activeSection === 'assistant' && active ? 'workspace--active' : ''} ${activeSection === 'indicators' ? 'workspace--indicators' : ''}`}>
           <header className="workspace-header">
             <div className="workspace-title"><span className="header-accent" /> Gentil Negócios <span>· Obras &amp; Manutenções</span></div>
             <div className="header-greeting"><span className="header-greeting__icon">♧</span><span><strong>Bom dia!</strong><small>Vamos construir resultados.</small></span></div>
-            {active && <button className="new-conversation" type="button" onClick={createNewConversation}>+ Nova conversa</button>}
+            {(active || activeSection === 'indicators') && <button className="new-conversation" type="button" onClick={createNewConversation}>+ Nova conversa</button>}
           </header>
-          <HeroAssistant active={active} />
-          <ChatArea
-            messages={messages}
-            active={active}
-            loading={loading}
-            thinkingStartedAt={thinkingStartedAt}
-            serviceStatus={serviceStatus}
-          />
-          <div className="interaction-zone">
-            {!active && <SuggestionChips onSelect={(selectedPrompt) => sendMessage(null, selectedPrompt)} active={active} />}
-            <ChatComposer value={prompt} onChange={setPrompt} onSubmit={sendMessage} loading={loading} />
-          </div>
+
+          {activeSection === 'assistant' ? (
+            <>
+              <HeroAssistant active={active} />
+              <ChatArea
+                messages={messages}
+                active={active}
+                loading={loading}
+                thinkingStartedAt={thinkingStartedAt}
+                serviceStatus={serviceStatus}
+              />
+              <div className="interaction-zone">
+                {!active && <SuggestionChips onSelect={(selectedPrompt) => sendMessage(null, selectedPrompt)} active={active} />}
+                <ChatComposer value={prompt} onChange={setPrompt} onSubmit={sendMessage} loading={loading} />
+              </div>
+            </>
+          ) : (
+            <IndicatorsPage />
+          )}
         </div>
       </div>
     </main>

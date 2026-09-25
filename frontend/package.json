@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:indicators": "node --test src/features/indicators/indicators.test.js"
   },
   "dependencies": {
     "@n8n/chat": "^1.38.5",
@@ -15,7 +16,8 @@
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "recharts": "^2.15.4"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",

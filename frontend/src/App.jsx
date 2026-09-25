@@ -8,6 +8,8 @@ import Sidebar from './components/Sidebar'
 import SuggestionChips from './components/SuggestionChips'
 
 const WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL?.trim()
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL?.trim()?.replace(/\/$/, '')
+const HEALTH_URL = BACKEND_URL ? `${BACKEND_URL}/health` : null
 const CONVERSATIONS_KEY = 'gentil-obras-conversations-v2'
 const CURRENT_CONVERSATION_KEY = 'gentil-obras-current-conversation-v1'
 const LEGACY_SESSION_KEY = 'gentil-obras-session-id'
@@ -140,6 +142,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [thinkingStartedAt, setThinkingStartedAt] = useState(null)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [serviceStatus, setServiceStatus] = useState('checking')
   const requestControllerRef = useRef(null)
 
   const { conversations, activeConversationId } = conversationStore
@@ -149,6 +152,43 @@ function App() {
 
   useEffect(() => {
     document.querySelector('.app-shell')?.scrollTo(0, 0)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function checkSystemHealth({ initial = false } = {}) {
+      if (!HEALTH_URL) {
+        if (!cancelled) setServiceStatus('error')
+        console.error('VITE_BACKEND_URL não configurada')
+        return
+      }
+
+      if (initial && !cancelled) setServiceStatus('checking')
+
+      try {
+        const response = await fetch(HEALTH_URL, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        })
+
+        if (cancelled) return
+        setServiceStatus(response.ok ? 'online' : 'error')
+      } catch (error) {
+        if (cancelled) return
+        setServiceStatus('offline')
+        console.warn('Não foi possível verificar a saúde do Gentileza:', error)
+      }
+    }
+
+    checkSystemHealth({ initial: true })
+    const interval = window.setInterval(() => checkSystemHealth(), 30000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
   }, [])
 
   useEffect(() => {
@@ -266,7 +306,9 @@ function App() {
 
     try {
       if (!WEBHOOK_URL) {
-        throw new Error('VITE_N8N_WEBHOOK_URL não configurada')
+        const configurationError = new Error('VITE_N8N_WEBHOOK_URL não configurada')
+        configurationError.kind = 'service'
+        throw configurationError
       }
 
       const response = await fetch(WEBHOOK_URL, {
@@ -275,7 +317,16 @@ function App() {
         signal: controller.signal,
         body: JSON.stringify({ action: 'sendMessage', sessionId: sessionIdAtSend, chatInput: content }),
       })
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+      if (!response.ok) {
+        setServiceStatus('error')
+        const serviceError = new Error(`HTTP ${response.status}`)
+        serviceError.kind = 'service'
+        throw serviceError
+      }
+
+      setServiceStatus('online')
+
       const data = await response.json()
       if (requestControllerRef.current?.controller !== controller) return
 
@@ -291,13 +342,21 @@ function App() {
       }))
     } catch (error) {
       if (error.name === 'AbortError' || requestControllerRef.current?.controller !== controller) return
+
+      const isServiceError = error.kind === 'service'
+      setServiceStatus(isServiceError ? 'error' : 'offline')
+
+      const errorMessage = isServiceError
+        ? 'O Gentileza está acessível, mas ocorreu um erro ao processar esta solicitação. Tente novamente em instantes.'
+        : 'Não consegui alcançar o serviço do Gentileza agora. Verifique a conexão ou a disponibilidade do n8n e tente novamente.'
+
       updateConversation(conversationIdAtSend, (conversation) => ({
         ...conversation,
         updatedAt: new Date().toISOString(),
         messages: [...conversation.messages, {
           id: `${Date.now()}-error`,
           role: 'assistant',
-          content: 'Não consegui conectar ao assistente agora. Verifique se o n8n está disponível e tente novamente.',
+          content: errorMessage,
           responseTime: Math.max(0, (performance.now() - startedAt) / 1000),
           isError: true,
         }],
@@ -346,6 +405,7 @@ function App() {
             active={active}
             loading={loading}
             thinkingStartedAt={thinkingStartedAt}
+            serviceStatus={serviceStatus}
           />
           <div className="interaction-zone">
             {!active && <SuggestionChips onSelect={(selectedPrompt) => sendMessage(null, selectedPrompt)} active={active} />}

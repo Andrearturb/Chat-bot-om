@@ -13,3 +13,4 @@ APP_VERSION = "0.1.0"
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 API_KEY = os.getenv("API_KEY", "")
+N8N_HEALTH_URL = os.getenv("N8N_HEALTH_URL", "http://n8n:5678/healthz/readiness")

@@ -173,6 +173,83 @@ def test_list_tem_limite_de_seguranca(structured_db):
     assert result["row_count"] == 5
 
 
+def test_list_limit_e_mais_recentes(structured_db):
+    result = execute_structured_query(
+        structured_db,
+        request(
+            "list",
+            list_limit=3,
+            sort_by="created_on",
+            sort_order="desc",
+        ),
+    )
+
+    assert [row["ticket"] for row in result["rows"]] == ["1005", "1003", "1002"]
+    assert result["row_count"] == 3
+    assert result["total_count"] == 5
+    assert result["list_limit"] == 3
+    assert result["sort_by"] == "created_on"
+    assert result["sort_order"] == "desc"
+    assert result["truncated"] is False
+
+
+def test_list_limit_e_mais_antigos(structured_db):
+    result = execute_structured_query(
+        structured_db,
+        request(
+            "list",
+            list_limit=2,
+            sort_by="created_on",
+            sort_order="asc",
+        ),
+    )
+
+    assert [row["ticket"] for row in result["rows"]] == ["1004", "1001"]
+    assert result["row_count"] == 2
+    assert result["total_count"] == 5
+    assert result["truncated"] is False
+
+
+def test_list_sort_por_data_de_conclusao(structured_db):
+    result = execute_structured_query(
+        structured_db,
+        request(
+            "list",
+            event="completed",
+            date_field="completion_date",
+            year=2026,
+            list_limit=1,
+            sort_by="completion_date",
+            sort_order="desc",
+        ),
+    )
+
+    assert [row["ticket"] for row in result["rows"]] == ["1003"]
+    assert result["total_count"] == 1
+
+
+def test_list_options_rejeitadas_fora_de_list():
+    with pytest.raises(StructuredQueryError, match="só podem ser usados"):
+        build_structured_query(
+            request(
+                "count",
+                list_limit=10,
+                sort_by="created_on",
+                sort_order="desc",
+            )
+        )
+
+
+def test_sort_order_exige_sort_by():
+    with pytest.raises(StructuredQueryError, match="sort_order exige sort_by"):
+        build_structured_query(request("list", sort_order="desc"))
+
+
+def test_sort_by_exige_sort_order():
+    with pytest.raises(StructuredQueryError, match="sort_by exige sort_order"):
+        build_structured_query(request("list", sort_by="created_on"))
+
+
 def comparison_request(dimension: str, items: list[dict], **state) -> StructuredQueryRequest:
     return StructuredQueryRequest(
         query_shape="comparison",

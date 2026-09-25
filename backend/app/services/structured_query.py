@@ -44,6 +44,12 @@ DATE_FIELDS = {
     "completion_date": Service.completion_date,
     "visit_date": Service.visit_date,
 }
+LIST_SORT_FIELDS = {
+    "created_on": Service.created_on,
+    "completion_date": Service.completion_date,
+    "visit_date": Service.visit_date,
+    "ticket": Service.ticket,
+}
 GROUP_FIELDS = {
     **TEXT_FIELDS,
     "status": Service.status,
@@ -177,6 +183,20 @@ def _validate_state(query_shape: str, state: StructuredQueryState) -> None:
 
     if query_shape == "ranking" and state.limit is None:
         raise StructuredQueryError("ranking exige limit.")
+
+    list_options = (state.list_limit, state.sort_by, state.sort_order)
+    if query_shape != "list" and any(value is not None for value in list_options):
+        raise StructuredQueryError(
+            "list_limit/sort_by/sort_order só podem ser usados quando query_shape=list."
+        )
+
+    if query_shape == "list":
+        if state.sort_by is not None and state.sort_by not in LIST_SORT_FIELDS:
+            raise StructuredQueryError(f"sort_by inválido: {state.sort_by}.")
+        if state.sort_order is not None and state.sort_by is None:
+            raise StructuredQueryError("sort_order exige sort_by.")
+        if state.sort_by is not None and state.sort_order is None:
+            raise StructuredQueryError("sort_by exige sort_order.")
 
     if state.start_date and state.end_date:
         if _parse_date(state.end_date, "end_date") < _parse_date(
@@ -419,9 +439,12 @@ def _state_for_comparison_item(
 ) -> StructuredQueryState:
     data = base_state.model_dump()
 
-    # Estrutura de group/ranking não participa de comparação de totais.
+    # Estrutura de group/ranking/list não participa de comparação de totais.
     data["group_by"] = None
     data["limit"] = None
+    data["list_limit"] = None
+    data["sort_by"] = None
+    data["sort_order"] = None
 
     if dimension == "period":
         data["year"] = item.year
@@ -954,6 +977,47 @@ def _execute_comparison(
     }
 
 
+def _list_ordering(state: StructuredQueryState) -> list[Any]:
+    """Retorna ordenação determinística para listagens.
+
+    Sem sort_by explícito preservamos o comportamento histórico (ticket ASC).
+    Quando o usuário pede recência/antiguidade, sort_by/sort_order vêm do estado.
+    Um segundo critério por ticket mantém a ordem estável em empates.
+    """
+
+    if state.sort_by is None:
+        return [asc(Service.ticket)]
+
+    column = LIST_SORT_FIELDS[state.sort_by]
+    order_expression = desc(column) if state.sort_order == "desc" else asc(column)
+
+    # Datas nulas não devem aparecer antes de datas válidas em consultas ordenadas.
+    if state.sort_by in DATE_FIELDS:
+        order_expression = order_expression.nullslast()
+
+    if state.sort_by == "ticket":
+        return [order_expression]
+
+    return [order_expression, asc(Service.ticket)]
+
+
+def _count_list_matches(
+    db: Session,
+    state: StructuredQueryState,
+    additional_predicate: Any | None = None,
+) -> int:
+    predicates = _build_predicates(state)
+    if additional_predicate is not None:
+        predicates.append(additional_predicate)
+
+    statement = select(func.count().label("total")).select_from(Service)
+    if predicates:
+        statement = statement.where(and_(*predicates))
+
+    value = db.execute(statement).scalar_one()
+    return int(value or 0)
+
+
 def build_structured_query(
     request: StructuredQueryRequest,
     additional_predicate: Any | None = None,
@@ -975,7 +1039,7 @@ def build_structured_query(
     if request.query_shape == "count":
         statement = select(func.count().label("total")).select_from(Service)
     elif request.query_shape == "list":
-        statement = select(*LIST_FIELDS).order_by(asc(Service.ticket))
+        statement = select(*LIST_FIELDS).order_by(*_list_ordering(state))
     else:
         group_column = GROUP_FIELDS[state.group_by]
         statement = select(group_column.label(state.group_by), func.count().label("total"))
@@ -985,7 +1049,10 @@ def build_structured_query(
         statement = statement.where(where_clause)
 
     if request.query_shape == "list":
-        statement = statement.limit(MAX_LIST_ROWS + 1)
+        if state.list_limit is not None:
+            statement = statement.limit(state.list_limit)
+        else:
+            statement = statement.limit(MAX_LIST_ROWS + 1)
     elif request.query_shape == "ranking":
         statement = statement.limit(state.limit)
     elif request.query_shape == "group" and state.limit is not None:
@@ -1023,6 +1090,14 @@ def execute_structured_query(
         response["resolved_selection"] = resolved_selection
         return response
 
+    total_count: int | None = None
+    if effective_request.query_shape == "list":
+        total_count = _count_list_matches(
+            db,
+            effective_request.state,
+            additional_predicate=scope_predicate,
+        )
+
     statement, is_list = build_structured_query(
         effective_request,
         additional_predicate=scope_predicate,
@@ -1030,7 +1105,12 @@ def execute_structured_query(
     result = db.execute(statement)
     columns = list(result.keys())
     raw_rows = [dict(row) for row in result.mappings().all()]
-    truncated = is_list and len(raw_rows) > MAX_LIST_ROWS
+
+    # `truncated` continua significando apenas que o limite de segurança de
+    # 200 registros foi atingido. Um list_limit pedido pelo usuário não é erro
+    # nem truncamento de segurança; o total completo fica em total_count.
+    uses_safety_limit = is_list and effective_request.state.list_limit is None
+    truncated = uses_safety_limit and len(raw_rows) > MAX_LIST_ROWS
     rows = raw_rows[:MAX_LIST_ROWS] if truncated else raw_rows
 
     return {
@@ -1040,6 +1120,10 @@ def execute_structured_query(
         "truncated": truncated,
         "columns": columns,
         "rows": rows,
+        "total_count": total_count,
+        "list_limit": effective_request.state.list_limit if is_list else None,
+        "sort_by": effective_request.state.sort_by if is_list else None,
+        "sort_order": effective_request.state.sort_order if is_list else None,
         "comparison": None,
         "breakdown": None,
         "driver_analysis": None,

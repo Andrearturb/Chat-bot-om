@@ -71,6 +71,7 @@ services:
         TAPE_SYNC_SCHEDULE_ENABLED: ${TAPE_SYNC_SCHEDULE_ENABLED:-true}
         TAPE_SYNC_INTERVAL_HOURS: ${TAPE_SYNC_INTERVAL_HOURS:-24}
         TAPE_SYNC_RUN_ON_STARTUP: ${TAPE_SYNC_RUN_ON_STARTUP:-false}
+        N8N_HEALTH_URL: ${N8N_HEALTH_URL:-http://n8n:5678/healthz/readiness}
         TZ: America/Fortaleza
 
       depends_on:
@@ -89,6 +90,7 @@ services:
 
       environment:
         VITE_N8N_WEBHOOK_URL: ${VITE_N8N_WEBHOOK_URL}
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:8040}
 
       ports:
         - "5173:5173"

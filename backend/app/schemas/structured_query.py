@@ -116,6 +116,12 @@ class StructuredQueryState(BaseModel):
     group_by: str | None = None
     limit: int | None = Field(default=None, ge=1, le=200)
 
+    # Opções estruturais específicas de listagens.
+    # `limit` continua reservado para ranking/group; listagens usam list_limit.
+    list_limit: int | None = Field(default=None, ge=1, le=200)
+    sort_by: Literal["created_on", "completion_date", "visit_date", "ticket"] | None = None
+    sort_order: Literal["asc", "desc"] | None = None
+
     @field_validator("statuses")
     @classmethod
     def reject_empty_statuses(cls, value: list[str] | None) -> list[str] | None:
@@ -285,6 +291,11 @@ class StructuredQueryResponse(BaseModel):
     truncated: bool
     columns: list[str]
     rows: list[dict[str, Any]]
+    # Metadados de listagem: total que atende aos filtros versus linhas exibidas.
+    total_count: int | None = None
+    list_limit: int | None = None
+    sort_by: str | None = None
+    sort_order: str | None = None
     comparison: ComparisonResult | None = None
     breakdown: list[ComparisonBreakdownRow] | None = None
     driver_analysis: ComparisonDriverAnalysis | None = None

@@ -7,7 +7,7 @@ import HeroAssistant from './components/HeroAssistant'
 import Sidebar from './components/Sidebar'
 import SuggestionChips from './components/SuggestionChips'
 
-const WEBHOOK_URL = 'http://localhost:5678/webhook/9db5ead4-d4ca-4f5c-a1b4-3969e60cb8df/chat'
+const WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL?.trim()
 const CONVERSATIONS_KEY = 'gentil-obras-conversations-v2'
 const CURRENT_CONVERSATION_KEY = 'gentil-obras-current-conversation-v1'
 const LEGACY_SESSION_KEY = 'gentil-obras-session-id'
@@ -265,6 +265,10 @@ function App() {
     requestControllerRef.current = { controller, conversationId: conversationIdAtSend }
 
     try {
+      if (!WEBHOOK_URL) {
+        throw new Error('VITE_N8N_WEBHOOK_URL não configurada')
+      }
+
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

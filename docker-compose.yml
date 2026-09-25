@@ -87,6 +87,9 @@ services:
       container_name: chatbot-frontend
       restart: unless-stopped
 
+      environment:
+        VITE_N8N_WEBHOOK_URL: ${VITE_N8N_WEBHOOK_URL}
+
       ports:
         - "5173:5173"
 

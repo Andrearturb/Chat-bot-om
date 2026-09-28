@@ -1,0 +1,14 @@
+PATCH - Configuracoes > Status do sistema
+
+Arquivos alterados/adicionados:
+- frontend/src/App.jsx
+- frontend/src/components/Sidebar.jsx
+- frontend/src/features/settings/SettingsModal.jsx
+- frontend/src/features/settings/settings.css
+- frontend/src/features/settings/api.js
+- backend/app/api/routes/health.py
+
+Depois de substituir os arquivos, na raiz do projeto execute:
+  docker compose up -d --build backend frontend
+
+Nao ha alteracao de banco de dados nem migracao.

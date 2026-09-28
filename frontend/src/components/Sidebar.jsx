@@ -13,7 +13,9 @@ export default function Sidebar({
   onOpenConversations,
   onGoAssistant,
   onOpenIndicators,
+  onOpenSettings,
   historyOpen,
+  settingsOpen,
 }) {
   return (
     <aside className="sidebar">
@@ -22,9 +24,13 @@ export default function Sidebar({
       </div>
       <nav className="sidebar__nav" aria-label="Navegação principal">
         {navigation.map(([icon, label, section]) => {
-          const isActive = section === 'conversations'
-            ? historyOpen
-            : !historyOpen && activeSection === section
+          const isActive = section === 'settings'
+            ? settingsOpen
+            : settingsOpen
+              ? false
+              : section === 'conversations'
+                ? historyOpen
+                : !historyOpen && activeSection === section
 
           const onClick = section === 'assistant'
             ? onGoAssistant
@@ -32,7 +38,9 @@ export default function Sidebar({
               ? onOpenConversations
               : section === 'indicators'
                 ? onOpenIndicators
-                : undefined
+                : section === 'settings'
+                  ? onOpenSettings
+                  : undefined
 
           return (
             <button

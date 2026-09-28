@@ -7,6 +7,7 @@ import HeroAssistant from './components/HeroAssistant'
 import Sidebar from './components/Sidebar'
 import SuggestionChips from './components/SuggestionChips'
 import IndicatorsPage from './features/indicators/IndicatorsPage'
+import SettingsModal from './features/settings/SettingsModal'
 
 const WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL?.trim()
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL?.trim()?.replace(/\/$/, '')
@@ -14,6 +15,9 @@ const HEALTH_URL = BACKEND_URL ? `${BACKEND_URL}/health` : null
 const CONVERSATIONS_KEY = 'gentil-obras-conversations-v2'
 const CURRENT_CONVERSATION_KEY = 'gentil-obras-current-conversation-v1'
 const LEGACY_SESSION_KEY = 'gentil-obras-session-id'
+const NAVIGATION_STATE_KEY = 'gentileza-navigation-v1'
+const VALID_SECTIONS = new Set(['assistant', 'indicators'])
+const VALID_INDICATORS = new Set(['home', 'performance', 'corrective', 'preventive', 'financial'])
 const GENTILEZA_GREETING = 'Olá! Eu me chamo Gentileza 👋 Como posso te ajudar com Obras & Manutenções hoje?'
 
 function newSessionId() {
@@ -130,6 +134,27 @@ function loadConversationStore() {
   return { version: 2, activeConversationId: null, conversations: [] }
 }
 
+function loadNavigationState() {
+  const fallback = { activeSection: 'assistant', activeIndicator: 'home', historyOpen: false }
+
+  try {
+    const saved = sessionStorage.getItem(NAVIGATION_STATE_KEY)
+    if (!saved) return fallback
+
+    const parsed = JSON.parse(saved)
+    if (!parsed || typeof parsed !== 'object') return fallback
+
+    return {
+      activeSection: VALID_SECTIONS.has(parsed.activeSection) ? parsed.activeSection : fallback.activeSection,
+      activeIndicator: VALID_INDICATORS.has(parsed.activeIndicator) ? parsed.activeIndicator : fallback.activeIndicator,
+      historyOpen: typeof parsed.historyOpen === 'boolean' ? parsed.historyOpen : fallback.historyOpen,
+    }
+  } catch (error) {
+    console.warn('Não foi possível restaurar a navegação da sessão:', error)
+    return fallback
+  }
+}
+
 function extractResponse(data) {
   if (typeof data === 'string') return data
   if (Array.isArray(data)) return extractResponse(data[0])
@@ -137,14 +162,17 @@ function extractResponse(data) {
 }
 
 function App() {
+  const [restoredNavigation] = useState(() => loadNavigationState())
   const [conversationStore, setConversationStore] = useState(() => loadConversationStore())
   const [draftConversation, setDraftConversation] = useState(() => createDraftConversation())
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
   const [thinkingStartedAt, setThinkingStartedAt] = useState(null)
-  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(restoredNavigation.historyOpen)
   const [serviceStatus, setServiceStatus] = useState('checking')
-  const [activeSection, setActiveSection] = useState('assistant')
+  const [activeSection, setActiveSection] = useState(restoredNavigation.activeSection)
+  const [activeIndicator, setActiveIndicator] = useState(restoredNavigation.activeIndicator)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const requestControllerRef = useRef(null)
 
   const { conversations, activeConversationId } = conversationStore
@@ -203,6 +231,18 @@ function App() {
     }
   }, [conversationStore])
 
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(NAVIGATION_STATE_KEY, JSON.stringify({
+        activeSection,
+        activeIndicator,
+        historyOpen,
+      }))
+    } catch (error) {
+      console.warn('Não foi possível salvar a navegação da sessão:', error)
+    }
+  }, [activeSection, activeIndicator, historyOpen])
+
   function updateConversation(conversationId, updater) {
     setConversationStore((current) => ({
       ...current,
@@ -232,12 +272,20 @@ function App() {
   }
 
   function goToAssistant() {
+    abortCurrentRequest()
+    setDraftConversation(createDraftConversation())
+    setConversationStore((current) => ({
+      ...current,
+      activeConversationId: null,
+    }))
+    setPrompt('')
     setHistoryOpen(false)
     setActiveSection('assistant')
   }
 
   function openIndicators() {
     setHistoryOpen(false)
+    setActiveIndicator('home')
     setActiveSection('indicators')
   }
 
@@ -388,7 +436,9 @@ function App() {
           onOpenConversations={() => setHistoryOpen((current) => !current)}
           onGoAssistant={goToAssistant}
           onOpenIndicators={openIndicators}
+          onOpenSettings={() => setSettingsOpen(true)}
           historyOpen={historyOpen}
+          settingsOpen={settingsOpen}
         />
         {historyOpen && (
           <ConversationHistory
@@ -423,10 +473,11 @@ function App() {
               </div>
             </>
           ) : (
-            <IndicatorsPage />
+            <IndicatorsPage activeIndicator={activeIndicator} onIndicatorChange={setActiveIndicator} />
           )}
         </div>
       </div>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </main>
   )
 }

@@ -78,6 +78,9 @@ services:
         db:
           condition: service_healthy
 
+      volumes:
+        - asset_documents_data:/app/storage/assets_documents
+
       ports:
         - "8040:8000"
     frontend:
@@ -103,3 +106,4 @@ volumes:
   n8n_data:
   chatbot_postgres_data:
   frontend_node_modules:
+  asset_documents_data:

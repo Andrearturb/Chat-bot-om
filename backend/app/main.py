@@ -20,6 +20,7 @@ from app.api.routes.health import router as health_router
 from app.api.routes.imports import router as imports_router
 from app.api.routes.services import router as services_router
 from app.api.routes.chatbot import router as chatbot_router
+from app.api.routes.assets import router as assets_router
 from app.core.config import APP_NAME, APP_VERSION
 from app.db.base import Base
 from app.db.session import engine
@@ -28,6 +29,11 @@ from app.tasks.tape_scheduler import criar_agendador_tape
 # Importa os models para que o SQLAlchemy reconheça as tabelas antes do create_all
 from app.models.service import Service  # noqa: F401
 from app.models.upload import Upload    # noqa: F401
+from app.models.asset_store import AssetStore  # noqa: F401
+from app.models.climate_asset import ClimateAsset  # noqa: F401
+from app.models.fire_asset import FireAsset  # noqa: F401
+from app.models.store_document import StoreDocument  # noqa: F401
+from app.models.water_asset import WaterAsset  # noqa: F401
 
 # Instância principal da aplicação
 app = FastAPI(
@@ -72,6 +78,15 @@ def on_startup() -> None:
     """
     Base.metadata.create_all(bind=engine)
 
+    # Habilita extensão unaccent para buscas sem acento na Central de Ativos.
+    try:
+        from sqlalchemy import text as sa_text
+        with engine.connect() as conn:
+            conn.execute(sa_text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+            conn.commit()
+    except Exception:
+        pass  # Não impede o start se a extensão não puder ser criada.
+
     if _scheduler_habilitado():
         app.state.tape_scheduler = criar_agendador_tape()
         app.state.tape_scheduler.start()
@@ -91,3 +106,4 @@ app.include_router(health_router)
 app.include_router(imports_router)
 app.include_router(services_router)
 app.include_router(chatbot_router)
+app.include_router(assets_router)

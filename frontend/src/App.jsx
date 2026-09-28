@@ -7,6 +7,7 @@ import HeroAssistant from './components/HeroAssistant'
 import Sidebar from './components/Sidebar'
 import SuggestionChips from './components/SuggestionChips'
 import IndicatorsPage from './features/indicators/IndicatorsPage'
+import AssetsPage from './features/assets/AssetsPage'
 import SettingsModal from './features/settings/SettingsModal'
 
 const WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL?.trim()
@@ -16,7 +17,7 @@ const CONVERSATIONS_KEY = 'gentil-obras-conversations-v2'
 const CURRENT_CONVERSATION_KEY = 'gentil-obras-current-conversation-v1'
 const LEGACY_SESSION_KEY = 'gentil-obras-session-id'
 const NAVIGATION_STATE_KEY = 'gentileza-navigation-v1'
-const VALID_SECTIONS = new Set(['assistant', 'indicators'])
+const VALID_SECTIONS = new Set(['assistant', 'indicators', 'assets'])
 const VALID_INDICATORS = new Set(['home', 'performance', 'corrective', 'preventive', 'financial'])
 const GENTILEZA_GREETING = 'Olá! Eu me chamo Gentileza 👋 Como posso te ajudar com Obras & Manutenções hoje?'
 
@@ -289,6 +290,11 @@ function App() {
     setActiveSection('indicators')
   }
 
+  function openAssets() {
+    setHistoryOpen(false)
+    setActiveSection('assets')
+  }
+
   function selectConversation(conversationId) {
     abortCurrentRequest()
     setPrompt('')
@@ -436,6 +442,7 @@ function App() {
           onOpenConversations={() => setHistoryOpen((current) => !current)}
           onGoAssistant={goToAssistant}
           onOpenIndicators={openIndicators}
+          onOpenAssets={openAssets}
           onOpenSettings={() => setSettingsOpen(true)}
           historyOpen={historyOpen}
           settingsOpen={settingsOpen}
@@ -450,11 +457,11 @@ function App() {
             onClose={() => setHistoryOpen(false)}
           />
         )}
-        <div className={`workspace ${activeSection === 'assistant' && active ? 'workspace--active' : ''} ${activeSection === 'indicators' ? 'workspace--indicators' : ''}`}>
+        <div className={`workspace ${activeSection === 'assistant' && active ? 'workspace--active' : ''} ${activeSection === 'indicators' ? 'workspace--indicators' : ''} ${activeSection === 'assets' ? 'workspace--assets' : ''}`}>
           <header className="workspace-header">
             <div className="workspace-title"><span className="header-accent" /> Gentil Negócios <span>· Obras &amp; Manutenções</span></div>
             <div className="header-greeting"><span className="header-greeting__icon">♧</span><span><strong>Bom dia!</strong><small>Vamos construir resultados.</small></span></div>
-            {(active || activeSection === 'indicators') && <button className="new-conversation" type="button" onClick={createNewConversation}>+ Nova conversa</button>}
+            {(active || activeSection === 'indicators' || activeSection === 'assets') && <button className="new-conversation" type="button" onClick={createNewConversation}>+ Nova conversa</button>}
           </header>
 
           {activeSection === 'assistant' ? (
@@ -472,8 +479,10 @@ function App() {
                 <ChatComposer value={prompt} onChange={setPrompt} onSubmit={sendMessage} loading={loading} />
               </div>
             </>
-          ) : (
+          ) : activeSection === 'indicators' ? (
             <IndicatorsPage activeIndicator={activeIndicator} onIndicatorChange={setActiveIndicator} />
+          ) : (
+            <AssetsPage />
           )}
         </div>
       </div>

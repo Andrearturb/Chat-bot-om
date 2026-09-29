@@ -1,0 +1,18 @@
+.audit-filters {
+  display: flex; gap: .75rem; padding: 1rem 1.5rem;
+  flex-wrap: wrap; border-bottom: 1px solid #2d3148;
+}
+.audit-input {
+  flex: 1; min-width: 160px; background: #161824; border: 1px solid #2d3148;
+  border-radius: 8px; color: #c0ccd8; padding: .5rem .75rem; font-size: .85rem;
+}
+.audit-input:focus { outline: none; border-color: #4f6ef7; }
+.audit-action {
+  display: inline-block; padding: .15rem .5rem; background: rgba(79,110,247,.1);
+  border-radius: 4px; font-size: .78rem; color: #7b9ef7;
+}
+.audit-pagination {
+  display: flex; align-items: center; justify-content: center;
+  gap: 1rem; padding: 1rem; font-size: .85rem; color: #8b9cb0;
+  border-top: 1px solid #2d3148;
+}

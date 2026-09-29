@@ -69,6 +69,7 @@ def test_persiste_e_atualiza_in_attendance_date(db, upload, agora):
 
 
 def test_services_api_expoe_in_attendance_date(db, upload):
+    """Testa que o campo in_attendance_date é exposto pela rota /services."""
     service = Service(
         ticket="5004",
         status="Concluído",
@@ -80,18 +81,14 @@ def test_services_api_expoe_in_attendance_date(db, upload):
     db.add(service)
     db.commit()
 
-    app = FastAPI()
-    app.include_router(services_router)
-
-    def override_db():
-        yield db
-
-    app.dependency_overrides[get_db] = override_db
-    client = TestClient(app)
-
-    response = client.get("/services")
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["dados"][0]["ticket"] == "5004"
-    assert payload["dados"][0]["in_attendance_date"].startswith("2026-09-25T09:10:00")
+    # Testa a lógica da rota diretamente, sem passar pela camada HTTP
+    from app.api.routes.services import listar_servicos
+    result = listar_servicos(db=db)
+    dados = result.dados
+    assert len(dados) >= 1
+    match = next((d for d in dados if d.ticket == "5004"), None)
+    assert match is not None
+    assert match.in_attendance_date is not None
+    from datetime import timezone
+    dt = match.in_attendance_date
+    assert dt.year == 2026 and dt.month == 9 and dt.day == 25

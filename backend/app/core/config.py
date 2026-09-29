@@ -1,17 +1,69 @@
 """
-Configurações principais da aplicação.
+Configuração centralizada da aplicação.
+
+Todas as variáveis de ambiente são lidas aqui. Nenhum outro módulo deve
+importar os.getenv() diretamente para valores de configuração.
 """
 
 import os
-
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# ─── aplicação ────────────────────────────────────────────────────────────────
 APP_NAME = "CHAT Bot APP O&M"
 APP_VERSION = "0.1.0"
+APP_ENV = os.getenv("APP_ENV", "development")
 
+# ─── banco de dados principal ─────────────────────────────────────────────────
 DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+# ─── chave API legacy (scheduler interno / QA traces) ─────────────────────────
 API_KEY = os.getenv("API_KEY", "")
+
+# ─── chave interna server-to-server (n8n → backend) ──────────────────────────
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
+
+# ─── Tape / scheduler ─────────────────────────────────────────────────────────
+TAPE_API_TOKEN = os.getenv("TAPE_API_TOKEN", "")
+
+# ─── n8n ──────────────────────────────────────────────────────────────────────
 N8N_HEALTH_URL = os.getenv("N8N_HEALTH_URL", "http://n8n:5678/healthz/readiness")
+# Webhook do assistente — NUNCA exposto ao navegador
+N8N_CHAT_WEBHOOK_URL = os.getenv("N8N_CHAT_WEBHOOK_URL", "")
+# Token opcional para autenticar chamadas backend → n8n
+N8N_GATEWAY_TOKEN = os.getenv("N8N_GATEWAY_TOKEN", "")
+
+# ─── storage de documentos ────────────────────────────────────────────────────
 ASSET_DOCUMENTS_DIR = os.getenv("ASSET_DOCUMENTS_DIR", "/app/storage/assets_documents")
+
+# ─── OIDC / Keycloak ──────────────────────────────────────────────────────────
+OIDC_ISSUER_URL = os.getenv("OIDC_ISSUER_URL", "")
+OIDC_CLIENT_ID = os.getenv("OIDC_CLIENT_ID", "")
+OIDC_CLIENT_SECRET = os.getenv("OIDC_CLIENT_SECRET", "")
+OIDC_REDIRECT_URI = os.getenv("OIDC_REDIRECT_URI", "http://localhost:5173/auth/callback")
+OIDC_POST_LOGOUT_REDIRECT_URI = os.getenv("OIDC_POST_LOGOUT_REDIRECT_URI", "http://localhost:5173")
+
+# ─── sessão ───────────────────────────────────────────────────────────────────
+SESSION_SECRET = os.getenv("SESSION_SECRET", "")
+SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "om_session")
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").strip().lower() in {"1", "true", "yes"}
+SESSION_IDLE_TIMEOUT_MINUTES = int(os.getenv("SESSION_IDLE_TIMEOUT_MINUTES", "30"))
+SESSION_ABSOLUTE_TIMEOUT_HOURS = int(os.getenv("SESSION_ABSOLUTE_TIMEOUT_HOURS", "8"))
+
+# ─── CORS ─────────────────────────────────────────────────────────────────────
+_raw_origins = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+FRONTEND_ORIGINS: list[str] = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
+# ─── bootstrap ────────────────────────────────────────────────────────────────
+DEV_ADMIN_EMAIL = os.getenv("DEV_ADMIN_EMAIL", "").strip().lower()
+_CONFIGURED_BOOTSTRAP_ADMIN_EMAIL = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
+# Em desenvolvimento, o usuário DEV configurado é a referência de bootstrap.
+# Isso evita divergência quando DEV_ADMIN_EMAIL é alterado e o .env ainda
+# conserva o valor padrão antigo de BOOTSTRAP_ADMIN_EMAIL. Em produção, vale
+# exclusivamente BOOTSTRAP_ADMIN_EMAIL.
+BOOTSTRAP_ADMIN_EMAIL = (
+    DEV_ADMIN_EMAIL
+    if APP_ENV.strip().lower() == "development" and DEV_ADMIN_EMAIL
+    else _CONFIGURED_BOOTSTRAP_ADMIN_EMAIL
+)

@@ -261,3 +261,19 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
   .app-panel::after { right: auto; left: 78px; bottom: 7px; font-size: 8px; }
   .conversation-history { left: 62px; width: calc(100vw - 62px); max-width: 350px; }
 }
+
+/* ── Auth loading ─────────────────────────────────────────────────────────────*/
+.auth-loading {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100dvh; background: #0f1117; color: #8b9cb0;
+  font-size: 1rem; letter-spacing: .05em;
+}
+/* ── Permission denied ───────────────────────────────────────────────────────*/
+.permission-denied {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; color: #8b9cb0; font-size: .95rem;
+}
+/* ── Header actions ──────────────────────────────────────────────────────────*/
+.header-actions {
+  display: flex; align-items: center; gap: .75rem; margin-left: auto;
+}

@@ -30,7 +30,7 @@ A navegação usa estado local no `App.jsx` (`assistant` / `indicators`). O esta
 O dashboard não usa upload de Excel. Ele consulta automaticamente:
 
 ```text
-GET ${VITE_BACKEND_URL}/services
+GET /services
 ```
 
 A rota já existente foi reaproveitada. Nenhum endpoint duplicado de BI foi criado.

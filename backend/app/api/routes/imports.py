@@ -1,13 +1,5 @@
 """
-Rotas relacionadas à importação de dados.
-
-Este módulo define as rotas responsáveis por:
-- sincronizar os dados diretamente da Tape API;
-- receber dados estruturados em JSON;
-- executar a importação dos dados;
-- devolver um resumo do processo.
-
-A importação é protegida por API Key.
+POST /imports/tape — requer x-api-key E sync.tape
 """
 
 import logging
@@ -15,9 +7,11 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import verificar_api_key
+from app.api.dependencies import get_current_user, require_permission, verificar_api_key
 from app.db.session import get_db
+from app.models.auth import AppUser
 from app.schemas.upload import UploadResponse
+from app.services.auth import record_audit
 from app.services.importer import importar_servicos_tape
 
 router = APIRouter(prefix="/imports", tags=["Imports"])
@@ -28,38 +22,23 @@ logger = logging.getLogger(__name__)
     "/tape",
     response_model=UploadResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(verificar_api_key)],
+    dependencies=[Depends(verificar_api_key), Depends(require_permission("sync.tape"))],
 )
 def sincronizar_tape(
     db: Session = Depends(get_db),
-    app_id: int = Query(57531, description="ID do app na Tape"),
+    user: AppUser = Depends(get_current_user),
+    app_id: int = Query(57531),
     limit: int = Query(100, ge=1, le=500),
 ) -> UploadResponse:
-    """
-    Sincroniza os serviços diretamente da Tape API e persiste no banco.
-    """
-
     try:
-        resultado = importar_servicos_tape(
-            db=db,
-            app_id=app_id,
-            limit=limit,
-        )
-
+        resultado = importar_servicos_tape(db=db, app_id=app_id, limit=limit)
+        record_audit(db, user_id=user.id, action="SYNC_TAPE",
+                     entity_type="upload", new_values={"total_rows": resultado.get("total_rows")})
+        db.commit()
         return UploadResponse(**resultado)
-
     except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(error),
-        ) from error
-
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
     except Exception as error:
-        logger.exception("Erro ao sincronizar dados da Tape")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao sincronizar: {type(error).__name__}: {error}",
-        ) from error
-
-
-# The JSON import endpoint was removed in favor of direct Tape synchronization.
+        logger.exception("Erro ao sincronizar Tape")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Erro ao sincronizar: {type(error).__name__}: {error}") from error

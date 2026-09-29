@@ -1,109 +1,215 @@
 services:
 
-    n8n:
-      image: docker.n8n.io/n8nio/n8n
-      container_name: n8n
+  # ── Banco de dados principal ─────────────────────────────────────────────────
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?defina POSTGRES_DB no .env}
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+    volumes:
+      - chatbot_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
-      ports:
-        - "5678:5678"
-      
-      environment:
-       - TZ=America/Fortaleza
-       - GENERIC_TIMEZONE=America/Fortaleza
-       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+  # ── Banco de dados do Keycloak (isolado) ─────────────────────────────────────
+  keycloak-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB:-keycloak}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?defina KEYCLOAK_DB_PASSWORD no .env}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER:-keycloak} -d $${POSTGRES_DB:-keycloak}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
-      volumes:
+  # ── Keycloak DEV (versão pinada) ─────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.5
+    restart: unless-stopped
+    container_name: keycloak-dev
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?defina KEYCLOAK_ADMIN_PASSWORD no .env}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB:-keycloak}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      # Garante que o "iss" nos tokens JWT seja sempre localhost:8081
+      # (o que o browser vê), mesmo que o container use keycloak:8080 internamente.
+      KC_HOSTNAME_URL: "http://localhost:8081"
+      KC_HOSTNAME_ADMIN_URL: "http://localhost:8081"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_PORT: 8080
+      KC_PROXY: "edge"
+      # Substituição de placeholders no realm-export.json
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?defina OIDC_CLIENT_SECRET no .env}
+      DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL:-admin.om@local}
+      DEV_ANALYST_EMAIL: ${DEV_ANALYST_EMAIL:-analista.om@local}
+      DEV_MANAGER_EMAIL: ${DEV_MANAGER_EMAIL:-gerente.om@local}
+      DEV_DIRECTOR_EMAIL: ${DEV_DIRECTOR_EMAIL:-diretor.om@local}
+      DEV_GUEST_EMAIL: ${DEV_GUEST_EMAIL:-convidado.om@local}
+      DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD:?defina DEV_ADMIN_PASSWORD no .env}
+      DEV_ANALYST_PASSWORD: ${DEV_ANALYST_PASSWORD:?defina DEV_ANALYST_PASSWORD no .env}
+      DEV_MANAGER_PASSWORD: ${DEV_MANAGER_PASSWORD:?defina DEV_MANAGER_PASSWORD no .env}
+      DEV_DIRECTOR_PASSWORD: ${DEV_DIRECTOR_PASSWORD:?defina DEV_DIRECTOR_PASSWORD no .env}
+      DEV_GUEST_PASSWORD: ${DEV_GUEST_PASSWORD:?defina DEV_GUEST_PASSWORD no .env}
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
 
-        - n8n_data:/home/node/.n8n
-    qa:
-      build:
-        context: .
-        dockerfile: qa/Dockerfile
-      profiles:
-        - qa
-      environment:
-        DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-        QA_N8N_WEBHOOK_URL: http://n8n:5678/webhook/9db5ead4-d4ca-4f5c-a1b4-3969e60cb8df/chat
-        QA_BACKEND_URL: http://backend:8000
-        API_KEY: ${API_KEY}
-      depends_on:
-        db:
-          condition: service_healthy
-        backend:
-          condition: service_started
-        n8n:
-          condition: service_started
-      volumes:
+  # Sincroniza usuários/client DEV mesmo quando o realm já existe no volume.
+  keycloak-bootstrap:
+    image: quay.io/keycloak/keycloak:26.2.5
+    restart: "no"
+    entrypoint: ["/bin/sh", "/opt/keycloak/bootstrap-dev.sh"]
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_REALM: gentil-dev
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?defina KEYCLOAK_ADMIN_PASSWORD no .env}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-chat-bot-om-bff}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?defina OIDC_CLIENT_SECRET no .env}
+      DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL:-admin.om@local}
+      DEV_ANALYST_EMAIL: ${DEV_ANALYST_EMAIL:-analista.om@local}
+      DEV_MANAGER_EMAIL: ${DEV_MANAGER_EMAIL:-gerente.om@local}
+      DEV_DIRECTOR_EMAIL: ${DEV_DIRECTOR_EMAIL:-diretor.om@local}
+      DEV_GUEST_EMAIL: ${DEV_GUEST_EMAIL:-convidado.om@local}
+      DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD:?defina DEV_ADMIN_PASSWORD no .env}
+      DEV_ANALYST_PASSWORD: ${DEV_ANALYST_PASSWORD:?defina DEV_ANALYST_PASSWORD no .env}
+      DEV_MANAGER_PASSWORD: ${DEV_MANAGER_PASSWORD:?defina DEV_MANAGER_PASSWORD no .env}
+      DEV_DIRECTOR_PASSWORD: ${DEV_DIRECTOR_PASSWORD:?defina DEV_DIRECTOR_PASSWORD no .env}
+      DEV_GUEST_PASSWORD: ${DEV_GUEST_PASSWORD:?defina DEV_GUEST_PASSWORD no .env}
+    volumes:
+      - ./keycloak/bootstrap-dev.sh:/opt/keycloak/bootstrap-dev.sh:ro
+    depends_on:
+      keycloak:
+        condition: service_started
+
+  # ── Backend (FastAPI) ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chatbot-backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      API_KEY: ${API_KEY}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?defina INTERNAL_API_KEY no .env}
+      TAPE_API_TOKEN: ${TAPE_API_TOKEN}
+      TAPE_SYNC_SCHEDULE_ENABLED: ${TAPE_SYNC_SCHEDULE_ENABLED:-true}
+      TAPE_SYNC_INTERVAL_HOURS: ${TAPE_SYNC_INTERVAL_HOURS:-24}
+      TAPE_SYNC_RUN_ON_STARTUP: ${TAPE_SYNC_RUN_ON_STARTUP:-false}
+      N8N_HEALTH_URL: ${N8N_HEALTH_URL:-http://n8n:5678/healthz/readiness}
+      N8N_CHAT_WEBHOOK_URL: ${N8N_CHAT_WEBHOOK_URL:-http://n8n:5678/webhook/9db5ead4-d4ca-4f5c-a1b4-3969e60cb8df/chat}
+      N8N_GATEWAY_TOKEN: ${N8N_GATEWAY_TOKEN:-}
+      # OIDC — usa localhost:8081 (mesmo issuer que o Keycloak coloca nos tokens)
+      # O backend resolve via extra_hosts: localhost → host-gateway
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-http://localhost:8081/realms/gentil-dev}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-chat-bot-om-bff}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-http://localhost:5173/auth/callback}
+      OIDC_POST_LOGOUT_REDIRECT_URI: ${OIDC_POST_LOGOUT_REDIRECT_URI:-http://localhost:5173}
+      SESSION_SECRET: ${SESSION_SECRET:?defina SESSION_SECRET no .env}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_IDLE_TIMEOUT_MINUTES: ${SESSION_IDLE_TIMEOUT_MINUTES:-30}
+      SESSION_ABSOLUTE_TIMEOUT_HOURS: ${SESSION_ABSOLUTE_TIMEOUT_HOURS:-8}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://frontend:5173}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL:-admin.om@local}
+      TZ: America/Fortaleza
+    depends_on:
+      db:
+        condition: service_healthy
+      keycloak-bootstrap:
+        condition: service_completed_successfully
+    volumes:
+      - asset_documents_data:/app/storage/assets_documents
+    ports:
+      - "127.0.0.1:8040:8000"
+    # Permite que o container resolva "localhost" como o host Docker
+    # para alcançar o Keycloak em localhost:8081
+    extra_hosts:
+      - "localhost:host-gateway"
+
+  # ── Frontend (React + Vite) ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chatbot-frontend
+    restart: unless-stopped
+    environment:
+      # Proxy Vite interno aponta para o serviço backend pelo hostname Docker
+      BACKEND_TARGET: http://backend:8000
+      # VITE_N8N_WEBHOOK_URL removido — frontend não chama n8n diretamente
+    ports:
+      - "127.0.0.1:5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+  # ── n8n ──────────────────────────────────────────────────────────────────────
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - TZ=America/Fortaleza
+      - GENERIC_TIMEZONE=America/Fortaleza
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  # ── QA (profile opcional) ────────────────────────────────────────────────────
+  qa:
+    build:
+      context: .
+      dockerfile: qa/Dockerfile
+    profiles: [qa]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      QA_N8N_WEBHOOK_URL: http://n8n:5678/webhook/9db5ead4-d4ca-4f5c-a1b4-3969e60cb8df/chat
+      QA_BACKEND_URL: http://backend:8000
+      API_KEY: ${API_KEY}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+      n8n:
+        condition: service_started
+    volumes:
       - ./qa/reports:/app/qa/reports
-    db:
-      image: postgres:16
-      restart: unless-stopped
 
-      environment:
-          POSTGRES_DB: ${POSTGRES_DB:?defina POSTFRES_DB no arquivo .env}
-          POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER no arquivo .env}
-          POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
-
-      volumes:
-        - chatbot_postgres_data:/var/lib/postgresql/data
-
-      healthcheck:
-        test:
-          - CMD-SHELL
-          - pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}
-        interval: 5s
-        timeout: 5s
-        retries: 10
-        start_period: 10s
-    
-    backend:
-      build:
-        context: ./backend
-        dockerfile: Dockerfile
-
-      container_name: chatbot-backend
-      restart: unless-stopped
-
-      environment:
-        DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-        API_KEY: ${API_KEY}
-        TAPE_API_TOKEN: ${TAPE_API_TOKEN}
-        TAPE_SYNC_SCHEDULE_ENABLED: ${TAPE_SYNC_SCHEDULE_ENABLED:-true}
-        TAPE_SYNC_INTERVAL_HOURS: ${TAPE_SYNC_INTERVAL_HOURS:-24}
-        TAPE_SYNC_RUN_ON_STARTUP: ${TAPE_SYNC_RUN_ON_STARTUP:-false}
-        N8N_HEALTH_URL: ${N8N_HEALTH_URL:-http://n8n:5678/healthz/readiness}
-        TZ: America/Fortaleza
-
-      depends_on:
-        db:
-          condition: service_healthy
-
-      volumes:
-        - asset_documents_data:/app/storage/assets_documents
-
-      ports:
-        - "8040:8000"
-    frontend:
-      build:
-        context: ./frontend
-        dockerfile: Dockerfile
-
-      container_name: chatbot-frontend
-      restart: unless-stopped
-
-      environment:
-        VITE_N8N_WEBHOOK_URL: ${VITE_N8N_WEBHOOK_URL}
-        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:8040}
-
-      ports:
-        - "5173:5173"
-
-      volumes:
-        - ./frontend:/app
-        - frontend_node_modules:/app/node_modules
-
-volumes: 
-  n8n_data:
+volumes:
   chatbot_postgres_data:
-  frontend_node_modules:
+  n8n_data:
   asset_documents_data:
+  frontend_node_modules:
+  keycloak_postgres_data:

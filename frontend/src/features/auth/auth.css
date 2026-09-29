@@ -1,0 +1,77 @@
+.auth-screen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #0f1117 0%, #1a1d27 100%);
+  padding: 1.5rem;
+}
+.auth-card {
+  background: #1e2130; border: 1px solid #2d3148; border-radius: 16px;
+  padding: 2.5rem 2rem; width: 100%; max-width: 400px; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.auth-card--warning { border-color: #7c6d23; }
+.auth-card--danger  { border-color: #7c2323; }
+.auth-card__brand   { margin-bottom: 2rem; }
+.auth-card__badge   { font-size: 2.5rem; display: block; margin-bottom: .75rem; }
+.auth-card__label   { font-size: .7rem; font-weight: 600; letter-spacing: .15em; color: #8b9cb0; text-transform: uppercase; margin-bottom: .4rem; }
+.auth-card__title   { font-size: 1.6rem; font-weight: 700; color: #e8eaf0; margin: 0 0 .5rem; }
+.auth-card__subtitle { font-size: .9rem; color: #8b9cb0; line-height: 1.5; margin: 0; }
+.auth-card__message { font-size: .95rem; color: #b0bcc8; line-height: 1.6; margin: 0 0 1.5rem; }
+.auth-card__btn {
+  display: block; width: 100%; padding: .85rem 1.5rem; background: #4f6ef7;
+  color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600;
+  cursor: pointer; transition: background .15s, transform .1s; margin-bottom: 1.25rem;
+}
+.auth-card__btn:hover { background: #3d58d4; transform: translateY(-1px); }
+.auth-card__btn:active { transform: translateY(0); }
+.auth-card__btn--secondary { background: transparent; border: 1px solid #4f6ef7; color: #4f6ef7; }
+.auth-card__btn--secondary:hover { background: rgba(79,110,247,.1); }
+.auth-card__footer { font-size: .78rem; color: #5a6677; margin: 0; }
+.auth-card__alert {
+  display: flex; flex-direction: column; gap: .35rem; text-align: left;
+  margin: 0 0 1.1rem; padding: .85rem 1rem; border-radius: 10px;
+  border: 1px solid rgba(245,197,66,.35); background: rgba(245,197,66,.08);
+}
+.auth-card__alert strong { color: #f2d36f; font-size: .88rem; }
+.auth-card__alert span { color: #aeb9c8; font-size: .82rem; line-height: 1.45; }
+
+
+/* User Menu */
+.user-menu { position: relative; }
+.user-menu__trigger {
+  display: flex; align-items: center; gap: .5rem;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px; padding: .4rem .75rem; color: #e8eaf0; cursor: pointer;
+  transition: background .15s; font-size: .88rem;
+}
+.user-menu__trigger:hover { background: rgba(255,255,255,.1); }
+.user-menu__avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%; background: #4f6ef7;
+  color: #fff; font-size: .75rem; font-weight: 600;
+}
+.user-menu__name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-menu__caret { font-size: .7rem; opacity: .6; }
+.user-menu__overlay { position: fixed; inset: 0; z-index: 1000; }
+.user-menu__dropdown {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 1001;
+  min-width: 220px; background: #1e2130; border: 1px solid #2d3148;
+  border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,.4); overflow: hidden;
+}
+.user-menu__header {
+  padding: .85rem 1rem; border-bottom: 1px solid #2d3148;
+  display: flex; flex-direction: column; gap: .15rem;
+}
+.user-menu__header strong { font-size: .9rem; color: #e8eaf0; }
+.user-menu__header span   { font-size: .78rem; color: #4f6ef7; }
+.user-menu__header small  { font-size: .73rem; color: #5a6677; }
+.user-menu__items  { padding: .4rem 0; }
+.user-menu__item {
+  display: block; width: 100%; text-align: left; padding: .55rem 1rem;
+  background: none; border: none; color: #c0ccd8; font-size: .88rem;
+  cursor: pointer; transition: background .12s, color .12s;
+}
+.user-menu__item:hover { background: rgba(255,255,255,.06); color: #e8eaf0; }
+.user-menu__item--danger { color: #e05c5c; }
+.user-menu__item--danger:hover { background: rgba(224,92,92,.1); color: #f07070; }
+.user-menu__divider { border: none; border-top: 1px solid #2d3148; margin: .3rem 0; }

@@ -72,6 +72,16 @@ function Icon({ name }) {
     )
   }
 
+  if (name === 'users') {
+    return (
+      <svg {...common}>
+        <circle cx="9" cy="8" r="3.5" />
+        <path d="M2.5 19.5c1-3.4 3.6-5.2 6.5-5.2s5.5 1.8 6.5 5.2" />
+        <path d="M16 4.8a3.3 3.3 0 0 1 0 6.4M17.6 14.6c2 .7 3.3 2.3 3.9 4.9" />
+      </svg>
+    )
+  }
+
   if (name === 'records') {
     return (
       <svg {...common}>
@@ -134,7 +144,7 @@ function StatusRow({ icon, label, description, status }) {
   )
 }
 
-function SettingsMenu({ onOpenStatus }) {
+function SettingsMenu({ onOpenStatus, onOpenUsers }) {
   return (
     <>
       <div className="settings-modal__heading">
@@ -152,6 +162,16 @@ function SettingsMenu({ onOpenStatus }) {
           </span>
           <span className="settings-option-card__arrow" aria-hidden="true">›</span>
         </button>
+        {onOpenUsers && (
+          <button className="settings-option-card" type="button" onClick={onOpenUsers}>
+            <span className="settings-option-card__icon settings-option-card__icon--users"><Icon name="users" /></span>
+            <span className="settings-option-card__copy">
+              <strong>Gestão de Usuários</strong>
+              <small>Cadastre usuários, defina perfis de acesso e bloqueie ou reative contas.</small>
+            </span>
+            <span className="settings-option-card__arrow" aria-hidden="true">›</span>
+          </button>
+        )}
       </div>
 
       <div className="settings-modal__future-note">
@@ -256,7 +276,7 @@ function SystemStatus({ data, loading, error, checkedAt, onBack, onRefresh }) {
   )
 }
 
-export default function SettingsModal({ open, onClose }) {
+export default function SettingsModal({ open, onClose, onOpenUsers }) {
   const [view, setView] = useState('menu')
   const [statusData, setStatusData] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -339,7 +359,7 @@ export default function SettingsModal({ open, onClose }) {
         <button ref={closeButtonRef} className="settings-close" type="button" onClick={onClose} aria-label="Fechar configurações">×</button>
 
         {view === 'menu' ? (
-          <SettingsMenu onOpenStatus={openStatus} />
+          <SettingsMenu onOpenStatus={openStatus} onOpenUsers={onOpenUsers} />
         ) : (
           <SystemStatus
             data={statusData}

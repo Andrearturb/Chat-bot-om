@@ -125,6 +125,11 @@
   background: #eaf3fb;
 }
 
+.settings-option-card__icon--users {
+  color: #7a5a12;
+  background: #fff7da;
+}
+
 .settings-option-card__copy {
   min-width: 0;
   display: grid;

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../lib/apiClient.js'
-import '../users/users.css'
 import './audit.css'
 
 const actionLabel = {
@@ -52,8 +51,8 @@ export default function AuditModal({ onClose }) {
         {error && <div className="modal-error">{error}</div>}
         {!loading && !error && (
           <>
-            <div className="users-table-wrapper">
-              <table className="users-table">
+            <div className="audit-table-wrapper">
+              <table className="audit-table">
                 <thead>
                   <tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Entidade</th><th>ID</th></tr>
                 </thead>
@@ -62,11 +61,11 @@ export default function AuditModal({ onClose }) {
                     ? <tr><td colSpan={5} style={{ textAlign: 'center', opacity: .5 }}>Nenhum registro encontrado.</td></tr>
                     : logs.map(log => (
                       <tr key={log.id}>
-                        <td className="users-table__date">{new Date(log.created_at).toLocaleString('pt-BR')}</td>
+                        <td className="audit-table__date">{new Date(log.created_at).toLocaleString('pt-BR')}</td>
                         <td>{log.user_display || (log.user_id ? `#${log.user_id}` : '—')}</td>
                         <td><span className="audit-action">{actionLabel[log.action] || log.action}</span></td>
                         <td>{log.entity_type || '—'}</td>
-                        <td className="users-table__date">{log.entity_id || '—'}</td>
+                        <td className="audit-table__date">{log.entity_id || '—'}</td>
                       </tr>
                     ))}
                 </tbody>

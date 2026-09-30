@@ -21,7 +21,7 @@ from app.api.routes.assets import router as assets_router
 from app.api.routes.assistant import router as assistant_router
 from app.api.routes.users import router as users_router
 from app.api.routes.audit import router as audit_router
-from app.core.config import APP_NAME, APP_VERSION, FRONTEND_ORIGINS
+from app.core.config import APP_NAME, APP_VERSION, DEV_PROVISION_USERS, FRONTEND_ORIGINS
 from app.db.base import Base
 from app.db.session import engine
 from app.tasks.tape_scheduler import criar_agendador_tape
@@ -77,7 +77,16 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
 
 @app.on_event("startup")
 def on_startup() -> None:
+    import logging
+    logger = logging.getLogger(__name__)
+
     Base.metadata.create_all(bind=engine)
+
+    try:
+        from app.db.schema_updates import apply_schema_updates
+        apply_schema_updates(engine)
+    except Exception as exc:
+        logger.warning("atualização de schema falhou: %s", exc)
 
     try:
         from sqlalchemy import text as sa_text
@@ -93,8 +102,18 @@ def on_startup() -> None:
         with SessionLocal() as db:
             seed_profiles_and_permissions(db)
     except Exception as exc:
-        import logging
-        logging.getLogger(__name__).warning("seed falhou: %s", exc)
+        logger.warning("seed falhou: %s", exc)
+
+    if DEV_PROVISION_USERS:
+        try:
+            from app.db.session import SessionLocal
+            from app.services.keycloak_admin import get_identity_admin
+            from app.services.user_admin import provision_dev_users
+            with SessionLocal() as db:
+                summary = provision_dev_users(db, get_identity_admin())
+            logger.warning("Provisionamento DEV: %s", "; ".join(summary))
+        except Exception as exc:
+            logger.warning("provisionamento DEV falhou: %s", exc)
 
     if _scheduler_habilitado():
         app.state.tape_scheduler = criar_agendador_tape()

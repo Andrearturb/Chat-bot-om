@@ -184,8 +184,18 @@ def _compare(a: str, b: str) -> bool:
 
 # ─── Sessões ──────────────────────────────────────────────────────────────────
 
-def create_session(db: Session, user_id: int, ip: str | None = None, ua: str | None = None) -> str:
-    """Cria uma sessão server-side. Retorna o token opaco."""
+def create_session(
+    db: Session,
+    user_id: int,
+    ip: str | None = None,
+    ua: str | None = None,
+    id_token: str | None = None,
+) -> str:
+    """Cria uma sessão server-side. Retorna o token opaco.
+
+    ``id_token`` é guardado apenas para servir de ``id_token_hint`` no logout
+    OIDC (encerra a sessão SSO do Keycloak sem tela de confirmação).
+    """
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(32)
     now = datetime.utcnow()
@@ -199,6 +209,7 @@ def create_session(db: Session, user_id: int, ip: str | None = None, ua: str | N
         absolute_expires_at=now + timedelta(hours=SESSION_ABSOLUTE_TIMEOUT_HOURS),
         ip_hash=_sha256(ip) if ip else None,
         user_agent_hash=_sha256(ua) if ua else None,
+        id_token_hint=id_token or None,
     )
     db.add(session)
     db.commit()
@@ -232,7 +243,23 @@ def revoke_session(db: Session, token: str) -> None:
     session = get_session(db, token)
     if session:
         session.revoked_at = datetime.utcnow()
+        session.id_token_hint = None
         db.commit()
+
+
+def revoke_user_sessions(db: Session, user_id: int) -> int:
+    """Revoga todas as sessões ativas de um usuário (sem commit). Retorna a quantidade."""
+    now = datetime.utcnow()
+    sessions = db.scalars(
+        select(UserSession)
+        .where(UserSession.user_id == user_id)
+        .where(UserSession.revoked_at.is_(None))
+    ).all()
+    for item in sessions:
+        item.revoked_at = now
+        item.id_token_hint = None
+    db.flush()
+    return len(sessions)
 
 
 # ─── Resolução de permissões ──────────────────────────────────────────────────
@@ -475,16 +502,45 @@ def get_userinfo(access_token: str) -> dict:
     return resp.json()
 
 
-def get_logout_url(id_token_hint: str | None = None) -> str:
+def post_logout_redirect_uri() -> str:
+    """URI de retorno após o logout — sempre a página ``/login`` do frontend.
+
+    Se ``OIDC_POST_LOGOUT_REDIRECT_URI`` apontar apenas para a origem
+    (ex.: ``http://localhost:5173``), o caminho ``/login`` é acrescentado.
+    """
+    from urllib.parse import urlsplit, urlunsplit
+
+    parts = urlsplit(OIDC_POST_LOGOUT_REDIRECT_URI)
+    if parts.path in ("", "/"):
+        parts = parts._replace(path="/login")
+    return urlunsplit(parts)
+
+
+def get_logout_url(id_token_hint: str | None = None, redirect_uri: str | None = None) -> str:
+    """URL de RP-Initiated Logout do provedor OIDC.
+
+    O Keycloak 26 exige ``id_token_hint`` ou ``client_id`` quando há
+    ``post_logout_redirect_uri``. Com o ``id_token_hint`` a sessão SSO é
+    encerrada sem tela de confirmação; sem ele, o Keycloak pede confirmação
+    (tela também personalizada pelo tema ``gentil-om``).
+    """
+    target = redirect_uri or post_logout_redirect_uri()
     cfg = _get_oidc_config()
     end_session = cfg.get("end_session_endpoint", "")
     if not end_session:
-        return OIDC_POST_LOGOUT_REDIRECT_URI
+        return target
     from urllib.parse import urlencode
-    params: dict[str, str] = {"post_logout_redirect_uri": OIDC_POST_LOGOUT_REDIRECT_URI}
+    params: dict[str, str] = {"post_logout_redirect_uri": target}
+    if OIDC_CLIENT_ID:
+        params["client_id"] = OIDC_CLIENT_ID
     if id_token_hint:
         params["id_token_hint"] = id_token_hint
     return end_session + "?" + urlencode(params)
+
+
+def oidc_issuer() -> str:
+    """Issuer usado para ancorar ``oidc_identities`` (issuer + subject)."""
+    return OIDC_ISSUER_URL
 
 
 # ─── Vinculação de identidade ─────────────────────────────────────────────────
@@ -524,7 +580,15 @@ def _grant_bootstrap_admin_if_eligible(db: Session, user: AppUser, email: str) -
     return True
 
 
-def _sync_user_from_oidc(db: Session, user: AppUser, identity: OidcIdentity, *, email: str, display_name: str) -> None:
+def _sync_user_from_oidc(
+    db: Session,
+    user: AppUser,
+    identity: OidcIdentity,
+    *,
+    email: str,
+    display_name: str,
+    username: str = "",
+) -> None:
     """Sincroniza metadados não sensíveis da identidade já vinculada.
 
     O ``issuer+subject`` continua sendo a âncora da identidade. Se o email mudar
@@ -542,6 +606,8 @@ def _sync_user_from_oidc(db: Session, user: AppUser, identity: OidcIdentity, *, 
                 user.email = email
     if display_name and user.display_name != display_name:
         user.display_name = display_name
+    if username and user.username != username:
+        user.username = username
     user.last_seen_at = datetime.utcnow()
 
 
@@ -557,6 +623,7 @@ def resolve_or_create_user(db: Session, userinfo: dict) -> AppUser | None:
     issuer = userinfo.get("iss", OIDC_ISSUER_URL)
     subject = userinfo.get("sub", "")
     email = (userinfo.get("email") or "").strip().lower()
+    username = (userinfo.get("preferred_username") or "").strip().lower()
     display_name = userinfo.get("name") or userinfo.get("preferred_username") or email
 
     if not subject:
@@ -572,7 +639,7 @@ def resolve_or_create_user(db: Session, userinfo: dict) -> AppUser | None:
         user = db.get(AppUser, identity.user_id)
         if user is None:
             return None
-        _sync_user_from_oidc(db, user, identity, email=email, display_name=display_name)
+        _sync_user_from_oidc(db, user, identity, email=email, display_name=display_name, username=username)
         _grant_bootstrap_admin_if_eligible(db, user, email)
         db.commit()
         db.refresh(user)
@@ -581,12 +648,14 @@ def resolve_or_create_user(db: Session, userinfo: dict) -> AppUser | None:
     # 2. Usuário por email
     user = db.scalar(select(AppUser).where(AppUser.email == email)) if email else None
 
-    # 3. Criar usuário se não existir
+    # 3. Criar usuário se não existir. Identidade desconhecida nunca recebe
+    #    acesso automático: fica "pending" até um administrador liberar.
     if not user:
         if not email:
             return None
         user = AppUser(
             email=email,
+            username=username or None,
             display_name=display_name,
             status="pending",
         )
@@ -595,6 +664,8 @@ def resolve_or_create_user(db: Session, userinfo: dict) -> AppUser | None:
     else:
         if display_name:
             user.display_name = display_name
+        if username and not user.username:
+            user.username = username
         user.last_seen_at = datetime.utcnow()
 
     _grant_bootstrap_admin_if_eligible(db, user, email)

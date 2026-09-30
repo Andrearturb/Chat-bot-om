@@ -11,7 +11,8 @@
     "test:indicators": "node --test src/features/indicators/indicators.test.js",
     "test:assets": "node --test src/features/assets/assets.test.js",
     "test:bff": "node --test src/lib/apiClient.test.js",
-    "test": "node --test src/lib/apiClient.test.js src/features/auth/authErrors.test.js src/features/indicators/indicators.test.js src/features/assets/assets.test.js"
+    "test:users": "node --test src/features/users/users.test.js",
+    "test": "node --test src/lib/apiClient.test.js src/features/auth/authErrors.test.js src/features/indicators/indicators.test.js src/features/assets/assets.test.js src/features/users/users.test.js"
   },
   "dependencies": {
     "@n8n/chat": "^1.38.5",

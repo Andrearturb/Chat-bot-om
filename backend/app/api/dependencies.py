@@ -5,13 +5,14 @@ Dependências compartilhadas da API.
 from __future__ import annotations
 
 import secrets
+from datetime import datetime
 
 from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.config import API_KEY, INTERNAL_API_KEY, SESSION_COOKIE_NAME
 from app.db.session import get_db
-from app.models.auth import AppUser, UserSession
+from app.models.auth import AppUser, Profile, UserSession
 from app.services.auth import (
     check_user_active,
     get_session,
@@ -95,6 +96,11 @@ def get_current_user(
         )
     ok, reason = check_user_active(user)
     if not ok:
+        # Usuário bloqueado/pendente/expirado não mantém sessão parcialmente
+        # ativa: a sessão é revogada no primeiro uso após a mudança de status.
+        session.revoked_at = datetime.utcnow()
+        session.id_token_hint = None
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=reason,
@@ -131,6 +137,42 @@ def require_permission(permission_code: str):
                 detail=f"Permissão necessária: {permission_code}",
             )
     return _checker
+
+
+ADMIN_PROFILE_NAME = "ADMINISTRADOR"
+
+
+def require_admin(
+    request: Request,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AppUser:
+    """Exige perfil ADMINISTRADOR **e** a permissão ``users.manage``.
+
+    O perfil vem sempre do banco (sessão server-side), nunca do navegador. Um
+    override ``allow`` de ``users.manage`` não basta para quem não é
+    administrador, e um ``deny`` continua bloqueando o administrador.
+    """
+    profile = db.get(Profile, user.profile_id) if user.profile_id else None
+    is_admin = (
+        profile is not None
+        and profile.name == ADMIN_PROFILE_NAME
+        and "users.manage" in get_user_permissions(db, user)
+    )
+    if not is_admin:
+        record_security_event(
+            db,
+            event_type="ACCESS_DENIED",
+            severity="medium",
+            user_id=user.id,
+            metadata={"permission": "admin", "path": str(request.url.path)},
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito a administradores.",
+        )
+    return user
 
 
 # ─── CSRF ─────────────────────────────────────────────────────────────────────

@@ -19,6 +19,18 @@ export const AUTH_ERROR_MESSAGES = {
     title: 'Acesso indisponível',
     message: 'Sua conta está desativada ou o período de acesso expirou.',
   },
+  provider_error: {
+    title: 'Login não concluído',
+    message: 'A autenticação foi cancelada ou não pôde ser concluída. Tente novamente.',
+  },
+  session_not_started: {
+    title: 'Não foi possível iniciar a sessão',
+    message: 'O login foi feito, mas a sessão não foi confirmada neste navegador. Tente entrar novamente.',
+  },
+  unavailable: {
+    title: 'Serviço indisponível no momento',
+    message: 'Não foi possível conectar ao Chat-bot O&M. Verifique sua conexão e tente novamente.',
+  },
 }
 
 export function getAuthError(code) {

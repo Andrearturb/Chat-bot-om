@@ -1,31 +1,54 @@
+import { useState } from 'react'
+import AuthLayout from './AuthLayout.jsx'
 import { startLogin } from './api.js'
-import './auth.css'
 
-export default function LoginScreen({ authError = null }) {
+/**
+ * Página /login — apresentação antes do Keycloak. NÃO pede senha:
+ * "Entrar" inicia o fluxo OIDC existente (/auth/login) e os campos de
+ * usuário e senha ficam na página do Keycloak (tema gentil-om).
+ */
+export default function LoginScreen({ authError = null, notice = null }) {
+  const [redirecting, setRedirecting] = useState(false)
+
+  function handleLogin() {
+    setRedirecting(true)
+    startLogin()
+  }
+
   return (
-    <div className="auth-screen" role="main">
-      <div className="auth-card">
-        <div className="auth-card__brand">
-          <span className="auth-card__badge" aria-hidden="true">🔒</span>
-          <p className="auth-card__label">ACESSO RESTRITO</p>
-          <h1 className="auth-card__title">Chat-bot O&amp;M</h1>
-          <p className="auth-card__subtitle">
-            Ambiente corporativo de Obras &amp; Manutenções.
-          </p>
+    <AuthLayout labelledBy="om-auth-title">
+      <header className="om-auth__header">
+        <h2 id="om-auth-title">Bem-vindo</h2>
+        <p>Entre com sua conta para continuar</p>
+      </header>
+
+      {notice && !authError && (
+        <div className="om-auth__alert om-auth__alert--success" role="status">
+          <span className="om-auth__alert-icon" aria-hidden="true" />
+          <span>{notice}</span>
         </div>
-        {authError && (
-          <div className="auth-card__alert" role="alert">
+      )}
+
+      {authError && (
+        <div className="om-auth__alert om-auth__alert--warning" role="alert">
+          <span className="om-auth__alert-icon" aria-hidden="true" />
+          <span>
             <strong>{authError.title}</strong>
-            <span>{authError.message}</span>
-          </div>
+            {authError.message}
+          </span>
+        </div>
+      )}
+
+      <button className="om-auth__button" type="button" onClick={handleLogin} disabled={redirecting}>
+        {redirecting ? (
+          <><span className="om-auth__spinner" aria-hidden="true" /> Abrindo login seguro…</>
+        ) : (
+          <>{authError ? 'Entrar novamente' : 'Entrar'} <span className="om-auth__arrow" aria-hidden="true">→</span></>
         )}
-        <button className="auth-card__btn" type="button" onClick={startLogin}>
-          {authError ? 'Tentar novamente' : 'Entrar com conta corporativa'}
-        </button>
-        <p className="auth-card__footer">
-          Gentil Negócios · Acesso restrito a colaboradores autorizados.
-        </p>
-      </div>
-    </div>
+      </button>
+      <p className="om-auth__hint">
+        Você será direcionado à página segura de autenticação da Gentil Negócios.
+      </p>
+    </AuthLayout>
   )
 }

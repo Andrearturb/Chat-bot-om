@@ -14,15 +14,16 @@ import { AuthProvider, useAuth } from './features/auth/AuthProvider.jsx'
 import LoginScreen from './features/auth/LoginScreen.jsx'
 import AccessPending from './features/auth/AccessPending.jsx'
 import AccessDenied from './features/auth/AccessDenied.jsx'
+import AuthLoading from './features/auth/AuthLoading.jsx'
 import UserMenu from './features/auth/UserMenu.jsx'
 import { api } from './lib/apiClient.js'
 
-const UsersModal = lazy(() => import('./features/users/UsersModal.jsx'))
+const UsersPage = lazy(() => import('./features/users/UsersPage.jsx'))
 const AuditModal = lazy(() => import('./features/audit/AuditModal.jsx'))
 
 // ── Preferências de navegação (sessionStorage — não sensível) ──────────────────
 const NAV_KEY = 'gentileza-navigation-v1'
-const VALID_SECTIONS = new Set(['assistant', 'indicators', 'assets'])
+const VALID_SECTIONS = new Set(['assistant', 'indicators', 'assets', 'users'])
 const VALID_INDICATORS = new Set(['home', 'performance', 'corrective', 'preventive', 'financial'])
 const GREETING_CONTENT = 'Olá! Eu me chamo Gentileza 👋 Como posso te ajudar com Obras & Manutenções hoje?'
 
@@ -46,14 +47,13 @@ function greetingMsg() {
 
 // ── Componente principal (dentro do AuthProvider) ─────────────────────────────
 function AppShell() {
-  const { auth_status, user, hasPermission, auth_error } = useAuth()
+  const { auth_status, user, hasPermission, isAdmin, auth_error, notice, refresh } = useAuth()
 
   const [nav] = useState(() => loadNav())
   const [activeSection, setActiveSection] = useState(nav.activeSection)
   const [activeIndicator, setActiveIndicator] = useState(nav.activeIndicator)
   const [historyOpen, setHistoryOpen] = useState(nav.historyOpen)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [usersOpen, setUsersOpen] = useState(false)
   const [auditOpen, setAuditOpen] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
@@ -106,6 +106,12 @@ function AppShell() {
     try { sessionStorage.setItem(NAV_KEY, JSON.stringify({ activeSection, activeIndicator, historyOpen })) }
     catch { /* ignora */ }
   }, [activeSection, activeIndicator, historyOpen])
+
+  function openUsers() {
+    setSettingsOpen(false)
+    setHistoryOpen(false)
+    setActiveSection('users')
+  }
 
   // ── Navegação ─────────────────────────────────────────────────────────────────
   function abortRequest() {
@@ -186,10 +192,15 @@ function AppShell() {
   }
 
   // ── Estados de autenticação ───────────────────────────────────────────────────
-  if (auth_status === 'loading')         return <div className="auth-loading" role="status"><span>Verificando acesso…</span></div>
-  if (auth_status === 'unauthenticated') return <LoginScreen authError={auth_error} />
+  if (auth_status === 'loading')         return <AuthLoading />
+  if (auth_status === 'redirecting')     return <AuthLoading message="Abrindo o login seguro…" />
+  if (auth_status === 'unauthenticated') return <LoginScreen authError={auth_error} notice={notice} />
   if (auth_status === 'pending')         return <AccessPending />
   if (auth_status === 'disabled')        return <AccessDenied />
+
+  // Gestão de Usuários é exclusiva de administradores (o backend também valida):
+  // se o perfil mudar durante a sessão, a tela volta ao assistente.
+  const section = activeSection === 'users' && !isAdmin ? 'assistant' : activeSection
 
   const canUseAssistant  = hasPermission('assistant.use')
   const canSeeHistory    = hasPermission('assistant.history')
@@ -207,14 +218,14 @@ function AppShell() {
       <div className="ambient-glow ambient-glow--yellow" />
       <div className="app-panel">
         <Sidebar
-          activeSection={activeSection}
+          activeSection={section}
           onNewConversation={createNewConversation}
           onOpenConversations={canSeeHistory ? () => setHistoryOpen(v => !v) : undefined}
           onGoAssistant={canUseAssistant ? () => { abortRequest(); setActiveConversationId(null); setMessages([greetingMsg()]); setPrompt(''); setHistoryOpen(false); setActiveSection('assistant') } : undefined}
           onOpenIndicators={canSeeIndicators ? () => { setHistoryOpen(false); setActiveSection('indicators') } : undefined}
           onOpenAssets={canSeeAssets ? () => { setHistoryOpen(false); setActiveSection('assets') } : undefined}
           onOpenSettings={canSeeSettings ? () => setSettingsOpen(true) : undefined}
-          historyOpen={historyOpen} settingsOpen={settingsOpen}
+          historyOpen={historyOpen} settingsOpen={settingsOpen || section === 'users'}
           permissions={{ canUseAssistant, canSeeHistory, canSeeIndicators, canSeeAssets, canSeeSettings }}
         />
 
@@ -229,7 +240,7 @@ function AppShell() {
           />
         )}
 
-        <div className={`workspace ${activeSection === 'assistant' && active ? 'workspace--active' : ''} ${activeSection === 'indicators' ? 'workspace--indicators' : ''} ${activeSection === 'assets' ? 'workspace--assets' : ''}`}>
+        <div className={`workspace ${section === 'assistant' && active ? 'workspace--active' : ''} ${section === 'indicators' ? 'workspace--indicators' : ''} ${section === 'assets' ? 'workspace--assets' : ''} ${section === 'users' ? 'workspace--users' : ''}`}>
           <header className="workspace-header">
             <div className="workspace-title"><span className="header-accent" /> Gentil Negócios <span>· Obras &amp; Manutenções</span></div>
             <div className="header-greeting">
@@ -237,18 +248,18 @@ function AppShell() {
               <span><strong>{greeting}, {firstName}!</strong><small>Vamos construir resultados.</small></span>
             </div>
             <div className="header-actions">
-              {(active || activeSection !== 'assistant') && (
+              {(active || section !== 'assistant') && (
                 <button className="new-conversation" type="button" onClick={createNewConversation}>+ Nova conversa</button>
               )}
               <UserMenu
-                onOpenUsers={() => setUsersOpen(true)}
+                onOpenUsers={openUsers}
                 onOpenAudit={() => setAuditOpen(true)}
                 onOpenSettings={() => setSettingsOpen(true)}
               />
             </div>
           </header>
 
-          {activeSection === 'assistant' && canUseAssistant ? (
+          {section === 'assistant' && canUseAssistant ? (
             <>
               <HeroAssistant active={active} />
               <ChatArea messages={messages} active={active} loading={loading}
@@ -258,23 +269,26 @@ function AppShell() {
                 <ChatComposer value={prompt} onChange={setPrompt} onSubmit={sendMessage} loading={loading} />
               </div>
             </>
-          ) : activeSection === 'assistant' && !canUseAssistant ? (
+          ) : section === 'assistant' && !canUseAssistant ? (
             <div className="permission-denied"><p>Você não tem permissão para usar o assistente.</p></div>
-          ) : activeSection === 'indicators' && canSeeIndicators ? (
+          ) : section === 'indicators' && canSeeIndicators ? (
             <IndicatorsPage activeIndicator={activeIndicator} onIndicatorChange={setActiveIndicator} />
-          ) : activeSection === 'assets' && canSeeAssets ? (
+          ) : section === 'assets' && canSeeAssets ? (
             <AssetsPage />
+          ) : section === 'users' && isAdmin ? (
+            <Suspense fallback={<div className="permission-denied" role="status">Carregando usuários...</div>}>
+              <UsersPage currentUserId={user?.id} onSelfChanged={() => refresh({ silent: true })} />
+            </Suspense>
           ) : null}
         </div>
       </div>
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onOpenUsers={isAdmin ? openUsers : undefined}
+      />
 
-      {usersOpen && hasPermission('users.manage') && (
-        <Suspense fallback={null}>
-          <UsersModal onClose={() => setUsersOpen(false)} />
-        </Suspense>
-      )}
       {auditOpen && hasPermission('audit.view') && (
         <Suspense fallback={null}>
           <AuditModal onClose={() => setAuditOpen(false)} />

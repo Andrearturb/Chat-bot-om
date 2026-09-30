@@ -77,6 +77,9 @@ class AppUser(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    # Login no provedor de identidade (preferred_username). Informativo: a
+    # âncora da identidade continua sendo oidc_identities.issuer + subject.
+    username: Mapped[str | None] = mapped_column(String(150), nullable=True)
     display_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     profile_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("profiles.id"), nullable=True)
     # pending | active | disabled
@@ -137,6 +140,9 @@ class UserSession(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     user_agent_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # id_token do login, usado somente como id_token_hint no logout OIDC.
+    # Nunca é enviado ao navegador fora do redirect de logout e é apagado na revogação.
+    id_token_hint: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user: Mapped["AppUser"] = relationship("AppUser", back_populates="sessions")
 

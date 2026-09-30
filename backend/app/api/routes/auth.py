@@ -38,6 +38,7 @@ from app.services.auth import (
     get_userinfo,
     get_ai_limits,
     check_ai_rate_limit,
+    post_logout_redirect_uri,
     record_audit,
     record_security_event,
     resolve_or_create_user,
@@ -75,8 +76,30 @@ def _clear_session_cookie(response: Response) -> None:
     )
 
 
+def _login_page_url(auth_error: str | None = None) -> str:
+    url = f"{_FRONTEND_ORIGIN.rstrip('/')}/login"
+    return f"{url}?auth_error={auth_error}" if auth_error else url
+
+
 def _redirect_auth_error(code: str) -> RedirectResponse:
-    resp = RedirectResponse(url=f"{_FRONTEND_ORIGIN}/?auth_error={code}", status_code=302)
+    resp = RedirectResponse(url=_login_page_url(code), status_code=302)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+def _redirect_denied_after_login(code: str, id_token: str | None) -> RedirectResponse:
+    """Encerra a sessão SSO recém-criada no Keycloak e volta para /login.
+
+    Usado quando o Keycloak autenticou, mas o Chat-bot O&M não liberou o acesso
+    (pendente, bloqueado ou identidade não vinculável). Assim nenhuma sessão
+    fica parcialmente ativa e o próximo "Entrar" pede as credenciais de novo.
+    """
+    target = _login_page_url(code)
+    try:
+        url = get_logout_url(id_token_hint=id_token, redirect_uri=target) if OIDC_ISSUER_URL else target
+    except Exception:  # noqa: BLE001 — sem discovery, cai no redirect simples
+        url = target
+    resp = RedirectResponse(url=url, status_code=302)
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
@@ -101,15 +124,23 @@ def login(request: Request) -> Response:
 
 @router.get("/callback")
 def callback(
-    code: str,
-    state: str,
     request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
     db: Session = Depends(get_db),
 ) -> Response:
     """Recebe o authorization code e cria sessão server-side."""
-    pending = _pending_states.pop(state, None)
-    if not pending:
-        logger.warning("CALLBACK: state inválido ou expirado: %s | states em memória: %s", state[:8], list(_pending_states.keys())[:3])
+    pending = _pending_states.pop(state, None) if state else None
+    if error:
+        # Ex.: usuário cancelou ou o provedor recusou a autenticação.
+        logger.warning("CALLBACK: provedor retornou erro: %s", error[:60])
+        record_security_event(db, event_type="LOGIN_FAILED", severity="medium",
+                              metadata={"reason": "provider_error", "error": error[:60]})
+        db.commit()
+        return _redirect_auth_error("provider_error")
+    if not pending or not code:
+        logger.warning("CALLBACK: state inválido ou expirado: %s", (state or "")[:8])
         record_security_event(db, event_type="LOGIN_FAILED", severity="high",
                               metadata={"reason": "invalid_state"})
         db.commit()
@@ -125,19 +156,25 @@ def callback(
         db.commit()
         return _redirect_auth_error("token_exchange")
 
+    id_token = tokens.get("id_token") if isinstance(tokens, dict) else None
+
     user = resolve_or_create_user(db, userinfo)
     if user is None:
-        return _redirect_auth_error("no_user")
+        return _redirect_denied_after_login("no_user", id_token)
 
     ok, reason = check_user_active(user)
     if not ok:
         code_str = "pending" if user.status == "pending" else "disabled"
         logger.warning("CALLBACK: acesso negado após autenticação: user_id=%s status=%s", user.id, user.status)
-        return _redirect_auth_error(code_str)
+        record_security_event(db, event_type="LOGIN_DENIED", severity="low", user_id=user.id,
+                              metadata={"status": user.status})
+        db.commit()
+        return _redirect_denied_after_login(code_str, id_token)
 
     ip = request.client.host if request.client else None
     ua = request.headers.get("user-agent")
-    token = create_session(db, user.id, ip=ip, ua=ua)
+    user.last_seen_at = datetime.utcnow()
+    token = create_session(db, user.id, ip=ip, ua=ua, id_token=id_token)
 
     record_audit(db, user_id=user.id, action="LOGIN_SUCCESS",
                  entity_type="app_user", entity_id=str(user.id))
@@ -168,6 +205,7 @@ def me(
     return {
         "id": user.id,
         "email": user.email,
+        "username": user.username,
         "display_name": user.display_name,
         "profile": profile.name if profile else None,
         "profile_display": profile.display_name if profile else None,
@@ -190,19 +228,30 @@ def me(
 def logout(
     request: Request,
     response: Response,
-    user: AppUser = Depends(get_current_user),
     session: UserSession = Depends(get_current_session),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Revoga sessão e redireciona para logout do Keycloak."""
-    record_audit(db, user_id=user.id, action="LOGOUT",
-                 entity_type="app_user", entity_id=str(user.id))
+    """Revoga a sessão da aplicação e devolve a URL de logout do Keycloak.
+
+    Depende apenas da sessão (não do status do usuário) para que mesmo uma
+    conta bloqueada consiga encerrar a sessão por completo.
+    """
+    id_token_hint = session.id_token_hint
+    record_audit(db, user_id=session.user_id, action="LOGOUT",
+                 entity_type="app_user", entity_id=str(session.user_id))
     token = request.cookies.get(SESSION_COOKIE_NAME, "")
     revoke_session(db, token)
     db.commit()
     _clear_session_cookie(response)
 
-    logout_url = get_logout_url() if OIDC_ISSUER_URL else OIDC_POST_LOGOUT_REDIRECT_URI
+    if OIDC_ISSUER_URL:
+        try:
+            logout_url = get_logout_url(id_token_hint=id_token_hint)
+        except Exception:  # noqa: BLE001 — provedor fora do ar: ao menos volta ao /login
+            logger.warning("LOGOUT: discovery OIDC indisponível; retornando direto ao /login.")
+            logout_url = post_logout_redirect_uri()
+    else:
+        logout_url = post_logout_redirect_uri()
     return {"logout_url": logout_url}
 
 

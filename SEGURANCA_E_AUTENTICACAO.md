@@ -14,10 +14,11 @@ React ── cookie HttpOnly ──▶ FastAPI / BFF
                                   ├── /assistant/*   (Gateway IA)
                                   ├── /services      (indicadores)
                                   ├── /assets/*      (ativos, documentos)
-                                  ├── /users/*       (gestão de acessos)
+                                  ├── /users/*       (Gestão de Usuários — só ADMINISTRADOR)
                                   ├── /audit/*       (auditoria)
                                   │
                                   ├──▶ PostgreSQL
+                                  ├──▶ Keycloak Admin API (service account, server-side)
                                   └──▶ n8n (chamada interna com X-Internal-API-Key)
 ```
 
@@ -45,15 +46,30 @@ O backend responde: **"O que esta pessoa pode fazer?"**
 
 ### Usuários DEV
 
-| Identidade DEV | Email configurável | Perfil inicial |
+| Identidade DEV | Email configurável | Perfil no aplicativo |
 |---|---|---|
-| `admin.om` | `DEV_ADMIN_EMAIL` | ADMINISTRADOR via bootstrap |
-| `analista.om` | `DEV_ANALYST_EMAIL` | aguarda aprovação |
-| `gerente.om` | `DEV_MANAGER_EMAIL` | aguarda aprovação |
-| `diretor.om` | `DEV_DIRECTOR_EMAIL` | aguarda aprovação |
-| `convidado.om` | `DEV_GUEST_EMAIL` | aguarda aprovação |
+| `admin.om` | `DEV_ADMIN_EMAIL` | ADMINISTRADOR |
+| `analista.om` | `DEV_ANALYST_EMAIL` | ANALISTA |
+| `gerente.om` | `DEV_MANAGER_EMAIL` | GERENTE |
+| `diretor.om` | `DEV_DIRECTOR_EMAIL` | DIRETOR |
+| `convidado.om` | `DEV_GUEST_EMAIL` | CONVIDADO |
 
 > Emails e senhas são definidos via variáveis `DEV_*` no `.env`. O serviço `keycloak-bootstrap` sincroniza o Keycloak DEV existente sem apagar o volume quando esses valores mudam.
+>
+> **Pré-provisionamento DEV:** ao iniciar com `APP_ENV=development`, o backend consulta a Keycloak Admin API e cria/vincula esses cinco usuários em `app_users` (status `active`, perfil acima) com a `oidc_identity` correta (issuer + subject). O primeiro login não depende de aprovação. Perfil/status alterados depois por um administrador são preservados. Desligue com `DEV_PROVISION_USERS=false`; fora de development nunca roda.
+
+### Tema de login `gentil-om`
+
+- Arquivos em `keycloak/themes/gentil-om/login/` (template, páginas de login, troca de senha, "esqueci minha senha", logout, CSS, fontes Manrope e imagens da Gentileza).
+- Montado no container em `/opt/keycloak/themes/gentil-om` e aplicado ao realm pelo bootstrap (`loginTheme`, pt-BR).
+- Não há link de "Criar conta": contas são criadas pela Gestão de Usuários.
+- "Esqueci minha senha" só aparece quando o realm tem SMTP (`KEYCLOAK_SMTP_*`).
+
+### Client de serviço da Admin API
+
+- `chat-bot-om-admin` (`KEYCLOAK_ADMIN_CLIENT_ID`/`KEYCLOAK_ADMIN_CLIENT_SECRET`), confidencial, sem login interativo (`standardFlow` desligado), apenas `client_credentials`.
+- Papéis de `realm-management`: `manage-users`, `view-users`, `query-users`, `view-realm` (este último só para detectar o SMTP).
+- Usado exclusivamente pelo backend. O navegador nunca acessa a Admin API.
 
 ---
 
@@ -78,11 +94,18 @@ Nenhuma URL do Keycloak está hardcoded no código.
 O navegador **nunca** recebe access_token ou refresh_token.
 
 Fluxo:
-1. `GET /auth/login` → FastAPI gera state + code_verifier, redireciona para Keycloak
+1. Sem sessão, o app vai direto para `GET /auth/login` → FastAPI gera state + code_verifier e redireciona para o Keycloak (página de login com o tema `gentil-om`)
 2. Keycloak redireciona para `GET /auth/callback?code=...&state=...`
 3. FastAPI valida state, troca code por tokens (server-side)
 4. FastAPI resolve/cria usuário local, cria sessão, define cookie HttpOnly
 5. Browser recebe apenas o cookie — sem tokens no localStorage
+6. Se o usuário estiver pendente/bloqueado, nenhuma sessão é criada: o backend encerra a sessão SSO no Keycloak e devolve para `/login?auth_error=...`
+
+A rota `/login` do React é a página de apresentação (retorno do logout e mensagens de erro/acesso). Ela não pede senha: o botão "Entrar" apenas inicia o fluxo acima.
+
+### Logout
+
+`POST /auth/logout` (com CSRF) revoga a sessão da aplicação, apaga o cookie e devolve a URL de RP-Initiated Logout do Keycloak com `id_token_hint` + `client_id`. O Keycloak encerra a sessão SSO sem tela de confirmação e retorna para `/login`. O `id_token` do login fica somente na sessão server-side para esse fim e é apagado na revogação.
 
 ---
 
@@ -120,9 +143,29 @@ Tabela: `user_sessions`
 
 ### Status
 
-- `pending` → aguarda aprovação
+- `pending` → aguarda aprovação (identidade autenticada no Keycloak, mas desconhecida pelo app)
 - `active` → acesso liberado
-- `disabled` → bloqueado
+- `disabled` → bloqueado (sessões do app revogadas e conta desativada no Keycloak)
+
+### Gestão de Usuários (Configurações → Gestão de Usuários)
+
+Exclusiva do perfil ADMINISTRADOR — validado no backend (`require_admin`: perfil ADMINISTRADOR **e** `users.manage`). Demais perfis recebem 403.
+
+| Endpoint | Ação |
+|---|---|
+| `GET /users` | lista (busca `q`, filtros `status`, `profile`) |
+| `POST /users` | cria no Keycloak e no app |
+| `GET /users/{id}` / `PATCH /users/{id}` | detalhe / nome, perfil, status |
+| `POST /users/{id}/activate` · `/deactivate` | reativa / bloqueia (app + Keycloak) |
+| `POST /users/{id}/reset-password` | senha temporária (`temporary=true`) |
+| `POST /users/{id}/password-email` | e-mail `UPDATE_PASSWORD` (exige SMTP) |
+| `GET /users/capabilities` | integração com Keycloak e SMTP disponíveis |
+
+Cadastro: Keycloak (conta + senha temporária ou e-mail de definição) → `subject` → `app_users` → `oidc_identities`. Se a gravação local falhar, a conta criada no Keycloak é removida. Repetir um cadastro não duplica: conta já vinculada → 409; conta órfã no Keycloak (mesmo usuário e e-mail) é reaproveitada.
+
+Senhas nunca são gravadas no PostgreSQL, em logs, na auditoria ou devolvidas pela API.
+
+Proteções: deve existir sempre ao menos um administrador ativo; nenhum administrador desativa a própria conta; remover o próprio perfil ADMINISTRADOR só é possível havendo outro administrador ativo.
 
 ### Expiração (Convidados)
 
@@ -255,3 +298,10 @@ Ver `.env.example` para lista completa e descrições.
 | `BOOTSTRAP_ADMIN_EMAIL` | Email de bootstrap em produção; em DEV prevalece `DEV_ADMIN_EMAIL` |
 | `DEV_ADMIN_EMAIL` | Email do usuário `admin.om` no Keycloak DEV e referência de bootstrap local |
 | `FRONTEND_ORIGINS` | Origins CORS permitidas |
+| `KEYCLOAK_ADMIN_CLIENT_ID` / `KEYCLOAK_ADMIN_CLIENT_SECRET` | Client de serviço da Keycloak Admin API (Gestão de Usuários) |
+| `DEV_PROVISION_USERS` | Pré-provisionamento dos usuários DEV (somente development) |
+| `KEYCLOAK_SMTP_*` | SMTP opcional do realm ("Esqueci minha senha" e e-mails de senha) |
+
+## Keycloak corporativo e Gestão de Usuários
+
+No ambiente corporativo, a TI precisa também: registrar um client de serviço com os papéis `manage-users`, `view-users`, `query-users` e `view-realm` (ou equivalentes) e informar `KEYCLOAK_ADMIN_CLIENT_*`; incluir `https://<app>/login` e `https://<app>/*` nos *post logout redirect URIs* do client BFF; e, se desejado, instalar o tema `gentil-om`. Se a Admin API não estiver disponível, a Gestão de Usuários continua listando e ajustando perfis/status, mas bloqueia cadastro e redefinição de senha com aviso na tela.

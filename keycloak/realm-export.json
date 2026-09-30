@@ -1,9 +1,13 @@
 {
   "id": "gentil-dev",
   "realm": "gentil-dev",
-  "displayName": "Gentil Negocios DEV",
+  "displayName": "Chat-bot O&M",
   "enabled": true,
   "sslRequired": "external",
+  "loginTheme": "gentil-om",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["pt-BR"],
+  "defaultLocale": "pt-BR",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
@@ -24,6 +28,7 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "secret": "placeholder-substituido-pelo-bootstrap",
+      "baseUrl": "http://localhost:5173/login",
       "redirectUris": [
         "http://localhost:5173/auth/callback",
         "http://localhost:8040/auth/callback",
@@ -36,7 +41,7 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:5173##http://127.0.0.1:5173"
+        "post.logout.redirect.uris": "http://localhost:5173/login##http://localhost:5173/*##http://localhost:5173##http://127.0.0.1:5173/*##http://127.0.0.1:5173"
       },
       "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
       "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]

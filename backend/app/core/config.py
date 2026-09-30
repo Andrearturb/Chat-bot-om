@@ -42,7 +42,18 @@ OIDC_ISSUER_URL = os.getenv("OIDC_ISSUER_URL", "")
 OIDC_CLIENT_ID = os.getenv("OIDC_CLIENT_ID", "")
 OIDC_CLIENT_SECRET = os.getenv("OIDC_CLIENT_SECRET", "")
 OIDC_REDIRECT_URI = os.getenv("OIDC_REDIRECT_URI", "http://localhost:5173/auth/callback")
-OIDC_POST_LOGOUT_REDIRECT_URI = os.getenv("OIDC_POST_LOGOUT_REDIRECT_URI", "http://localhost:5173")
+OIDC_POST_LOGOUT_REDIRECT_URI = os.getenv("OIDC_POST_LOGOUT_REDIRECT_URI", "http://localhost:5173/login")
+
+# ─── Keycloak Admin API (gestão de usuários, somente server-side) ─────────────
+# Client confidencial com service account e papéis mínimos de realm-management.
+# Base URL e realm são derivados do OIDC_ISSUER_URL quando não informados.
+KEYCLOAK_ADMIN_CLIENT_ID = os.getenv("KEYCLOAK_ADMIN_CLIENT_ID", "").strip()
+KEYCLOAK_ADMIN_CLIENT_SECRET = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET", "").strip()
+KEYCLOAK_ADMIN_BASE_URL = os.getenv("KEYCLOAK_ADMIN_BASE_URL", "").strip()
+KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "").strip()
+KEYCLOAK_ADMIN_TIMEOUT_SECONDS = float(os.getenv("KEYCLOAK_ADMIN_TIMEOUT_SECONDS", "10"))
+# Validade do link de definição de senha enviado por e-mail (quando há SMTP).
+KEYCLOAK_ACTION_EMAIL_LIFESPAN_SECONDS = int(os.getenv("KEYCLOAK_ACTION_EMAIL_LIFESPAN_SECONDS", "86400"))
 
 # ─── sessão ───────────────────────────────────────────────────────────────────
 SESSION_SECRET = os.getenv("SESSION_SECRET", "")
@@ -66,4 +77,11 @@ BOOTSTRAP_ADMIN_EMAIL = (
     DEV_ADMIN_EMAIL
     if APP_ENV.strip().lower() == "development" and DEV_ADMIN_EMAIL
     else _CONFIGURED_BOOTSTRAP_ADMIN_EMAIL
+)
+
+# Pré-provisionamento dos usuários DEV do Keycloak local (admin.om, analista.om...).
+# Nunca roda fora de APP_ENV=development.
+DEV_PROVISION_USERS = (
+    APP_ENV.strip().lower() == "development"
+    and os.getenv("DEV_PROVISION_USERS", "true").strip().lower() in {"1", "true", "yes", "on"}
 )

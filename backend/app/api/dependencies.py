@@ -5,21 +5,15 @@ Dependências compartilhadas da API.
 from __future__ import annotations
 
 import secrets
-from datetime import datetime
 
-from fastapi import Cookie, Depends, Header, HTTPException, Request, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.config import API_KEY, INTERNAL_API_KEY, SESSION_COOKIE_NAME
 from app.db.session import get_db
-from app.models.auth import AppUser, Profile, UserSession
-from app.services.auth import (
-    check_user_active,
-    get_session,
-    get_user_permissions,
-    record_security_event,
-    refresh_session,
-)
+from app.models.auth import AppUser, UserSession
+from app.services.auth import get_session, record_security_event, touch_session
+from app.services.session_refresh import SessionRevoked, ensure_fresh_snapshot
 
 
 # ─── API Key legacy (scheduler interno / qa-traces) ──────────────────────────
@@ -57,16 +51,11 @@ def _extract_token(request: Request) -> str | None:
     return request.cookies.get(SESSION_COOKIE_NAME)
 
 
-def get_current_session(
-    request: Request,
-    db: Session = Depends(get_db),
-) -> UserSession:
+def get_valid_session(request: Request, db: Session = Depends(get_db)) -> UserSession:
+    """Sessão válida pelo cookie, sem renovar o retrato (logout e CSRF)."""
     token = _extract_token(request)
     if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Não autenticado.",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Não autenticado.")
     session = get_session(db, token)
     if session is None:
         record_security_event(
@@ -76,11 +65,23 @@ def get_current_session(
             metadata={"path": str(request.url.path)},
         )
         db.commit()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão expirada ou inválida.")
+    return session
+
+
+def get_current_session(
+    session: UserSession = Depends(get_valid_session),
+    db: Session = Depends(get_db),
+) -> UserSession:
+    """Sessão com o retrato de acesso em dia (renovado no Keycloak a cada 5 min)."""
+    try:
+        session = ensure_fresh_snapshot(db, session)
+    except SessionRevoked:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sessão expirada ou inválida.",
-        )
-    refresh_session(db, session)
+            detail="Sessão encerrada. Entre novamente.",
+        ) from None
+    touch_session(db, session)
     return session
 
 
@@ -90,21 +91,7 @@ def get_current_user(
 ) -> AppUser:
     user = db.get(AppUser, session.user_id)
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário não encontrado.",
-        )
-    ok, reason = check_user_active(user)
-    if not ok:
-        # Usuário bloqueado/pendente/expirado não mantém sessão parcialmente
-        # ativa: a sessão é revogada no primeiro uso após a mudança de status.
-        session.revoked_at = datetime.utcnow()
-        session.id_token_hint = None
-        db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=reason,
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado.")
     return user
 
 
@@ -112,23 +99,23 @@ def get_current_user(
 
 def require_permission(permission_code: str):
     """
-    Factory de dependência.
+    Factory de dependência. A permissão vem do retrato da sessão, isto é, dos
+    papéis do client chat-bot-om-bff no token assinado pelo Keycloak.
 
     Uso:
         @router.get("/...", dependencies=[Depends(require_permission("assets.view"))])
     """
     def _checker(
         request: Request,
-        user: AppUser = Depends(get_current_user),
+        session: UserSession = Depends(get_current_session),
         db: Session = Depends(get_db),
     ) -> None:
-        perms = get_user_permissions(db, user)
-        if permission_code not in perms:
+        if permission_code not in (session.permissions or []):
             record_security_event(
                 db,
                 event_type="ACCESS_DENIED",
                 severity="medium",
-                user_id=user.id,
+                user_id=session.user_id,
                 metadata={"permission": permission_code, "path": str(request.url.path)},
             )
             db.commit()
@@ -139,48 +126,12 @@ def require_permission(permission_code: str):
     return _checker
 
 
-ADMIN_PROFILE_NAME = "ADMINISTRADOR"
-
-
-def require_admin(
-    request: Request,
-    user: AppUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> AppUser:
-    """Exige perfil ADMINISTRADOR **e** a permissão ``users.manage``.
-
-    O perfil vem sempre do banco (sessão server-side), nunca do navegador. Um
-    override ``allow`` de ``users.manage`` não basta para quem não é
-    administrador, e um ``deny`` continua bloqueando o administrador.
-    """
-    profile = db.get(Profile, user.profile_id) if user.profile_id else None
-    is_admin = (
-        profile is not None
-        and profile.name == ADMIN_PROFILE_NAME
-        and "users.manage" in get_user_permissions(db, user)
-    )
-    if not is_admin:
-        record_security_event(
-            db,
-            event_type="ACCESS_DENIED",
-            severity="medium",
-            user_id=user.id,
-            metadata={"permission": "admin", "path": str(request.url.path)},
-        )
-        db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso restrito a administradores.",
-        )
-    return user
-
-
 # ─── CSRF ─────────────────────────────────────────────────────────────────────
 
 def verify_csrf(
     request: Request,
     x_csrf_token: str = Header(default="", alias="x-csrf-token"),
-    session: UserSession = Depends(get_current_session),
+    session: UserSession = Depends(get_valid_session),
     db: Session = Depends(get_db),
 ) -> None:
     """

@@ -1,0 +1,153 @@
+"""Renovação do retrato de acesso da sessão (app/services/session_refresh.py)."""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+
+import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
+
+from app.models.auth import AppUser, SecurityEvent, UserSession
+from app.services import auth
+from app.services.permissions import snapshot_from_roles
+from app.services.session_refresh import REFRESH_RETRY_SECONDS, SessionRevoked, ensure_fresh_snapshot
+from tests.oidc_fake import ANALISTA, login_tokens
+
+CONVIDADO = ["CONVIDADO", "assistant.use", "assistant.history", "indicators.view", "assets.view"]
+
+
+def _login(db, provider, sub: str = "u1", roles=ANALISTA) -> UserSession:
+    tokens = login_tokens(provider, sub, roles)
+    snapshot = snapshot_from_roles(roles)
+    user = auth.upsert_user(db, tokens.access_claims, profiles=snapshot.profiles)
+    token = auth.create_session(db, user, tokens=tokens, snapshot=snapshot)
+    db.commit()
+    return auth.get_session(db, token)
+
+
+def _age(db, session: UserSession, minutes: int = 6) -> None:
+    session.snapshot_refreshed_at = datetime.utcnow() - timedelta(minutes=minutes)
+    db.commit()
+
+
+def _events(db, event_type: str) -> list[SecurityEvent]:
+    return db.scalars(select(SecurityEvent).where(SecurityEvent.event_type == event_type)).all()
+
+
+def test_retrato_recente_nao_chama_o_keycloak(db, provider):
+    session = _login(db, provider)
+    before = provider.token_requests
+    assert ensure_fresh_snapshot(db, session) is session
+    assert provider.token_requests == before
+
+
+def test_retrato_vencido_renova_e_aplica_a_troca_de_perfil(db, provider):
+    session = _login(db, provider)
+    old_refresh = session.refresh_token_enc
+    provider.roles_by_sub["u1"] = CONVIDADO
+    _age(db, session)
+    result = ensure_fresh_snapshot(db, session)
+    assert result.profiles == ["CONVIDADO"]
+    assert "assets.create" not in result.permissions and "assets.view" in result.permissions
+    assert result.refresh_token_enc != old_refresh
+    assert result.snapshot_refreshed_at > datetime.utcnow() - timedelta(minutes=1)
+    assert db.get(AppUser, result.user_id).last_profiles == ["CONVIDADO"]
+
+
+def test_renovacao_recusada_revoga_a_sessao(db, provider):
+    session = _login(db, provider)
+    provider.disabled_subs.add("u1")
+    _age(db, session)
+    with pytest.raises(SessionRevoked) as exc:
+        ensure_fresh_snapshot(db, session)
+    assert exc.value.reason == "invalid_grant"
+    assert session.revoked_at is not None and session.refresh_token_enc is None
+    assert len(_events(db, "SESSION_REVOKED")) == 1
+
+
+def test_sem_permissao_no_keycloak_revoga_e_devolve_o_refresh_token(db, provider):
+    session = _login(db, provider)
+    provider.roles_by_sub["u1"] = []
+    _age(db, session)
+    with pytest.raises(SessionRevoked) as exc:
+        ensure_fresh_snapshot(db, session)
+    assert exc.value.reason == "access_removed"
+    assert len(provider.revoked) == 1
+    assert len(_events(db, "ACCESS_REMOVED")) == 1
+
+
+def test_duas_abas_usam_o_refresh_token_uma_unica_vez(db, provider):
+    session = _login(db, provider)
+    _age(db, session)
+    outra_conexao = sessionmaker(bind=db.get_bind(), autoflush=False)()
+    aba_b = outra_conexao.get(UserSession, session.id)  # carregada antes da renovação da aba A
+    before = provider.token_requests
+
+    ensure_fresh_snapshot(db, session)                  # aba A renova
+    result = ensure_fresh_snapshot(outra_conexao, aba_b)  # aba B ainda tem o retrato velho em memória
+
+    assert provider.token_requests == before + 1
+    assert result.revoked_at is None
+    assert result.snapshot_refreshed_at > datetime.utcnow() - timedelta(minutes=1)
+    outra_conexao.close()
+
+
+def test_keycloak_fora_do_ar_mantem_o_retrato_e_limita_as_tentativas(db, provider):
+    session = _login(db, provider)
+    _age(db, session)
+    provider.offline = True
+    attempts = provider.attempts
+
+    result = ensure_fresh_snapshot(db, session)
+    assert result.revoked_at is None and result.refresh_failed_since is not None
+    assert "assets.create" in result.permissions
+    assert provider.attempts == attempts + 1
+
+    for _ in range(3):
+        ensure_fresh_snapshot(db, session)
+    assert provider.attempts == attempts + 1  # no máximo 1 tentativa a cada 30 s
+
+    session.refresh_attempted_at -= timedelta(seconds=REFRESH_RETRY_SECONDS + 1)
+    db.commit()
+    ensure_fresh_snapshot(db, session)
+    assert provider.attempts == attempts + 2
+
+
+def test_keycloak_fora_do_ar_por_15_minutos_encerra_a_sessao(db, provider):
+    session = _login(db, provider)
+    _age(db, session)
+    provider.offline = True
+    ensure_fresh_snapshot(db, session)
+    session.refresh_failed_since = datetime.utcnow() - timedelta(minutes=15, seconds=1)
+    db.commit()
+    with pytest.raises(SessionRevoked) as exc:
+        ensure_fresh_snapshot(db, session)
+    assert exc.value.reason == "provider_unavailable"
+    assert session.revoked_at is not None
+
+
+def test_keycloak_de_volta_limpa_a_falha(db, provider):
+    session = _login(db, provider)
+    _age(db, session)
+    provider.offline = True
+    ensure_fresh_snapshot(db, session)
+    provider.offline = False
+    session.refresh_attempted_at -= timedelta(seconds=REFRESH_RETRY_SECONDS + 1)
+    db.commit()
+    result = ensure_fresh_snapshot(db, session)
+    assert result.refresh_failed_since is None and result.refresh_attempted_at is None
+
+
+def test_sessao_revogada_por_outra_requisicao_nao_renova(db, provider):
+    session = _login(db, provider)
+    _age(db, session)
+    outra_conexao = sessionmaker(bind=db.get_bind(), autoflush=False)()
+    auth.revoke_session(outra_conexao, outra_conexao.get(UserSession, session.id))
+    outra_conexao.commit()
+    outra_conexao.close()
+    before = provider.token_requests
+    with pytest.raises(SessionRevoked) as exc:
+        ensure_fresh_snapshot(db, session)
+    assert exc.value.reason == "revoked"
+    assert provider.token_requests == before

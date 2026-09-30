@@ -1,7 +1,7 @@
 # Keycloak externo e autorização centralizada — Design
 
 **Data:** 2026-09-30
-**Status:** aguardando revisão
+**Status:** aprovado (2026-09-30)
 **Escopo:** Chat-bot O&M (este repositório) + novo repositório `gentil-identity`
 
 ## 1. Contexto e objetivo

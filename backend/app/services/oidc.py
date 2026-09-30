@@ -39,7 +39,7 @@ _jwt = JsonWebToken(["RS256"])
 _lock = threading.Lock()
 _discovery: dict | None = None
 _keys: dict[str, object] = {}
-_keys_loaded_at: float | None = None
+_keys_attempted_at: float | None = None
 
 
 class OidcError(Exception):
@@ -68,11 +68,11 @@ class TokenSet:
 
 
 def reset_cache() -> None:
-    global _discovery, _keys, _keys_loaded_at
+    global _discovery, _keys, _keys_attempted_at
     with _lock:
         _discovery = None
         _keys = {}
-        _keys_loaded_at = None
+        _keys_attempted_at = None
 
 
 def is_configured() -> bool:
@@ -113,19 +113,36 @@ def discovery() -> dict:
 
 
 def _load_keys(*, force: bool = False) -> dict[str, object]:
-    """Chaves RS256 de assinatura. Recarga forçada no máximo 1 vez por minuto."""
-    global _keys, _keys_loaded_at
+    """Chaves RS256 de assinatura.
+
+    O limite de 1 minuto vale para TENTATIVAS de busca (com ou sem sucesso), para que
+    um provedor lento ou fora do ar não seja martelado por tokens com ``kid`` aleatório.
+    A leitura do cache não usa o lock (``_keys`` é substituído, nunca alterado); o lock
+    só serializa a busca em si.
+    """
+    global _keys, _keys_attempted_at
+
+    def fresh() -> bool:
+        attempted = _keys_attempted_at
+        if attempted is None:
+            return False  # primeira carga: sempre busca
+        if not force and _keys:
+            return True
+        return clock() - attempted < JWKS_MIN_REFRESH_SECONDS
+
+    if fresh():
+        return _keys
     with _lock:
-        now = clock()
-        if _keys_loaded_at is not None and (not force or now - _keys_loaded_at < JWKS_MIN_REFRESH_SECONDS):
+        if fresh():  # outra thread acabou de tentar
             return _keys
+        _keys_attempted_at = clock()  # registra a tentativa antes de buscar
         data = _get_json(discovery()["jwks_uri"], "jwks_failed")
         keys = {}
         for jwk in data.get("keys", []):
             if (jwk.get("kty") == "RSA" and jwk.get("use", "sig") == "sig"
                     and jwk.get("alg", "RS256") == "RS256" and jwk.get("kid")):
                 keys[jwk["kid"]] = JsonWebKey.import_key(jwk)
-        _keys, _keys_loaded_at = keys, now
+        _keys = keys
         return _keys
 
 
@@ -188,6 +205,8 @@ def verify_id_token(token: str, *, nonce: str | None) -> dict:
     """``nonce=None`` somente na renovação; no login o nonce é obrigatório."""
     claims = _decode(token)
     _check_claims(claims, typ="ID")
+    if claims.get("azp") != config.OIDC_CLIENT_ID:
+        raise OidcError("invalid_azp")
     if nonce is not None and not hmac.compare_digest(str(claims.get("nonce", "")).encode(), nonce.encode()):
         raise OidcError("invalid_nonce")
     return claims

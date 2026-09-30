@@ -98,6 +98,27 @@ class TestJwks:
         claims = oidc.verify_access_token(provider.sign(provider.access_claims("u1", ANALISTA)))
         assert claims["sub"] == "u1" and provider.jwks_requests == 2
 
+    def test_falha_na_recarga_tambem_respeita_o_limite_de_um_minuto(self, provider, monkeypatch):
+        now = [1000.0]
+        monkeypatch.setattr(oidc, "clock", lambda: now[0])
+        oidc.verify_access_token(provider.sign(provider.access_claims("u1", ANALISTA)))
+        provider.offline = True
+        token = provider.sign(provider.access_claims("u1", ANALISTA), kid="kid-inexistente")
+        now[0] += 61
+        before = provider.attempts
+        with pytest.raises(oidc.OidcUnavailable):
+            oidc.verify_access_token(token)  # a tentativa que falha avisa quem a fez
+        for _ in range(3):
+            with pytest.raises(oidc.OidcError) as exc:
+                oidc.verify_access_token(token)
+            assert not isinstance(exc.value, oidc.OidcUnavailable)
+            assert _code(exc) == "unknown_signing_key"
+        assert provider.attempts == before + 1
+        now[0] += 61
+        with pytest.raises(oidc.OidcUnavailable):
+            oidc.verify_access_token(token)
+        assert provider.attempts == before + 2
+
     def test_chave_de_criptografia_nao_valida_assinatura(self, provider):
         token = provider.sign(provider.access_claims("u1", ANALISTA), kid="kid-enc")
         with pytest.raises(oidc.OidcError) as exc:
@@ -115,6 +136,13 @@ class TestIdToken:
             with pytest.raises(oidc.OidcError) as exc:
                 oidc.verify_id_token(provider.sign(claims), nonce="n-1")
             assert _code(exc) == "invalid_nonce"
+
+    def test_azp_diferente_ou_ausente_e_recusado(self, provider):
+        for extra in ({"azp": "outro-client"}, {"azp": None}):
+            claims = provider.id_claims("u1", nonce="n-1", **extra)
+            with pytest.raises(oidc.OidcError) as exc:
+                oidc.verify_id_token(provider.sign(claims), nonce="n-1")
+            assert _code(exc) == "invalid_azp"
 
     def test_access_token_nao_serve_como_id_token(self, provider):
         with pytest.raises(oidc.OidcError) as exc:

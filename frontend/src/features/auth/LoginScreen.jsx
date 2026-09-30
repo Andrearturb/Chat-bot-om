@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import AuthLayout from './AuthLayout.jsx'
-import { startLogin } from './api.js'
+import { startLogin, startRegister } from './api.js'
 
 /**
  * Página /login — apresentação antes do Keycloak. NÃO pede senha:
@@ -13,6 +13,11 @@ export default function LoginScreen({ authError = null, notice = null }) {
   function handleLogin() {
     setRedirecting(true)
     startLogin()
+  }
+
+  function handleRegister() {
+    setRedirecting(true)
+    startRegister()
   }
 
   return (
@@ -45,6 +50,9 @@ export default function LoginScreen({ authError = null, notice = null }) {
         ) : (
           <>{authError ? 'Entrar novamente' : 'Entrar'} <span className="om-auth__arrow" aria-hidden="true">→</span></>
         )}
+      </button>
+      <button className="om-auth__register" type="button" onClick={handleRegister} disabled={redirecting}>
+        Ainda não tem conta? <strong>Criar conta</strong>
       </button>
       <p className="om-auth__hint">
         Você será direcionado à página segura de autenticação da Gentil Negócios.

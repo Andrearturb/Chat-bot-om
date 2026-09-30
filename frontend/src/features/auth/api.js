@@ -32,6 +32,12 @@ export function startLogin() {
   window.location.assign('/auth/login')
 }
 
+/** Abre o autocadastro do Keycloak (/auth/register → prompt=create). */
+export function startRegister() {
+  writeStorage(REDIRECT_KEY, String(Date.now()))
+  window.location.assign('/auth/register')
+}
+
 /** Evita laço de redirecionamento caso a sessão não se confirme após o login. */
 export function loginRecentlyStarted(now = Date.now()) {
   const startedAt = Number(readStorage(REDIRECT_KEY) || 0)
@@ -46,7 +52,7 @@ export function consumeLoggedOutNotice() {
   return Boolean(flag)
 }
 
-/** Volta para /login sem sessão (usado nas telas de acesso pendente/indisponível). */
+/** Volta para /login sem sessão (usado na tela de conta não liberada). */
 export function leaveToLogin() {
   window.location.assign(LOGIN_PATH)
 }

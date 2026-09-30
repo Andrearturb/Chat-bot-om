@@ -7,17 +7,13 @@ export const AUTH_ERROR_MESSAGES = {
     title: 'Não foi possível concluir a autenticação',
     message: 'O provedor confirmou o acesso, mas houve uma falha ao concluir a sessão. Tente novamente.',
   },
-  no_user: {
-    title: 'Conta não reconhecida',
-    message: 'A identidade foi autenticada, mas não foi possível vinculá-la ao Chat-bot O&M.',
+  not_released: {
+    title: 'Sua conta ainda não foi liberada',
+    message: 'Seu cadastro está confirmado, mas um gestor de acesso ainda precisa liberar o seu perfil no Chat-bot O&M.',
   },
-  pending: {
-    title: 'Acesso aguardando liberação',
-    message: 'Sua identidade foi autenticada com sucesso, mas seu acesso ao Chat-bot O&M ainda não está ativo.',
-  },
-  disabled: {
-    title: 'Acesso indisponível',
-    message: 'Sua conta está desativada ou o período de acesso expirou.',
+  provider_unavailable: {
+    title: 'Login indisponível no momento',
+    message: 'Não foi possível contatar o serviço de autenticação. Tente novamente em alguns minutos.',
   },
   provider_error: {
     title: 'Login não concluído',

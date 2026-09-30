@@ -822,3 +822,29 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Autocadastro e conta não liberada ─────────────────────────────────────── */
+.om-auth__register {
+  display: block;
+  width: 100%;
+  margin: 14px 0 0;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #5d6a80;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.om-auth__register strong { color: var(--om-navy-soft); font-weight: 750; }
+
+.om-auth__register:hover:not(:disabled) strong,
+.om-auth__register:focus-visible strong { text-decoration: underline; }
+
+.om-auth__register:focus-visible { outline: 2px solid var(--om-yellow); outline-offset: 2px; }
+
+.om-auth__register:disabled { cursor: wait; opacity: 0.7; }
+
+.om-auth__button + .om-auth__button { margin-top: 10px; }

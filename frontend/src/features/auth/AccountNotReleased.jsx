@@ -1,7 +1,11 @@
 import AuthLayout from './AuthLayout.jsx'
-import { leaveToLogin } from './api.js'
+import { leaveToLogin, startLogin } from './api.js'
 
-export default function AccessPending() {
+/**
+ * Conta autenticada no Keycloak, mas ainda sem papel do Chat-bot O&M.
+ * A liberação é feita por um gestor de acesso no console do Keycloak.
+ */
+export default function AccountNotReleased() {
   return (
     <AuthLayout labelledBy="om-auth-title">
       <div className="om-auth__status om-auth__status--pending" aria-hidden="true">
@@ -11,15 +15,18 @@ export default function AccessPending() {
         </svg>
       </div>
       <header className="om-auth__header">
-        <h2 id="om-auth-title">Acesso aguardando aprovação</h2>
-        <p>Sua conta foi autenticada, mas ainda precisa ser liberada por um administrador.</p>
+        <h2 id="om-auth-title">Sua conta ainda não foi liberada</h2>
+        <p>Seu cadastro está confirmado. Falta um gestor de acesso liberar o seu perfil no Chat-bot O&amp;M.</p>
       </header>
       <p className="om-auth__note">
-        Assim que o acesso for liberado, basta entrar novamente. Em caso de urgência,
+        Quando a liberação acontecer, é só entrar novamente. Em caso de urgência,
         procure o responsável pelo Chat-bot O&amp;M.
       </p>
+      <button className="om-auth__button" type="button" onClick={startLogin}>
+        Entrar novamente <span className="om-auth__arrow" aria-hidden="true">→</span>
+      </button>
       <button className="om-auth__button om-auth__button--secondary" type="button" onClick={leaveToLogin}>
-        Sair
+        Voltar ao início
       </button>
     </AuthLayout>
   )

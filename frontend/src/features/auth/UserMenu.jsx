@@ -3,7 +3,7 @@ import { useAuth } from './AuthProvider.jsx'
 import { logoutAndRedirect } from './api.js'
 
 export default function UserMenu({ onOpenUsers, onOpenAudit, onOpenSettings }) {
-  const { user, profile, hasPermission, isAdmin } = useAuth()
+  const { user, profile, hasPermission, canViewUsers } = useAuth()
   const [open, setOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
 
@@ -44,7 +44,7 @@ export default function UserMenu({ onOpenUsers, onOpenAudit, onOpenSettings }) {
               <small>{user.email}</small>
             </div>
             <div className="user-menu__items">
-              {isAdmin && (
+              {canViewUsers && (
                 <button className="user-menu__item" role="menuitem" type="button"
                         onClick={() => { setOpen(false); onOpenUsers?.() }}>
                   Gestão de Usuários

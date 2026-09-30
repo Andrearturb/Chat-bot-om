@@ -1,13 +1,15 @@
 /**
  * AuthProvider — estado global de autenticação.
  *
- * auth_status: 'loading' | 'redirecting' | 'authenticated' | 'unauthenticated' | 'pending' | 'disabled'
+ * auth_status: 'loading' | 'redirecting' | 'authenticated' | 'unauthenticated' | 'not_released'
+ *
+ * Perfis e permissões vêm do Keycloak, via /auth/me (retrato da sessão no
+ * backend). O frontend só exibe: toda regra de acesso é validada no backend.
  *
  * Navegação sem sessão:
- * - "/" (ou qualquer tela do app) → vai direto para o login do Keycloak, que já
- *   tem a identidade visual do Chat-bot O&M (uma única tela de login);
- * - "/login" → página de apresentação (retorno do logout, erros e acesso negado),
- *   sem redirecionamento automático para não criar laços.
+ * - "/" (ou qualquer tela do app) → vai direto para o login do Keycloak;
+ * - "/login" → página de apresentação (retorno do logout e erros), sem
+ *   redirecionamento automático para não criar laços.
  */
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
@@ -28,7 +30,9 @@ const AuthContext = createContext(null)
 const EMPTY_SESSION = {
   user: null,
   profile: null,
+  profiles: [],
   permissions: new Set(),
+  keycloakConsoleUrl: null,
   csrf_token: '',
   ai_usage: null,
 }
@@ -55,8 +59,7 @@ function initialAuthState() {
   clearLoginMarker()
   replaceUrl(LOGIN_PATH)
   const authError = getAuthError(authErrorCode)
-  if (authErrorCode === 'pending') return { ...base, auth_status: 'pending', auth_error: authError }
-  if (authErrorCode === 'disabled') return { ...base, auth_status: 'disabled', auth_error: authError }
+  if (authErrorCode === 'not_released') return { ...base, auth_status: 'not_released', auth_error: authError }
   return { ...base, auth_status: 'unauthenticated', auth_error: authError }
 }
 
@@ -71,13 +74,11 @@ export function AuthProvider({ children }) {
   const abortRef = useRef(null)
   const callbackErrorRef = useRef(state.auth_status !== 'loading')
 
-  // silent: revalida permissões sem trocar a tela por "Verificando acesso…"
-  // (ex.: administrador alterou o próprio perfil na Gestão de Usuários).
-  const refresh = useCallback(async ({ silent = false } = {}) => {
+  const refresh = useCallback(async () => {
     abortRef.current?.abort()
     const ctrl = new AbortController()
     abortRef.current = ctrl
-    if (!silent) setState(s => ({ ...s, auth_status: 'loading', auth_error: null }))
+    setState(s => ({ ...s, auth_status: 'loading', auth_error: null }))
 
     try {
       const me = await fetchMe(ctrl.signal)
@@ -86,10 +87,11 @@ export function AuthProvider({ children }) {
       if (isLoginPath()) replaceUrl('/')
       setState({
         auth_status: 'authenticated',
-        user: { id: me.id, email: me.email, username: me.username, display_name: me.display_name,
-                status: me.status, access_expires_at: me.access_expires_at },
+        user: { id: me.id, email: me.email, username: me.username, display_name: me.display_name },
         profile: { name: me.profile, display_name: me.profile_display },
+        profiles: me.profiles || [],
         permissions: new Set(me.permissions || []),
+        keycloakConsoleUrl: me.keycloak_console_url || null,
         csrf_token: me.csrf_token || '',
         ai_usage: me.ai_usage || null,
         auth_error: null,
@@ -100,13 +102,6 @@ export function AuthProvider({ children }) {
       setCsrfToken('')
       const status = err?.status
 
-      if (status === 403) {
-        const isPending = (err?.detail || '').toLowerCase().includes('pendente')
-        replaceUrl(LOGIN_PATH)
-        setState({ auth_status: isPending ? 'pending' : 'disabled', ...EMPTY_SESSION, auth_error: null, notice: null })
-        return
-      }
-
       if (status === 401 && !isLoginPath()) {
         if (loginRecentlyStarted()) {
           // Voltou do Keycloak sem sessão válida: mostra o motivo em vez de repetir o login.
@@ -116,6 +111,7 @@ export function AuthProvider({ children }) {
                      auth_error: getAuthError('session_not_started'), notice: null })
           return
         }
+        // Sessão encerrada (logout em outro lugar, acesso retirado no Keycloak): novo login.
         setState(s => ({ ...s, auth_status: 'redirecting' }))
         startLogin()
         return
@@ -139,10 +135,10 @@ export function AuthProvider({ children }) {
   }, [refresh])
 
   const hasPermission = useCallback(code => state.permissions.has(code), [state.permissions])
-  const isAdmin = state.profile?.name === 'ADMINISTRADOR' && state.permissions.has('users.manage')
+  const canViewUsers = state.permissions.has('users.view')
 
   return (
-    <AuthContext.Provider value={{ ...state, hasPermission, isAdmin, refresh }}>
+    <AuthContext.Provider value={{ ...state, hasPermission, canViewUsers, refresh }}>
       {children}
     </AuthContext.Provider>
   )

@@ -167,7 +167,7 @@ function SettingsMenu({ onOpenStatus, onOpenUsers }) {
             <span className="settings-option-card__icon settings-option-card__icon--users"><Icon name="users" /></span>
             <span className="settings-option-card__copy">
               <strong>Gestão de Usuários</strong>
-              <small>Cadastre usuários, defina perfis de acesso e bloqueie ou reative contas.</small>
+              <small>Consulte quem acessa o Chat-bot O&amp;M e abra o console do Keycloak para liberar ou bloquear contas.</small>
             </span>
             <span className="settings-option-card__arrow" aria-hidden="true">›</span>
           </button>

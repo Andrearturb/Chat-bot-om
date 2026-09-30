@@ -12,8 +12,7 @@ import SettingsModal from './features/settings/SettingsModal'
 
 import { AuthProvider, useAuth } from './features/auth/AuthProvider.jsx'
 import LoginScreen from './features/auth/LoginScreen.jsx'
-import AccessPending from './features/auth/AccessPending.jsx'
-import AccessDenied from './features/auth/AccessDenied.jsx'
+import AccountNotReleased from './features/auth/AccountNotReleased.jsx'
 import AuthLoading from './features/auth/AuthLoading.jsx'
 import UserMenu from './features/auth/UserMenu.jsx'
 import { api } from './lib/apiClient.js'
@@ -47,7 +46,7 @@ function greetingMsg() {
 
 // ── Componente principal (dentro do AuthProvider) ─────────────────────────────
 function AppShell() {
-  const { auth_status, user, hasPermission, isAdmin, auth_error, notice, refresh } = useAuth()
+  const { auth_status, user, hasPermission, canViewUsers, keycloakConsoleUrl, auth_error, notice } = useAuth()
 
   const [nav] = useState(() => loadNav())
   const [activeSection, setActiveSection] = useState(nav.activeSection)
@@ -195,12 +194,11 @@ function AppShell() {
   if (auth_status === 'loading')         return <AuthLoading />
   if (auth_status === 'redirecting')     return <AuthLoading message="Abrindo o login seguro…" />
   if (auth_status === 'unauthenticated') return <LoginScreen authError={auth_error} notice={notice} />
-  if (auth_status === 'pending')         return <AccessPending />
-  if (auth_status === 'disabled')        return <AccessDenied />
+  if (auth_status === 'not_released')   return <AccountNotReleased />
 
-  // Gestão de Usuários é exclusiva de administradores (o backend também valida):
-  // se o perfil mudar durante a sessão, a tela volta ao assistente.
-  const section = activeSection === 'users' && !isAdmin ? 'assistant' : activeSection
+  // Gestão de Usuários (consulta) exige users.view — o backend também valida:
+  // se a permissão sair no Keycloak, a tela volta ao assistente.
+  const section = activeSection === 'users' && !canViewUsers ? 'assistant' : activeSection
 
   const canUseAssistant  = hasPermission('assistant.use')
   const canSeeHistory    = hasPermission('assistant.history')
@@ -275,9 +273,9 @@ function AppShell() {
             <IndicatorsPage activeIndicator={activeIndicator} onIndicatorChange={setActiveIndicator} />
           ) : section === 'assets' && canSeeAssets ? (
             <AssetsPage />
-          ) : section === 'users' && isAdmin ? (
+          ) : section === 'users' && canViewUsers ? (
             <Suspense fallback={<div className="permission-denied" role="status">Carregando usuários...</div>}>
-              <UsersPage currentUserId={user?.id} onSelfChanged={() => refresh({ silent: true })} />
+              <UsersPage currentUserId={user?.id} consoleUrl={keycloakConsoleUrl} />
             </Suspense>
           ) : null}
         </div>
@@ -286,7 +284,7 @@ function AppShell() {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        onOpenUsers={isAdmin ? openUsers : undefined}
+        onOpenUsers={canViewUsers ? openUsers : undefined}
       />
 
       {auditOpen && hasPermission('audit.view') && (

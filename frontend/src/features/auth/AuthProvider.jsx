@@ -22,7 +22,7 @@ import {
   loginRecentlyStarted,
   startLogin,
 } from './api.js'
-import { setCsrfToken } from '../../lib/apiClient.js'
+import { setCsrfToken, setUnauthorizedHandler } from '../../lib/apiClient.js'
 import { getAuthError } from './authErrors.js'
 
 const AuthContext = createContext(null)
@@ -133,6 +133,11 @@ export function AuthProvider({ children }) {
     if (!callbackErrorRef.current) refresh()
     return () => abortRef.current?.abort()
   }, [refresh])
+
+  useEffect(() => {
+    setUnauthorizedHandler(state.auth_status === 'authenticated' ? () => refresh() : null)
+    return () => setUnauthorizedHandler(null)
+  }, [refresh, state.auth_status])
 
   const hasPermission = useCallback(code => state.permissions.has(code), [state.permissions])
   const canViewUsers = state.permissions.has('users.view')

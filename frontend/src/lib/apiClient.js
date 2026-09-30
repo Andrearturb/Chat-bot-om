@@ -12,9 +12,12 @@
  */
 
 let _csrfToken = ''
+let _unauthorizedHandler = null
+let _unauthorizedHandling = null
 
 export function setCsrfToken(token) { _csrfToken = token || '' }
 export function getCsrfToken() { return _csrfToken }
+export function setUnauthorizedHandler(handler) { _unauthorizedHandler = handler }
 
 export class ApiError extends Error {
   constructor(message, { status = null, kind = 'http', detail = null } = {}) {
@@ -64,6 +67,14 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (!response.ok) {
+    if (response.status === 401 && path !== '/auth/me' && path !== '/auth/logout'
+        && _unauthorizedHandler && !_unauthorizedHandling) {
+      // Não prende a requisição original nem repete o redirecionamento numa rajada.
+      _unauthorizedHandling = Promise.resolve()
+        .then(() => _unauthorizedHandler?.())
+        .catch(() => {})
+        .finally(() => { _unauthorizedHandling = null })
+    }
     const detail = payload?.detail || null
     const message = typeof detail === 'string' ? detail : `Erro HTTP ${response.status}`
     throw new ApiError(message, {

@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from app.models.auth import AppUser, SecurityEvent, UserSession
-from app.services import auth
+from app.services import auth, oidc, session_refresh
 from app.services.permissions import snapshot_from_roles
 from app.services.session_refresh import REFRESH_RETRY_SECONDS, SessionRevoked, ensure_fresh_snapshot
 from tests.oidc_fake import ANALISTA, login_tokens
@@ -151,3 +151,140 @@ def test_sessao_revogada_por_outra_requisicao_nao_renova(db, provider):
         ensure_fresh_snapshot(db, session)
     assert exc.value.reason == "revoked"
     assert provider.token_requests == before
+
+
+# ─── Carência de 15 min e trava por sessão ────────────────────────────────────
+
+def _outra_conexao(db):
+    return sessionmaker(bind=db.get_bind(), autoflush=False)()
+
+
+def test_falha_na_tentativa_apos_a_carencia_de_15_minutos_encerra_a_sessao(db, provider):
+    session = _login(db, provider)
+    _age(db, session)
+    agora = datetime.utcnow()
+    session.refresh_failed_since = agora - timedelta(minutes=15, seconds=1)
+    session.refresh_attempted_at = agora - timedelta(seconds=REFRESH_RETRY_SECONDS + 1)  # já pode tentar de novo
+    db.commit()
+    provider.offline = True
+    attempts = provider.attempts
+
+    with pytest.raises(SessionRevoked) as exc:
+        ensure_fresh_snapshot(db, session)
+
+    assert exc.value.reason == "provider_unavailable"
+    assert provider.attempts == attempts + 1  # tentou uma vez; a falha esgotou a carência
+    assert session.revoked_at is not None and session.refresh_token_enc is None
+    assert len(_events(db, "SESSION_REVOKED")) == 1
+
+
+def test_outra_aba_ja_falhou_e_a_aba_com_retrato_velho_nao_tenta_de_novo(db, provider):
+    session = _login(db, provider)
+    _age(db, session)
+    outra_conexao = _outra_conexao(db)
+    aba_b = outra_conexao.get(UserSession, session.id)  # carregada antes da falha da aba A
+    provider.offline = True
+    attempts = provider.attempts
+
+    ensure_fresh_snapshot(db, session)  # aba A tenta, falha e registra a tentativa
+    assert provider.attempts == attempts + 1
+    result = ensure_fresh_snapshot(outra_conexao, aba_b)  # aba B relê a linha travada e vê a tentativa recente
+
+    assert provider.attempts == attempts + 1
+    assert result.revoked_at is None and result.refresh_failed_since is not None
+    outra_conexao.close()
+
+
+def test_outra_aba_ja_falhou_e_a_carencia_acabou_a_aba_com_retrato_velho_encerra_sem_tentar(db, provider):
+    session = _login(db, provider)
+    _age(db, session)
+    outra_conexao = _outra_conexao(db)
+    aba_b = outra_conexao.get(UserSession, session.id)
+    provider.offline = True
+    attempts = provider.attempts
+    ensure_fresh_snapshot(db, session)
+    session.refresh_failed_since = datetime.utcnow() - timedelta(minutes=15, seconds=1)
+    db.commit()
+
+    with pytest.raises(SessionRevoked) as exc:
+        ensure_fresh_snapshot(outra_conexao, aba_b)
+
+    assert exc.value.reason == "provider_unavailable"
+    assert provider.attempts == attempts + 1  # só a tentativa da aba A
+    outra_conexao.close()
+
+
+def test_acesso_removido_encerra_a_transacao_antes_de_revogar_no_keycloak(db, provider, monkeypatch):
+    session = _login(db, provider)
+    provider.roles_by_sub["u1"] = []
+    _age(db, session)
+    visto = {}
+    original = oidc.revoke_refresh_token
+
+    def espiao(refresh_token):
+        visto["em_transacao"] = db.in_transaction()  # a trava da linha já foi liberada?
+        return original(refresh_token)
+
+    monkeypatch.setattr(oidc, "revoke_refresh_token", espiao)
+
+    with pytest.raises(SessionRevoked) as exc:
+        ensure_fresh_snapshot(db, session)
+
+    assert exc.value.reason == "access_removed"
+    assert visto == {"em_transacao": False}
+    assert len(provider.revoked) == 1
+    assert session.revoked_at is not None
+    assert len(_events(db, "ACCESS_REMOVED")) == 1
+
+
+def test_sessao_travada_por_outra_requisicao_nao_espera_e_nao_chama_o_keycloak(db, provider, monkeypatch):
+    session = _login(db, provider)
+    _age(db, session)
+    antes = (list(session.permissions), list(session.profiles), session.snapshot_refreshed_at,
+             session.refresh_token_enc)
+    monkeypatch.setattr(session_refresh, "_lock_session", lambda db, session_id: None)  # SKIP LOCKED: outra requisição renova
+    attempts = provider.attempts
+
+    result = ensure_fresh_snapshot(db, session)
+
+    assert not db.in_transaction()  # não segura conexão nem trava enquanto a outra requisição renova
+    assert provider.attempts == attempts
+    assert result.id == session.id and result.revoked_at is None
+    assert (list(result.permissions), list(result.profiles), result.snapshot_refreshed_at,
+            result.refresh_token_enc) == antes
+
+
+def test_sessao_travada_e_revogada_por_outra_requisicao_levanta_revoked(db, provider, monkeypatch):
+    session = _login(db, provider)
+    _age(db, session)
+    outra_conexao = _outra_conexao(db)
+    auth.revoke_session(outra_conexao, outra_conexao.get(UserSession, session.id))
+    outra_conexao.commit()
+    outra_conexao.close()
+    monkeypatch.setattr(session_refresh, "_lock_session", lambda db, session_id: None)
+    attempts = provider.attempts
+
+    with pytest.raises(SessionRevoked) as exc:
+        ensure_fresh_snapshot(db, session)
+
+    assert exc.value.reason == "revoked"
+    assert provider.attempts == attempts
+    assert not db.in_transaction()
+
+
+def test_sessao_travada_e_apagada_levanta_revoked(db, provider, monkeypatch):
+    session = _login(db, provider)
+    _age(db, session)
+    outra_conexao = _outra_conexao(db)
+    outra_conexao.delete(outra_conexao.get(UserSession, session.id))
+    outra_conexao.commit()
+    outra_conexao.close()
+    monkeypatch.setattr(session_refresh, "_lock_session", lambda db, session_id: None)
+    attempts = provider.attempts
+
+    with pytest.raises(SessionRevoked) as exc:
+        ensure_fresh_snapshot(db, session)
+
+    assert exc.value.reason == "revoked"
+    assert provider.attempts == attempts
+    assert not db.in_transaction()

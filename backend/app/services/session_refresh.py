@@ -3,8 +3,11 @@ Renovação do retrato de acesso da sessão.
 
 A cada OIDC_TOKEN_REFRESH_SECONDS o backend usa o refresh token (cifrado na
 sessão) para obter novos tokens do Keycloak e atualizar permissões e perfis.
-Uma trava por sessão (SELECT ... FOR UPDATE) garante que o refresh token, de
-uso único, seja usado por uma só requisição.
+Uma trava por sessão (SELECT ... FOR UPDATE SKIP LOCKED) garante que o refresh
+token, de uso único, seja usado por uma só requisição. Quem não consegue a trava
+não espera: outra requisição já está renovando, então segue com o retrato
+atual. Assim nenhuma requisição segura conexão do banco esperando o Keycloak
+de outra.
 """
 
 from __future__ import annotations
@@ -45,7 +48,8 @@ def _retry_throttled(session: UserSession, now: datetime) -> bool:
             and now - session.refresh_attempted_at < timedelta(seconds=REFRESH_RETRY_SECONDS))
 
 
-def _revoke(db: Session, session: UserSession, reason: str) -> NoReturn:
+def _end_session(db: Session, session: UserSession, reason: str) -> None:
+    """Revoga a sessão e registra o evento. O commit libera a trava da linha."""
     revoke_session(db, session)
     record_security_event(
         db,
@@ -55,6 +59,10 @@ def _revoke(db: Session, session: UserSession, reason: str) -> NoReturn:
         metadata={"reason": reason},
     )
     db.commit()
+
+
+def _revoke(db: Session, session: UserSession, reason: str) -> NoReturn:
+    _end_session(db, session, reason)
     raise SessionRevoked(reason)
 
 
@@ -62,6 +70,20 @@ def _enforce_grace(db: Session, session: UserSession, now: datetime) -> None:
     started = session.refresh_failed_since
     if started is not None and now - started >= timedelta(minutes=config.OIDC_OFFLINE_GRACE_MINUTES):
         _revoke(db, session, "provider_unavailable")
+
+
+def _lock_session(db: Session, session_id: int) -> UserSession | None:
+    """Trava a linha da sessão sem esperar e a recarrega do banco.
+
+    Devolve ``None`` se outra requisição já a travou (está renovando) ou se a linha
+    não existe mais. Sem SKIP LOCKED (SQLite), devolve a linha sempre.
+    """
+    return db.scalar(
+        select(UserSession)
+        .where(UserSession.id == session_id)
+        .with_for_update(skip_locked=True)
+        .execution_options(populate_existing=True)
+    )
 
 
 def ensure_fresh_snapshot(db: Session, session: UserSession) -> UserSession:
@@ -73,17 +95,21 @@ def ensure_fresh_snapshot(db: Session, session: UserSession) -> UserSession:
         _enforce_grace(db, session, now)
         return session
 
-    locked = db.scalar(
-        select(UserSession)
-        .where(UserSession.id == session.id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    )
-    if locked is None or locked.revoked_at is not None:
+    locked = _lock_session(db, session.id)
+    if locked is None:
+        # Sem a trava: a linha sumiu, foi revogada ou outra requisição está renovando.
+        # Nunca esperamos nem falamos com o Keycloak aqui; quem renova atualiza o retrato.
+        current = db.get(UserSession, session.id, populate_existing=True)
+        gone = current is None or current.revoked_at is not None
+        db.commit()  # encerra a transação: não seguramos conexão à toa
+        if gone:
+            raise SessionRevoked("revoked")
+        return current
+    if locked.revoked_at is not None:
         db.commit()
         raise SessionRevoked("revoked")
     if _is_fresh(locked, now):
-        db.commit()  # outra requisição renovou enquanto esperávamos: libera a trava
+        db.commit()  # outra requisição renovou entre a leitura e a trava: libera a trava
         return locked
     if _retry_throttled(locked, now):
         _enforce_grace(db, locked, now)
@@ -112,8 +138,11 @@ def ensure_fresh_snapshot(db: Session, session: UserSession) -> UserSession:
 
     snapshot = snapshot_from_roles(oidc.roles_from_access_claims(tokens.access_claims))
     if not snapshot.has_access:
+        # Revoga e confirma localmente ANTES da chamada de rede (melhor esforço): a
+        # trava da linha é liberada e nenhuma conexão fica presa esperando o Keycloak.
+        _end_session(db, locked, "access_removed")
         oidc.revoke_refresh_token(tokens.refresh_token)
-        _revoke(db, locked, "access_removed")
+        raise SessionRevoked("access_removed")
 
     locked.refresh_token_enc = encrypt_secret(tokens.refresh_token)
     if tokens.id_token:

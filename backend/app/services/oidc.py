@@ -263,15 +263,26 @@ def _token_request(data: dict) -> dict:
             resp = client.post(endpoint, data=payload)
     except httpx.HTTPError as exc:
         raise OidcUnavailable("token_endpoint_unreachable") from exc
-    if resp.status_code >= 500:
+    if resp.status_code >= 500 or resp.status_code == 429:
         raise OidcUnavailable("token_endpoint_error")
     if resp.status_code != 200:
         try:
-            error = str(resp.json().get("error") or "rejected")
+            body = resp.json()
+            error = str(body.get("error") or "rejected") if isinstance(body, dict) else "rejected"
         except ValueError:
             error = "rejected"
+        # Só invalid_grant confirma que o código/refresh token foi recusado.
+        # Erros de cliente/configuração não devem encerrar sessões válidas.
+        if error != "invalid_grant":
+            raise OidcUnavailable("token_endpoint_error")
         raise OidcRejected(error[:60])
-    return resp.json()
+    try:
+        body = resp.json()
+    except ValueError as exc:
+        raise OidcUnavailable("token_endpoint_invalid_json") from exc
+    if not isinstance(body, dict):
+        raise OidcUnavailable("token_endpoint_invalid_json")
+    return body
 
 
 def _token_set(data: dict, *, nonce: str | None, expected_sub: str | None = None) -> TokenSet:

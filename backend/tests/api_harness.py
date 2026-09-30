@@ -16,9 +16,12 @@ from datetime import datetime, timedelta
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_api.db")
 os.environ.setdefault("INTERNAL_API_KEY", "test-internal-key-xyz")
 os.environ.setdefault("API_KEY", "test-api-key-xyz")
-os.environ.setdefault("OIDC_ISSUER_URL", "")
+os.environ["OIDC_ISSUER_URL"] = ""
 os.environ.setdefault("SESSION_SECRET", "test-secret")
 os.environ.setdefault("FRONTEND_ORIGINS", "http://localhost:5173")
+os.environ["OIDC_POST_LOGOUT_REDIRECT_URI"] = "http://localhost:5173/login"
+os.environ["SESSION_COOKIE_SECURE"] = "false"
+os.environ["KEYCLOAK_CONSOLE_URL"] = ""
 # Sem exceção: o agendador da Tape faria chamadas reais se o .env (carregado por app.core.config)
 # o deixasse ligado, e brigaria com o SQLite compartilhado dos testes.
 os.environ["TAPE_SYNC_SCHEDULE_ENABLED"] = "false"

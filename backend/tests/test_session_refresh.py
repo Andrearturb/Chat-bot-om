@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+import httpx
 import pytest
 from sqlalchemy import select
 from sqlalchemy.dialects import postgresql
@@ -65,6 +66,16 @@ def test_renovacao_recusada_revoga_a_sessao(db, provider):
     assert exc.value.reason == "invalid_grant"
     assert session.revoked_at is not None and session.refresh_token_enc is None
     assert len(_events(db, "SESSION_REVOKED")) == 1
+
+
+def test_erro_de_configuracao_do_client_mantem_sessao_na_carencia(db, provider, monkeypatch):
+    session = _login(db, provider)
+    _age(db, session)
+    monkeypatch.setattr(provider, "_token", lambda _: httpx.Response(401, json={"error": "invalid_client"}))
+    result = ensure_fresh_snapshot(db, session)
+    assert result.id == session.id
+    assert result.revoked_at is None
+    assert result.refresh_failed_since is not None
 
 
 def test_sem_permissao_no_keycloak_revoga_e_devolve_o_refresh_token(db, provider):

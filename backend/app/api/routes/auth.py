@@ -188,11 +188,13 @@ def callback(
 
 @router.get("/me")
 def me(
+    response: Response,
     session: UserSession = Depends(get_current_session),
     user: AppUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """Usuário atual, perfis e permissões (retrato vindo do Keycloak) e token CSRF."""
+    response.headers.update(_NO_STORE)
     permissions = sorted(session.permissions or [])
     profiles = list(session.profiles or [])
     profile = primary_profile(profiles)
@@ -226,6 +228,7 @@ def logout(
     db: Session = Depends(get_db),
 ) -> dict:
     """Revoga a sessão do app e o refresh token no Keycloak; devolve a URL de logout OIDC."""
+    response.headers.update(_NO_STORE)
     id_token_hint = session.id_token_hint
     refresh_token = decrypt_secret(session.refresh_token_enc)
     record_audit(db, user_id=session.user_id, action="LOGOUT",

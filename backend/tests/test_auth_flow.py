@@ -99,12 +99,20 @@ def test_callback_cria_sessao_com_cookie_seguro_e_sem_tokens_no_navegador(client
     cookie = r.headers["set-cookie"]
     assert "om_session=" in cookie and "HttpOnly" in cookie and "Path=/" in cookie and "SameSite=lax" in cookie
 
-    me = client.get("/auth/me").json()
+    me_response = client.get("/auth/me")
+    assert me_response.headers["cache-control"] == "no-store"
+    me = me_response.json()
     assert set(me) == {"id", "email", "username", "display_name", "profile", "profile_display", "profiles",
                        "permissions", "csrf_token", "keycloak_console_url", "ai_usage"}
     assert me["profile"] == "ANALISTA" and me["profile_display"] == "Analista"
     assert me["profiles"] == ["ANALISTA"] and "assets.create" in me["permissions"]
     assert me["keycloak_console_url"] is None
+
+
+def test_sem_users_view_nao_recebe_link_do_console_configurado(client, provider, monkeypatch):
+    monkeypatch.setattr(config, "KEYCLOAK_CONSOLE_URL", "http://kc.test/admin/gentil-dev/console/")
+    _login(client, provider, roles=ANALISTA)
+    assert client.get("/auth/me").json()["keycloak_console_url"] is None
 
 
 def test_quem_tem_users_view_recebe_o_link_do_console(client, provider, monkeypatch):
@@ -258,6 +266,7 @@ def test_logout_revoga_sessao_e_refresh_token(client, provider):
     _login(client, provider)
     r = client.post("/auth/logout", headers={"X-CSRF-Token": _csrf(client)})
     assert r.status_code == 200 and "Max-Age=0" in r.headers["set-cookie"]
+    assert r.headers["cache-control"] == "no-store"
     url = r.json()["logout_url"]
     assert url.startswith(ISSUER + "/protocol/openid-connect/logout?")
     params = authorization_params(url)

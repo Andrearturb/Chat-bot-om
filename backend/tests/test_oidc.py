@@ -8,6 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+import httpx
 
 from app.services import oidc
 from tests.oidc_fake import (
@@ -198,6 +199,19 @@ class TestLogoutToken:
 
 
 class TestTokenEndpoint:
+    @pytest.mark.parametrize("status,body", [
+        (401, {"error": "invalid_client"}),
+        (429, {"error": "temporarily_unavailable"}),
+        (200, "<html>indisponível</html>"),
+    ])
+    def test_erro_transitorio_ou_resposta_invalida_nao_recusa_sessao(self, provider, monkeypatch, status, body):
+        monkeypatch.setattr(provider, "_token", lambda _: (
+            httpx.Response(status, json=body) if isinstance(body, dict)
+            else httpx.Response(status, text=body, headers={"content-type": "text/html"})
+        ))
+        with pytest.raises(oidc.OidcUnavailable):
+            oidc.refresh("token-de-teste", expected_sub="u1")
+
     def test_troca_de_codigo_com_pkce_e_nonce(self, provider):
         tokens = login_tokens(provider, "u1", ANALISTA)
         assert tokens.access_claims["sub"] == "u1"

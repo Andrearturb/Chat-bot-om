@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import sessionmaker
 
 from app.models.auth import AppUser, SecurityEvent, UserSession
@@ -288,3 +289,53 @@ def test_sessao_travada_e_apagada_levanta_revoked(db, provider, monkeypatch):
     assert exc.value.reason == "revoked"
     assert provider.attempts == attempts
     assert not db.in_transaction()
+
+
+# ─── touch_session não espera a requisição que está renovando ─────────────────
+
+def _envelhecer_last_seen(db, session: UserSession, segundos: int = 120):
+    session.last_seen_at = datetime.utcnow() - timedelta(seconds=segundos)
+    db.commit()
+    return session.last_seen_at, session.expires_at
+
+
+def test_touch_normal_atualiza_last_seen_e_a_expiracao_ociosa(db, provider):
+    session = _login(db, provider)
+    last_seen, expires = _envelhecer_last_seen(db, session)
+
+    auth.touch_session(db, session)
+
+    assert session.last_seen_at > last_seen
+    assert session.expires_at > expires
+    assert session.last_seen_at > datetime.utcnow() - timedelta(minutes=1)
+
+
+def test_touch_dentro_de_um_minuto_nao_escreve(db, provider, monkeypatch):
+    session = _login(db, provider)
+    last_seen, expires = _envelhecer_last_seen(db, session, segundos=30)
+    monkeypatch.setattr(auth, "_lock_for_touch", lambda db, session_id: pytest.fail("não devia travar a linha"))
+
+    auth.touch_session(db, session)
+
+    assert (session.last_seen_at, session.expires_at) == (last_seen, expires)
+
+
+def test_touch_com_a_linha_travada_por_outra_requisicao_pula_sem_esperar(db, provider, monkeypatch):
+    session = _login(db, provider)
+    last_seen, expires = _envelhecer_last_seen(db, session)
+    monkeypatch.setattr(auth, "_lock_for_touch", lambda db, session_id: None)  # SKIP LOCKED: outra requisição renova
+
+    auth.touch_session(db, session)  # não levanta
+
+    assert not db.in_transaction()  # encerrou a transação: não segura conexão esperando a outra requisição
+    assert (session.last_seen_at, session.expires_at) == (last_seen, expires)
+
+
+def test_as_travas_da_linha_da_sessao_usam_skip_locked_no_postgresql():
+    """Sem SKIP LOCKED (o SQLite ignora FOR UPDATE), as requisições esperariam a renovação do Keycloak."""
+    renovacao = session_refresh._lock_statement(1)
+    toque = auth._touch_lock_statement(1)
+    for nome, stmt in (("renovação", renovacao), ("touch", toque)):
+        sql = str(stmt.compile(dialect=postgresql.dialect()))
+        assert "FOR UPDATE SKIP LOCKED" in sql, nome
+    assert renovacao.get_execution_options().get("populate_existing") is True

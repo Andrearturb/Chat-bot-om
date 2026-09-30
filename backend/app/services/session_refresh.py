@@ -4,10 +4,12 @@ Renovação do retrato de acesso da sessão.
 A cada OIDC_TOKEN_REFRESH_SECONDS o backend usa o refresh token (cifrado na
 sessão) para obter novos tokens do Keycloak e atualizar permissões e perfis.
 Uma trava por sessão (SELECT ... FOR UPDATE SKIP LOCKED) garante que o refresh
-token, de uso único, seja usado por uma só requisição. Quem não consegue a trava
-não espera: outra requisição já está renovando, então segue com o retrato
-atual. Assim nenhuma requisição segura conexão do banco esperando o Keycloak
-de outra.
+token, de uso único, seja usado por uma só requisição. Só ela fica com a conexão
+do banco ocupada durante a chamada ao Keycloak. As demais não esperam: seguem com
+o retrato atual, e ``auth.touch_session`` também usa SKIP LOCKED, então nenhuma
+escrita do fluxo normal da requisição aguarda essa linha. (Escritas
+incondicionais na sessão, como a revogação por logout, ainda esperam a renovação
+terminar, que é limitada pelo timeout HTTP.)
 """
 
 from __future__ import annotations
@@ -72,18 +74,22 @@ def _enforce_grace(db: Session, session: UserSession, now: datetime) -> None:
         _revoke(db, session, "provider_unavailable")
 
 
-def _lock_session(db: Session, session_id: int) -> UserSession | None:
-    """Trava a linha da sessão sem esperar e a recarrega do banco.
-
-    Devolve ``None`` se outra requisição já a travou (está renovando) ou se a linha
-    não existe mais. Sem SKIP LOCKED (SQLite), devolve a linha sempre.
-    """
-    return db.scalar(
+def _lock_statement(session_id: int):
+    return (
         select(UserSession)
         .where(UserSession.id == session_id)
         .with_for_update(skip_locked=True)
         .execution_options(populate_existing=True)
     )
+
+
+def _lock_session(db: Session, session_id: int) -> UserSession | None:
+    """Trava a linha da sessão sem esperar e a recarrega do banco.
+
+    Devolve ``None`` se outra requisição já a travou (está renovando) ou se a linha
+    não existe mais. O SQLite ignora FOR UPDATE: lá devolve a linha sempre.
+    """
+    return db.scalar(_lock_statement(session_id))
 
 
 def ensure_fresh_snapshot(db: Session, session: UserSession) -> UserSession:

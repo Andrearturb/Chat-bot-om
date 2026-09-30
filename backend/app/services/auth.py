@@ -203,13 +203,33 @@ def get_session(db: Session, token: str) -> UserSession | None:
     return session
 
 
+def _touch_lock_statement(session_id: int):
+    # SKIP LOCKED: o UPDATE do toque nunca fica esperando a renovação do retrato no Keycloak
+    # (session_refresh segura FOR UPDATE na mesma linha durante a chamada de rede).
+    return select(UserSession).where(UserSession.id == session_id).with_for_update(skip_locked=True)
+
+
+def _lock_for_touch(db: Session, session_id: int) -> UserSession | None:
+    """Trava a linha sem esperar. ``None``: outra requisição a segura (ou ela não existe mais)."""
+    return db.scalar(_touch_lock_statement(session_id))
+
+
 def touch_session(db: Session, session: UserSession) -> None:
-    """Atualiza last_seen e a expiração ociosa, no máximo uma vez por minuto."""
+    """Atualiza last_seen e a expiração ociosa, no máximo uma vez por minuto.
+
+    Nunca espera por outra requisição: se a linha está travada (alguém renova o retrato no
+    Keycloak), o toque é pulado e a transação termina. Quem renova toca a sessão ao concluir.
+    """
     now = datetime.utcnow()
-    if (now - session.last_seen_at).total_seconds() > 60:
-        session.last_seen_at = now
-        session.expires_at = now + timedelta(minutes=config.SESSION_IDLE_TIMEOUT_MINUTES)
-        db.commit()
+    if (now - session.last_seen_at).total_seconds() <= 60:
+        return
+    locked = _lock_for_touch(db, session.id)
+    if locked is None:
+        db.commit()  # não segura conexão nem espera a outra requisição
+        return
+    locked.last_seen_at = now
+    locked.expires_at = now + timedelta(minutes=config.SESSION_IDLE_TIMEOUT_MINUTES)
+    db.commit()
 
 
 def revoke_session(db: Session, session: UserSession) -> None:

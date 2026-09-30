@@ -3,124 +3,63 @@
 ## Visão geral da arquitetura
 
 ```
-KEYCLOAK (DEV/PROD)
-      │
-    OIDC (Authorization Code + PKCE)
-      │
-      ▼
-React ── cookie HttpOnly ──▶ FastAPI / BFF
-                                  │
-                                  ├── /auth/*        (OIDC, sessão, CSRF)
-                                  ├── /assistant/*   (Gateway IA)
-                                  ├── /services      (indicadores)
-                                  ├── /assets/*      (ativos, documentos)
-                                  ├── /users/*       (Gestão de Usuários — só ADMINISTRADOR)
-                                  ├── /audit/*       (auditoria)
-                                  │
-                                  ├──▶ PostgreSQL
-                                  ├──▶ Keycloak Admin API (service account, server-side)
-                                  └──▶ n8n (chamada interna com X-Internal-API-Key)
+ gentil-identity (repositório próprio)          Chat-bot O&M (este repositório)
+ ┌──────────────────────────────┐               ┌────────────────────────────────┐
+ │ Keycloak 26 (modo produção)  │◀── OIDC ─────▶│ backend FastAPI (BFF)          │
+ │ PostgreSQL próprio           │  código+PKCE, │  - valida tokens pelo JWKS     │
+ │ tema gentil-om               │  renovação,   │  - aplica a permissão por rota │
+ │ Mailpit (somente DEV)        │  JWKS         │  - sessão server-side + cookie │
+ └──────────────────────────────┘── backchannel ▶ frontend React (só exibe)      │
+                                     logout      └────────────────────────────────┘
 ```
+
+- O Keycloak não roda neste compose: fica no projeto `gentil-identity` (pasta irmã deste repositório).
+- O app não guarda nenhuma credencial administrativa do Keycloak.
+- Perfis, permissões, cadastro, liberação e bloqueio são decididos no Keycloak. O backend aplica o que vem no token assinado; o frontend só exibe.
 
 ## Separação de responsabilidades
 
 | Componente | Responsabilidade |
 |---|---|
-| **Keycloak** | Autenticação, identidade, senhas, MFA |
-| **Chat-bot O&M** | Perfis, permissões, quotas IA, auditoria, sessões |
+| Keycloak (`gentil-identity`) | usuários, senhas, MFA, autocadastro, perfis, permissões, grupos, bloqueio, sessões SSO |
+| Backend | validar tokens, manter a sessão, exigir a permissão de cada rota, auditoria, limites de IA |
+| Frontend | exibir o que `/auth/me` informa; nenhuma regra de acesso |
 
-O Keycloak responde: **"Quem é esta pessoa?"**
-O backend responde: **"O que esta pessoa pode fazer?"**
+## Provedor de identidade (`gentil-identity`)
 
----
-
-## Keycloak DEV
-
-- Imagem: `quay.io/keycloak/keycloak:26.2.5` (versão pinada)
-- Porta: `127.0.0.1:8081`
-- Realm: `gentil-dev`
-- Client: `chat-bot-om-bff`
-- Fluxo: Authorization Code + PKCE (S256)
-- Banco isolado: `keycloak-db` (PostgreSQL separado do principal)
-- Volume: `keycloak_postgres_data`
-
-### Usuários DEV
-
-| Identidade DEV | Email configurável | Perfil no aplicativo |
-|---|---|---|
-| `admin.om` | `DEV_ADMIN_EMAIL` | ADMINISTRADOR |
-| `analista.om` | `DEV_ANALYST_EMAIL` | ANALISTA |
-| `gerente.om` | `DEV_MANAGER_EMAIL` | GERENTE |
-| `diretor.om` | `DEV_DIRECTOR_EMAIL` | DIRETOR |
-| `convidado.om` | `DEV_GUEST_EMAIL` | CONVIDADO |
-
-> Emails e senhas são definidos via variáveis `DEV_*` no `.env`. O serviço `keycloak-bootstrap` sincroniza o Keycloak DEV existente sem apagar o volume quando esses valores mudam.
->
-> **Pré-provisionamento DEV:** ao iniciar com `APP_ENV=development`, o backend consulta a Keycloak Admin API e cria/vincula esses cinco usuários em `app_users` (status `active`, perfil acima) com a `oidc_identity` correta (issuer + subject). O primeiro login não depende de aprovação. Perfil/status alterados depois por um administrador são preservados. Desligue com `DEV_PROVISION_USERS=false`; fora de development nunca roda.
-
-### Tema de login `gentil-om`
-
-- Arquivos em `keycloak/themes/gentil-om/login/` (template, páginas de login, troca de senha, "esqueci minha senha", logout, CSS, fontes Manrope e imagens da Gentileza).
-- Montado no container em `/opt/keycloak/themes/gentil-om` e aplicado ao realm pelo bootstrap (`loginTheme`, pt-BR).
-- Não há link de "Criar conta": contas são criadas pela Gestão de Usuários.
-- "Esqueci minha senha" só aparece quando o realm tem SMTP (`KEYCLOAK_SMTP_*`).
-
-### Client de serviço da Admin API
-
-- `chat-bot-om-admin` (`KEYCLOAK_ADMIN_CLIENT_ID`/`KEYCLOAK_ADMIN_CLIENT_SECRET`), confidencial, sem login interativo (`standardFlow` desligado), apenas `client_credentials`.
-- Papéis de `realm-management`: `manage-users`, `view-users`, `query-users`, `view-realm` (este último só para detectar o SMTP).
-- Usado exclusivamente pelo backend. O navegador nunca acessa a Admin API.
-
----
+- Subir, parar, backup, e-mails do DEV (Mailpit) e gestão de acesso: `../gentil-identity/docs/OPERACAO.md`.
+- Usuários DEV: `admin.om`, `analista.om`, `gerente.om`, `diretor.om`, `convidado.om`. As senhas ficam nas variáveis `DEV_*_PASSWORD` do `.env` do `gentil-identity`.
+- Tema de login `gentil-om`: `../gentil-identity/themes/gentil-om`.
+- Console do realm (gestores de acesso): `http://localhost:8081/admin/gentil-dev/console/`.
 
 ## OIDC configurável
 
-Todas as configurações OIDC vêm do ambiente. Para migrar para o Keycloak corporativo, basta alterar:
-
-```env
-OIDC_ISSUER_URL=https://sso.empresa.com/realms/producao
-OIDC_CLIENT_ID=chat-bot-om-bff
-OIDC_CLIENT_SECRET=<secret do registro>
-OIDC_REDIRECT_URI=https://app.empresa.com/auth/callback
-OIDC_POST_LOGOUT_REDIRECT_URI=https://app.empresa.com
-```
-
-Nenhuma URL do Keycloak está hardcoded no código.
-
----
+Tudo vem do `.env` do app: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_POST_LOGOUT_REDIRECT_URI` e `KEYCLOAK_CONSOLE_URL`. Trocar de Keycloak é trocar esses valores.
 
 ## BFF (Backend-for-Frontend)
 
-O navegador **nunca** recebe access_token ou refresh_token.
+1. `GET /auth/login` (ou `/auth/register`, que abre o cadastro com `prompt=create`) gera `state`, `code_verifier` e `nonce`, grava em `oidc_login_requests` (uso único, 10 min; o `state` só como hash) e redireciona ao Keycloak.
+2. `GET /auth/callback` consome o registro, troca o código com PKCE S256 e valida:
+   - o access token pelo JWKS: assinatura RS256, `iss`, `aud`, `azp`, `typ=Bearer`, `exp`/`iat` com 30 s de tolerância;
+   - o ID token: `typ=ID` e o `nonce`.
 
-Fluxo:
-1. Sem sessão, o app vai direto para `GET /auth/login` → FastAPI gera state + code_verifier e redireciona para o Keycloak (página de login com o tema `gentil-om`)
-2. Keycloak redireciona para `GET /auth/callback?code=...&state=...`
-3. FastAPI valida state, troca code por tokens (server-side)
-4. FastAPI resolve/cria usuário local, cria sessão, define cookie HttpOnly
-5. Browser recebe apenas o cookie — sem tokens no localStorage
-6. Se o usuário estiver pendente/bloqueado, nenhuma sessão é criada: o backend encerra a sessão SSO no Keycloak e devolve para `/login?auth_error=...`
-
-A rota `/login` do React é a página de apresentação (retorno do logout e mensagens de erro/acesso). Ela não pede senha: o botão "Entrar" apenas inicia o fluxo acima.
+   O JWKS é recarregado quando aparece `kid` desconhecido, no máximo 1 vez por minuto.
+3. As permissões são os papéis do client `chat-bot-om-bff`. Sem nenhuma permissão, a sessão não é criada: o SSO é encerrado e a pessoa vê "Sua conta ainda não foi liberada" (`auth_error=not_released`).
+4. O navegador recebe apenas o cookie de sessão. Access, refresh e ID token nunca vão para o browser (o ID token só aparece como `id_token_hint` na URL de logout).
 
 ### Logout
 
-`POST /auth/logout` (com CSRF) revoga a sessão da aplicação, apaga o cookie e devolve a URL de RP-Initiated Logout do Keycloak com `id_token_hint` + `client_id`. O Keycloak encerra a sessão SSO sem tela de confirmação e retorna para `/login`. O `id_token` do login fica somente na sessão server-side para esse fim e é apagado na revogação.
-
----
+- `POST /auth/logout` (com CSRF): revoga a sessão, revoga o refresh token no Keycloak (RFC 7009) e devolve a URL de logout OIDC com `id_token_hint` e `client_id`, que volta para `/login`.
+- `POST /auth/backchannel-logout`: o Keycloak avisa o fim de uma sessão SSO. O backend aceita somente logout token assinado pelo Keycloak, com `iss`, `aud` = client, `iat` de até 2 min, o evento de backchannel logout, `sid` ou `sub` e sem `nonce`. Revoga as sessões do `sid` (ou todas do `sub`). Token inválido → 400 + evento de segurança. Em produção, o proxy expõe esse caminho só para a rede do Keycloak.
 
 ## Sessão server-side
 
-Tabela: `user_sessions`
-
-- Token opaco gerado com `secrets.token_urlsafe(32)`
-- Apenas o hash SHA-256 é armazenado no banco
-- Cookie: `HttpOnly=True`, `SameSite=Lax`, `Path=/`
-- Em produção: `Secure=True`
-- Idle timeout: `SESSION_IDLE_TIMEOUT_MINUTES` (padrão: 30)
-- Absolute timeout: `SESSION_ABSOLUTE_TIMEOUT_HOURS` (padrão: 8)
-
----
+- Cookie `om_session`: HttpOnly, SameSite=Lax, `Secure` em produção. No banco fica só o hash SHA-256 do token.
+- A sessão guarda o **retrato** do acesso (permissões e perfis do token), o `sid` do Keycloak e o refresh token **cifrado** (Fernet, `SESSION_ENCRYPTION_KEY`).
+- A cada 5 min de uso, o backend renova os tokens no Keycloak e atualiza o retrato. Uma trava por sessão (`SELECT ... FOR UPDATE SKIP LOCKED`) impede que duas abas usem o mesmo refresh token; a segunda aba usa o retrato atual enquanto a renovação termina.
+- Renovação recusada (conta bloqueada, sessão encerrada, acesso retirado) → sessão revogada e 401.
+- Keycloak fora do ar → o retrato atual vale por até 15 min, com uma tentativa a cada 30 s. Depois disso, a sessão cai.
+- Ociosidade de 30 min e duração máxima de 8 h, como antes.
 
 ## CSRF
 
@@ -134,83 +73,30 @@ Tabela: `user_sessions`
 
 ## Usuários e perfis
 
-### Vinculação de identidade
-
-1. Login OIDC → FastAPI busca `oidc_identities` por `issuer+subject`
-2. Se não existir → busca `app_users` por email
-3. Se não existir → cria `app_user` com `status=pending`
-4. Bootstrap admin: em produção usa `BOOTSTRAP_ADMIN_EMAIL`; em desenvolvimento usa `DEV_ADMIN_EMAIL` como referência efetiva. A promoção também é reavaliada para uma identidade já vinculada enquanto `bootstrap_admin_granted=false`, permitindo recuperar um primeiro login que ficou `pending` por configuração incompleta.
-
-### Status
-
-- `pending` → aguarda aprovação (identidade autenticada no Keycloak, mas desconhecida pelo app)
-- `active` → acesso liberado
-- `disabled` → bloqueado (sessões do app revogadas e conta desativada no Keycloak)
-
-### Gestão de Usuários (Configurações → Gestão de Usuários)
-
-Exclusiva do perfil ADMINISTRADOR — validado no backend (`require_admin`: perfil ADMINISTRADOR **e** `users.manage`). Demais perfis recebem 403.
-
-| Endpoint | Ação |
-|---|---|
-| `GET /users` | lista (busca `q`, filtros `status`, `profile`) |
-| `POST /users` | cria no Keycloak e no app |
-| `GET /users/{id}` / `PATCH /users/{id}` | detalhe / nome, perfil, status |
-| `POST /users/{id}/activate` · `/deactivate` | reativa / bloqueia (app + Keycloak) |
-| `POST /users/{id}/reset-password` | senha temporária (`temporary=true`) |
-| `POST /users/{id}/password-email` | e-mail `UPDATE_PASSWORD` (exige SMTP) |
-| `GET /users/capabilities` | integração com Keycloak e SMTP disponíveis |
-
-Cadastro: Keycloak (conta + senha temporária ou e-mail de definição) → `subject` → `app_users` → `oidc_identities`. Se a gravação local falhar, a conta criada no Keycloak é removida. Repetir um cadastro não duplica: conta já vinculada → 409; conta órfã no Keycloak (mesmo usuário e e-mail) é reaproveitada.
-
-Senhas nunca são gravadas no PostgreSQL, em logs, na auditoria ou devolvidas pela API.
-
-Proteções: deve existir sempre ao menos um administrador ativo; nenhum administrador desativa a própria conta; remover o próprio perfil ADMINISTRADOR só é possível havendo outro administrador ativo.
-
-### Expiração (Convidados)
-
-Campo `access_expires_at` — verificado a cada request. Após expirar → HTTP 403 automático.
-
----
+- **Vínculo de identidade:** somente `issuer + subject` (`oidc_identities`). O e-mail é informativo e nunca é usado para vincular. Uma conta recriada no Keycloak vira um registro novo.
+- **Conta nova:** o autocadastro exige confirmação de e-mail e nasce sem perfil. Um gestor de acesso libera incluindo a pessoa no grupo do perfil.
+- **Gestão de Usuários (Configurações):** consulta somente leitura, com a permissão `users.view`. Mostra quem já entrou, o perfil do último acesso e se há sessão ativa, e tem o botão "Gerenciar no Keycloak".
+- **Bloqueio imediato:** no console, desligar **Enabled** e encerrar as sessões (**Sign out**). Só desligar derruba o acesso em até 5 min.
 
 ## Perfis e permissões
 
-### Perfis
+Perfis e permissões são papéis do client `chat-bot-om-bff`. Os perfis são papéis compostos:
 
-| Perfil | IA/dia | IA/min |
-|---|---|---|
-| ADMINISTRADOR | 200 | 20 |
-| ANALISTA | 150 | 10 |
-| GERENTE | 120 | 10 |
-| DIRETOR | 80 | 8 |
-| CONVIDADO | 20 | 3 |
+| Perfil | Permissões |
+|---|---|
+| ADMINISTRADOR | todas |
+| GERENTE | assistant.use, assistant.history, indicators.view, assets.view, assets.create, assets.edit, assets.delete, assets.import, documents.view, documents.upload, documents.replace, documents.delete, audit.view, settings.view |
+| ANALISTA | assistant.use, assistant.history, indicators.view, assets.view, assets.create, assets.edit, documents.view, documents.upload, documents.replace, settings.view |
+| DIRETOR | assistant.use, assistant.history, indicators.view, assets.view, documents.view, settings.view |
+| CONVIDADO | assistant.use, assistant.history, indicators.view, assets.view |
 
-### Permissões granulares
-
-`assistant.use`, `assistant.history`, `indicators.view`, `assets.view`, `assets.create`,
-`assets.edit`, `assets.delete`, `assets.import`, `documents.view`, `documents.upload`,
-`documents.replace`, `documents.delete`, `audit.view`, `users.manage`, `settings.view`,
-`settings.manage`, `sync.tape`
-
-### Overrides individuais
-
-Tabela `user_permission_overrides` — efeito `allow` ou `deny`.
-Precedência: **deny individual > allow individual > perfil**
-
----
+- Liberação = grupo `Chat-bot O&M · <Perfil>`. Permissão avulsa = atribuir o papel de permissão direto à pessoa no Keycloak.
+- Perfil exibido: o de maior prioridade (ADMINISTRADOR > GERENTE > ANALISTA > DIRETOR > CONVIDADO).
+- Toda rota protegida usa `require_permission("<código>")` sobre o retrato da sessão.
 
 ## Controle de uso da IA
 
-1. Usuário autenticado e ativo?
-2. Permissão `assistant.use`?
-3. Limite por minuto não atingido?
-4. Limite diário não atingido?
-5. → Chama n8n
-
-Se limite atingido → HTTP 429 com payload amigável.
-Registros na tabela `ai_usage`.
-
----
+Limites por perfil (diário / por minuto): Administrador 200/20, Analista 150/10, Gerente 120/10, Diretor 80/8, Convidado 20/3; sem perfil conhecido, 10/2. Quem tem mais de um perfil fica com o maior limite. Chamadas com erro não contam.
 
 ## Gateway do assistente
 
@@ -271,37 +157,18 @@ Strict-Transport-Security: max-age=63072000 (apenas em produção)
 
 ---
 
-## Migração para Keycloak corporativo
+## Migração para o Keycloak da Gentil
 
-1. TI registra o client `chat-bot-om-bff` no Keycloak corporativo
-2. TI informa: issuer URL, client ID, client secret, redirect URIs
-3. Atualizar `.env` de produção com os novos valores OIDC
-4. Garantir HTTPS nas redirect URIs e `SESSION_COOKIE_SECURE=true`
-5. Testar login com uma conta corporativa
-6. Verificar que `iss` do token JWT bate com `OIDC_ISSUER_URL`
-7. Vincular identidades (novos `oidc_identities` são criados automaticamente pelo email)
-
-Perfis, permissões e quotas **permanecem no banco do Chat-bot O&M** — não precisam ser reconfigurados.
-
----
+Roteiro e checklist obrigatório: `../gentil-identity/docs/MIGRACAO_TI.md`. No app, basta atualizar o `.env`:
+`OIDC_ISSUER_URL`, `OIDC_CLIENT_SECRET` (novo), `OIDC_REDIRECT_URI`, `OIDC_POST_LOGOUT_REDIRECT_URI`, `KEYCLOAK_CONSOLE_URL`, `SESSION_ENCRYPTION_KEY` (nova) e `SESSION_COOKIE_SECURE=true`.
 
 ## Variáveis de ambiente relevantes
 
-Ver `.env.example` para lista completa e descrições.
-
-| Variável | Descrição |
+| Variável | Uso |
 |---|---|
-| `OIDC_ISSUER_URL` | URL do realm Keycloak |
-| `OIDC_CLIENT_SECRET` | Secret do client BFF |
-| `SESSION_SECRET` | Chave de assinatura de sessão |
-| `INTERNAL_API_KEY` | Chave n8n → backend |
-| `BOOTSTRAP_ADMIN_EMAIL` | Email de bootstrap em produção; em DEV prevalece `DEV_ADMIN_EMAIL` |
-| `DEV_ADMIN_EMAIL` | Email do usuário `admin.om` no Keycloak DEV e referência de bootstrap local |
-| `FRONTEND_ORIGINS` | Origins CORS permitidas |
-| `KEYCLOAK_ADMIN_CLIENT_ID` / `KEYCLOAK_ADMIN_CLIENT_SECRET` | Client de serviço da Keycloak Admin API (Gestão de Usuários) |
-| `DEV_PROVISION_USERS` | Pré-provisionamento dos usuários DEV (somente development) |
-| `KEYCLOAK_SMTP_*` | SMTP opcional do realm ("Esqueci minha senha" e e-mails de senha) |
-
-## Keycloak corporativo e Gestão de Usuários
-
-No ambiente corporativo, a TI precisa também: registrar um client de serviço com os papéis `manage-users`, `view-users`, `query-users` e `view-realm` (ou equivalentes) e informar `KEYCLOAK_ADMIN_CLIENT_*`; incluir `https://<app>/login` e `https://<app>/*` nos *post logout redirect URIs* do client BFF; e, se desejado, instalar o tema `gentil-om`. Se a Admin API não estiver disponível, a Gestão de Usuários continua listando e ajustando perfis/status, mas bloqueia cadastro e redefinição de senha com aviso na tela.
+| `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Client `chat-bot-om-bff` no Keycloak |
+| `OIDC_REDIRECT_URI`, `OIDC_POST_LOGOUT_REDIRECT_URI` | Retorno do login e do logout |
+| `KEYCLOAK_CONSOLE_URL` | Link do console para quem tem `users.view` |
+| `SESSION_SECRET`, `SESSION_ENCRYPTION_KEY` | Sessão e cifra do refresh token |
+| `SESSION_COOKIE_SECURE`, `SESSION_IDLE_TIMEOUT_MINUTES`, `SESSION_ABSOLUTE_TIMEOUT_HOURS` | Cookie e tempos da sessão |
+| `FRONTEND_ORIGINS` | CORS e destino após o login |

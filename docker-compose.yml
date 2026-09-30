@@ -17,111 +17,6 @@ services:
       retries: 10
       start_period: 10s
 
-  # ── Banco de dados do Keycloak (isolado) ─────────────────────────────────────
-  keycloak-db:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${KEYCLOAK_DB:-keycloak}
-      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
-      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?defina KEYCLOAK_DB_PASSWORD no .env}
-    volumes:
-      - keycloak_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER:-keycloak} -d $${POSTGRES_DB:-keycloak}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-
-  # ── Keycloak DEV (versão pinada) ─────────────────────────────────────────────
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.2.5
-    restart: unless-stopped
-    container_name: keycloak-dev
-    command:
-      - start-dev
-      - --import-realm
-    environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?defina KEYCLOAK_ADMIN_PASSWORD no .env}
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB:-keycloak}
-      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-      # Garante que o "iss" nos tokens JWT seja sempre localhost:8081
-      # (o que o browser vê), mesmo que o container use keycloak:8080 internamente.
-      KC_HOSTNAME_URL: "http://localhost:8081"
-      KC_HOSTNAME_ADMIN_URL: "http://localhost:8081"
-      KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
-      KC_HTTP_ENABLED: "true"
-      KC_HTTP_PORT: 8080
-      KC_PROXY: "edge"
-      # Substituição de placeholders no realm-export.json
-      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?defina OIDC_CLIENT_SECRET no .env}
-      DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL:-admin.om@local}
-      DEV_ANALYST_EMAIL: ${DEV_ANALYST_EMAIL:-analista.om@local}
-      DEV_MANAGER_EMAIL: ${DEV_MANAGER_EMAIL:-gerente.om@local}
-      DEV_DIRECTOR_EMAIL: ${DEV_DIRECTOR_EMAIL:-diretor.om@local}
-      DEV_GUEST_EMAIL: ${DEV_GUEST_EMAIL:-convidado.om@local}
-      DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD:?defina DEV_ADMIN_PASSWORD no .env}
-      DEV_ANALYST_PASSWORD: ${DEV_ANALYST_PASSWORD:?defina DEV_ANALYST_PASSWORD no .env}
-      DEV_MANAGER_PASSWORD: ${DEV_MANAGER_PASSWORD:?defina DEV_MANAGER_PASSWORD no .env}
-      DEV_DIRECTOR_PASSWORD: ${DEV_DIRECTOR_PASSWORD:?defina DEV_DIRECTOR_PASSWORD no .env}
-      DEV_GUEST_PASSWORD: ${DEV_GUEST_PASSWORD:?defina DEV_GUEST_PASSWORD no .env}
-    ports:
-      - "127.0.0.1:8081:8080"
-    volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
-      # Tema de login com a identidade visual do Chat-bot O&M
-      - ./keycloak/themes/gentil-om:/opt/keycloak/themes/gentil-om:ro
-    depends_on:
-      keycloak-db:
-        condition: service_healthy
-
-  # Sincroniza usuários/client DEV mesmo quando o realm já existe no volume.
-  keycloak-bootstrap:
-    image: quay.io/keycloak/keycloak:26.2.5
-    restart: "no"
-    entrypoint: ["/bin/sh", "/opt/keycloak/bootstrap-dev.sh"]
-    environment:
-      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
-      KEYCLOAK_REALM: gentil-dev
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?defina KEYCLOAK_ADMIN_PASSWORD no .env}
-      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-chat-bot-om-bff}
-      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?defina OIDC_CLIENT_SECRET no .env}
-      DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL:-admin.om@local}
-      DEV_ANALYST_EMAIL: ${DEV_ANALYST_EMAIL:-analista.om@local}
-      DEV_MANAGER_EMAIL: ${DEV_MANAGER_EMAIL:-gerente.om@local}
-      DEV_DIRECTOR_EMAIL: ${DEV_DIRECTOR_EMAIL:-diretor.om@local}
-      DEV_GUEST_EMAIL: ${DEV_GUEST_EMAIL:-convidado.om@local}
-      DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD:?defina DEV_ADMIN_PASSWORD no .env}
-      DEV_ANALYST_PASSWORD: ${DEV_ANALYST_PASSWORD:?defina DEV_ANALYST_PASSWORD no .env}
-      DEV_MANAGER_PASSWORD: ${DEV_MANAGER_PASSWORD:?defina DEV_MANAGER_PASSWORD no .env}
-      DEV_DIRECTOR_PASSWORD: ${DEV_DIRECTOR_PASSWORD:?defina DEV_DIRECTOR_PASSWORD no .env}
-      DEV_GUEST_PASSWORD: ${DEV_GUEST_PASSWORD:?defina DEV_GUEST_PASSWORD no .env}
-      # Client de serviço usado pelo backend na Keycloak Admin API (Gestão de Usuários)
-      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-chat-bot-om-admin}
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?defina KEYCLOAK_ADMIN_CLIENT_SECRET no .env}
-      KEYCLOAK_LOGIN_THEME: ${KEYCLOAK_LOGIN_THEME:-gentil-om}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
-      # SMTP opcional: habilita "Esqueci minha senha" e e-mails de definição de senha
-      KEYCLOAK_SMTP_HOST: ${KEYCLOAK_SMTP_HOST:-}
-      KEYCLOAK_SMTP_PORT: ${KEYCLOAK_SMTP_PORT:-587}
-      KEYCLOAK_SMTP_FROM: ${KEYCLOAK_SMTP_FROM:-}
-      KEYCLOAK_SMTP_FROM_DISPLAY_NAME: ${KEYCLOAK_SMTP_FROM_DISPLAY_NAME:-Chat-bot O&M}
-      KEYCLOAK_SMTP_USER: ${KEYCLOAK_SMTP_USER:-}
-      KEYCLOAK_SMTP_PASSWORD: ${KEYCLOAK_SMTP_PASSWORD:-}
-      KEYCLOAK_SMTP_STARTTLS: ${KEYCLOAK_SMTP_STARTTLS:-true}
-      KEYCLOAK_SMTP_SSL: ${KEYCLOAK_SMTP_SSL:-false}
-    volumes:
-      - ./keycloak/bootstrap-dev.sh:/opt/keycloak/bootstrap-dev.sh:ro
-    depends_on:
-      keycloak:
-        condition: service_started
-
   # ── Backend (FastAPI) ─────────────────────────────────────────────────────────
   backend:
     build:
@@ -141,36 +36,31 @@ services:
       N8N_HEALTH_URL: ${N8N_HEALTH_URL:-http://n8n:5678/healthz/readiness}
       N8N_CHAT_WEBHOOK_URL: ${N8N_CHAT_WEBHOOK_URL:-http://n8n:5678/webhook/9db5ead4-d4ca-4f5c-a1b4-3969e60cb8df/chat}
       N8N_GATEWAY_TOKEN: ${N8N_GATEWAY_TOKEN:-}
-      # OIDC — usa localhost:8081 (mesmo issuer que o Keycloak coloca nos tokens)
-      # O backend resolve via extra_hosts: localhost → host-gateway
+      # OIDC — Keycloak do projeto gentil-identity (fora deste compose).
+      # DEV: localhost:8081 é o issuer que o Keycloak coloca nos tokens; o backend
+      # alcança o host pelo extra_hosts (localhost → host-gateway).
       OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-http://localhost:8081/realms/gentil-dev}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-chat-bot-om-bff}
-      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?defina OIDC_CLIENT_SECRET no .env}
       OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-http://localhost:5173/auth/callback}
       OIDC_POST_LOGOUT_REDIRECT_URI: ${OIDC_POST_LOGOUT_REDIRECT_URI:-http://localhost:5173/login}
-      # Keycloak Admin API (server-side) — Gestão de Usuários e provisionamento DEV
-      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-chat-bot-om-admin}
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?defina KEYCLOAK_ADMIN_CLIENT_SECRET no .env}
-      DEV_PROVISION_USERS: ${DEV_PROVISION_USERS:-true}
+      KEYCLOAK_CONSOLE_URL: ${KEYCLOAK_CONSOLE_URL:-http://localhost:8081/admin/gentil-dev/console/}
       SESSION_SECRET: ${SESSION_SECRET:?defina SESSION_SECRET no .env}
+      SESSION_ENCRYPTION_KEY: ${SESSION_ENCRYPTION_KEY:?defina SESSION_ENCRYPTION_KEY no .env}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       SESSION_IDLE_TIMEOUT_MINUTES: ${SESSION_IDLE_TIMEOUT_MINUTES:-30}
       SESSION_ABSOLUTE_TIMEOUT_HOURS: ${SESSION_ABSOLUTE_TIMEOUT_HOURS:-8}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://frontend:5173}
-      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
-      DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL:-admin.om@local}
       TZ: America/Fortaleza
     depends_on:
       db:
         condition: service_healthy
-      keycloak-bootstrap:
-        condition: service_completed_successfully
     volumes:
       - asset_documents_data:/app/storage/assets_documents
     ports:
       - "127.0.0.1:8040:8000"
     # Permite que o container resolva "localhost" como o host Docker
-    # para alcançar o Keycloak em localhost:8081
+    # para alcançar o Keycloak do gentil-identity em localhost:8081 (DEV).
     extra_hosts:
       - "localhost:host-gateway"
 
@@ -232,4 +122,3 @@ volumes:
   n8n_data:
   asset_documents_data:
   frontend_node_modules:
-  keycloak_postgres_data:

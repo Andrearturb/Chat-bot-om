@@ -70,12 +70,18 @@ class OidcIdentity(Base):
 # ─── Login em andamento ───────────────────────────────────────────────────────
 
 class OidcLoginRequest(Base):
-    """state (hash), code_verifier e nonce de um login em andamento. Uso único, validade curta."""
+    """state (hash), code_verifier e nonce de um login em andamento. Uso único, validade curta.
+
+    ``binding_hash`` amarra o login ao navegador que o iniciou (SHA-256 de um valor
+    aleatório que fica num cookie HttpOnly), contra login CSRF: sem ele, um atacante
+    poderia fazer a vítima abrir o callback da própria conta dele.
+    """
 
     __tablename__ = "oidc_login_requests"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     state_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    binding_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     code_verifier: Mapped[str] = mapped_column(String(128), nullable=False)
     nonce: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)

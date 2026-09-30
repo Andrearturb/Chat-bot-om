@@ -127,39 +127,72 @@ def test_sem_chave_nao_cifra(monkeypatch):
         auth.encrypt_secret("segredo")
 
 
-# ── Registro de login (state, code_verifier, nonce) ───────────────────────────
+# ── Registro de login (state, code_verifier, nonce, vínculo com o navegador) ──
+
+BINDING = "navegador-1"
+
 
 def test_registro_de_login_e_de_uso_unico(db):
-    state, verifier, nonce = auth.create_login_request(db)
-    assert auth.consume_login_request(db, state) == (verifier, nonce)
-    assert auth.consume_login_request(db, state) is None
+    state, verifier, nonce = auth.create_login_request(db, binding=BINDING)
+    assert auth.consume_login_request(db, state, binding=BINDING) == (verifier, nonce)
+    assert auth.consume_login_request(db, state, binding=BINDING) is None
 
 
 def test_state_guardado_como_hash(db):
-    state, _, _ = auth.create_login_request(db)
+    state, _, _ = auth.create_login_request(db, binding=BINDING)
     row = db.scalar(select(OidcLoginRequest))
     assert row.state_hash == _sha256(state)
 
 
 def test_state_vazio_ou_desconhecido(db):
-    assert auth.consume_login_request(db, None) is None
-    assert auth.consume_login_request(db, "desconhecido") is None
+    assert auth.consume_login_request(db, None, binding=BINDING) is None
+    assert auth.consume_login_request(db, "desconhecido", binding=BINDING) is None
 
 
 def test_registro_expirado_e_recusado_e_apagado(db):
-    state, _, _ = auth.create_login_request(db)
+    state, _, _ = auth.create_login_request(db, binding=BINDING)
     db.scalar(select(OidcLoginRequest)).expires_at = datetime.utcnow() - timedelta(seconds=1)
     db.commit()
-    assert auth.consume_login_request(db, state) is None
+    assert auth.consume_login_request(db, state, binding=BINDING) is None
     assert db.scalar(select(func.count(OidcLoginRequest.id))) == 0
 
 
 def test_registros_expirados_sao_limpos_ao_criar_outro(db):
-    auth.create_login_request(db)
+    auth.create_login_request(db, binding=BINDING)
     db.scalar(select(OidcLoginRequest)).expires_at = datetime.utcnow() - timedelta(seconds=1)
     db.commit()
-    auth.create_login_request(db)
+    auth.create_login_request(db, binding=BINDING)
     assert db.scalar(select(func.count(OidcLoginRequest.id))) == 1
+
+
+# Login CSRF: o state só vale no navegador que iniciou o login.
+
+def test_state_com_outro_navegador_e_recusado_e_consumido(db):
+    state, _, _ = auth.create_login_request(db, binding=BINDING)
+    assert auth.consume_login_request(db, state, binding="navegador-2") is None
+    assert db.scalar(select(func.count(OidcLoginRequest.id))) == 0
+    assert auth.consume_login_request(db, state, binding=BINDING) is None
+
+
+@pytest.mark.parametrize("binding", [None, ""])
+def test_state_sem_vinculo_do_navegador_e_recusado(db, binding):
+    state, _, _ = auth.create_login_request(db, binding=BINDING)
+    assert auth.consume_login_request(db, state, binding=binding) is None
+    assert db.scalar(select(func.count(OidcLoginRequest.id))) == 0
+
+
+def test_vinculo_guardado_somente_como_hash(db):
+    auth.create_login_request(db, binding=BINDING)
+    row = db.scalar(select(OidcLoginRequest))
+    assert row.binding_hash == _sha256(BINDING)
+    assert BINDING not in (row.binding_hash, row.state_hash, row.code_verifier, row.nonce)
+
+
+@pytest.mark.parametrize("binding", ["", None])
+def test_registro_de_login_exige_vinculo(db, binding):
+    with pytest.raises(ValueError):
+        auth.create_login_request(db, binding=binding)
+    assert db.scalar(select(func.count(OidcLoginRequest.id))) == 0
 
 
 # ── Identidade local (issuer + subject) ───────────────────────────────────────

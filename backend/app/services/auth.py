@@ -8,6 +8,7 @@ guardamos apenas o retrato recebido no token assinado e o refresh token cifrado.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -62,8 +63,16 @@ def decrypt_secret(value: str | None) -> str | None:
 
 # ─── Login em andamento (state / code_verifier / nonce) ───────────────────────
 
-def create_login_request(db: Session) -> tuple[str, str, str]:
-    """Cria o registro de uso único do login. Retorna (state, code_verifier, nonce)."""
+def create_login_request(db: Session, *, binding: str) -> tuple[str, str, str]:
+    """Cria o registro de uso único do login. Retorna (state, code_verifier, nonce).
+
+    ``binding`` é um valor aleatório por navegador (o cookie HttpOnly do login):
+    guardamos só o hash. Sem esse vínculo o ``state`` valeria em qualquer
+    navegador, e um atacante poderia fazer a vítima abrir o callback da conta
+    dele (login CSRF) e entrar na sessão do atacante.
+    """
+    if not binding:
+        raise ValueError("binding obrigatório: o login precisa estar preso ao navegador.")
     now = datetime.utcnow()
     db.execute(delete(OidcLoginRequest).where(OidcLoginRequest.expires_at < now))
     state = secrets.token_urlsafe(32)
@@ -71,6 +80,7 @@ def create_login_request(db: Session) -> tuple[str, str, str]:
     nonce = secrets.token_urlsafe(32)
     db.add(OidcLoginRequest(
         state_hash=_sha256(state),
+        binding_hash=_sha256(binding),
         code_verifier=code_verifier,
         nonce=nonce,
         created_at=now,
@@ -80,18 +90,31 @@ def create_login_request(db: Session) -> tuple[str, str, str]:
     return state, code_verifier, nonce
 
 
-def consume_login_request(db: Session, state: str | None) -> tuple[str, str] | None:
+def consume_login_request(
+    db: Session, state: str | None, *, binding: str | None
+) -> tuple[str, str] | None:
     """Apaga o registro do ``state`` numa única instrução (uso único mesmo com
-    requisições simultâneas). Retorna (code_verifier, nonce) se ainda válido."""
+    requisições simultâneas). Retorna (code_verifier, nonce) só se o registro
+    ainda é válido **e** ``binding`` é o do navegador que iniciou o login
+    (proteção contra login CSRF). O registro é consumido sempre que o ``state``
+    existe, mesmo com vínculo errado: um state visto em outro navegador não
+    pode ser reaproveitado."""
     if not state:
         return None
     row = db.execute(
         delete(OidcLoginRequest)
         .where(OidcLoginRequest.state_hash == _sha256(state))
-        .returning(OidcLoginRequest.code_verifier, OidcLoginRequest.nonce, OidcLoginRequest.expires_at)
+        .returning(
+            OidcLoginRequest.code_verifier,
+            OidcLoginRequest.nonce,
+            OidcLoginRequest.binding_hash,
+            OidcLoginRequest.expires_at,
+        )
     ).first()
     db.commit()
     if row is None or row.expires_at < datetime.utcnow():
+        return None
+    if not binding or not hmac.compare_digest(row.binding_hash, _sha256(binding)):
         return None
     return row.code_verifier, row.nonce
 

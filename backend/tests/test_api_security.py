@@ -1,111 +1,23 @@
 """
-Testes de segurança via TestClient.
-Usa uma conftest que patcha DATABASE_URL para SQLite antes do import do app.
+Testes de segurança via TestClient (harness em tests/api_harness.py).
 """
 
 from __future__ import annotations
 
-import hashlib
-import os
-import secrets
-from datetime import datetime, timedelta
+import pytest
+from fastapi.testclient import TestClient
 
-# ── Patcha DATABASE_URL antes de qualquer import do FastAPI ───────────────────
-os.environ.setdefault("DATABASE_URL", "sqlite:///./test_api.db")
-os.environ.setdefault("INTERNAL_API_KEY", "test-internal-key-xyz")
-os.environ.setdefault("API_KEY", "test-api-key-xyz")
-os.environ.setdefault("OIDC_ISSUER_URL", "")          # desativa OIDC
-os.environ.setdefault("SESSION_SECRET", "test-secret")
-os.environ.setdefault("FRONTEND_ORIGINS", "http://localhost:5173")
-os.environ.setdefault("BOOTSTRAP_ADMIN_EMAIL", "")
-os.environ.setdefault("TAPE_SYNC_SCHEDULE_ENABLED", "false")
+from tests.api_harness import INTERNAL_KEY, SESSION_COOKIE, fastapi_app, reset_database, seed_session
+from tests.oidc_fake import ANALISTA
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import create_engine  # noqa: E402
-from sqlalchemy.orm import sessionmaker  # noqa: E402
-from sqlalchemy.pool import StaticPool  # noqa: E402
-
-# ── Engine de teste in-memory ─────────────────────────────────────────────────
-_test_engine = create_engine(
-    "sqlite:///:memory:",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-_TestSession = sessionmaker(autocommit=False, autoflush=False, bind=_test_engine)
-
-# ── Patch engine ANTES de importar o app ─────────────────────────────────────
-import app.db.session as _db_session  # noqa: E402
-_db_session.engine = _test_engine
-_db_session.SessionLocal = _TestSession
-
-from app.db.base import Base         # noqa: E402
-from app.db.session import get_db    # noqa: E402
-from app.main import app as fastapi_app  # noqa: E402
-from app.models.auth import AppUser, Profile, UserSession  # noqa: E402
-
-# Patch do engine no módulo health (usa engine direto)
-import app.api.routes.health as _health  # noqa: E402
-_health.engine = _test_engine
-
-# Garante import de todos os modelos para create_all
-import app.models.service        # noqa: F401 E402
-import app.models.upload         # noqa: F401 E402
-import app.models.asset_store    # noqa: F401 E402
-import app.models.climate_asset  # noqa: F401 E402
-import app.models.fire_asset     # noqa: F401 E402
-import app.models.store_document # noqa: F401 E402
-import app.models.water_asset    # noqa: F401 E402
-import app.models.auth           # noqa: F401 E402
-
-Base.metadata.create_all(bind=_test_engine)
-
-INTERNAL_KEY = os.environ["INTERNAL_API_KEY"]
-SESSION_COOKIE = "om_session"
-
-
-def override_db():
-    db = _TestSession()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-fastapi_app.dependency_overrides[get_db] = override_db
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _sha256(v): return hashlib.sha256(v.encode()).hexdigest()
-
-
-def _seed(db):
-    from app.services.auth import seed_profiles_and_permissions
-    from sqlalchemy import select
-    seed_profiles_and_permissions(db)
-    profile = db.scalar(select(Profile).where(Profile.name == "ANALISTA"))
-    user = AppUser(email="api@test.com", display_name="API Test",
-                   profile_id=profile.id, status="active")
-    db.add(user); db.flush()
-    token = secrets.token_urlsafe(32)
-    csrf = secrets.token_urlsafe(32)
-    now = datetime.utcnow()
-    db.add(UserSession(
-        user_id=user.id, session_token_hash=_sha256(token), csrf_secret=csrf,
-        created_at=now, last_seen_at=now,
-        expires_at=now + timedelta(hours=1), absolute_expires_at=now + timedelta(hours=8),
-    ))
-    db.commit()
-    return token, csrf
+ANALISTA_PERMISSIONS = [role for role in ANALISTA if role != "ANALISTA"]
 
 
 @pytest.fixture(autouse=True)
 def clean():
-    Base.metadata.drop_all(bind=_test_engine)
-    Base.metadata.create_all(bind=_test_engine)
+    reset_database()
     yield
-    Base.metadata.drop_all(bind=_test_engine)
+    reset_database()
 
 
 @pytest.fixture
@@ -116,8 +28,7 @@ def client():
 
 @pytest.fixture
 def authed():
-    db = _TestSession()
-    token, csrf = _seed(db); db.close()
+    token, csrf = seed_session(ANALISTA_PERMISSIONS)
     with TestClient(fastapi_app, raise_server_exceptions=False) as c:
         c.cookies.set(SESSION_COOKIE, token)
         c._csrf = csrf
@@ -146,42 +57,6 @@ class TestAuthEndpoints:
         assert r.status_code == 200
         d = r.json()
         assert "email" in d and "permissions" in d and "csrf_token" in d
-
-    def test_callback_define_cookie_na_resposta_302(self, client, monkeypatch):
-        """O callback deve plantar o cookie na própria resposta de redirect."""
-        from sqlalchemy import select
-        import app.api.routes.auth as auth_routes
-        from app.services.auth import seed_profiles_and_permissions
-
-        db = _TestSession()
-        seed_profiles_and_permissions(db)
-        profile = db.scalar(select(Profile).where(Profile.name == "ADMINISTRADOR"))
-        user = AppUser(
-            email="callback@test.com",
-            display_name="Callback Test",
-            profile_id=profile.id,
-            status="active",
-        )
-        db.add(user); db.commit(); db.refresh(user)
-
-        monkeypatch.setattr(auth_routes, "exchange_code", lambda code, verifier: {"access_token": "test-token"})
-        monkeypatch.setattr(auth_routes, "get_userinfo", lambda token: {"sub": "callback-sub"})
-        monkeypatch.setattr(auth_routes, "resolve_or_create_user", lambda session, userinfo: session.get(AppUser, user.id))
-        auth_routes._pending_states["state-cookie-test"] = {"verifier": "verifier"}
-
-        r = client.get(
-            "/auth/callback?code=abc&state=state-cookie-test",
-            follow_redirects=False,
-        )
-        db.close()
-
-        assert r.status_code == 302
-        assert r.headers["location"] == "http://localhost:5173"
-        cookie = r.headers.get("set-cookie", "")
-        assert "om_session=" in cookie
-        assert "HttpOnly" in cookie
-        assert "Path=/" in cookie
-        assert "SameSite=lax" in cookie
 
 
 # ── CSRF ───────────────────────────────────────────────────────────────────────

@@ -21,7 +21,8 @@ from app.api.routes.assets import router as assets_router
 from app.api.routes.assistant import router as assistant_router
 from app.api.routes.users import router as users_router
 from app.api.routes.audit import router as audit_router
-from app.core.config import APP_NAME, APP_VERSION, DEV_PROVISION_USERS, FRONTEND_ORIGINS
+from app.core import config
+from app.core.config import APP_NAME, APP_VERSION, FRONTEND_ORIGINS
 from app.db.base import Base
 from app.db.session import engine
 from app.tasks.tape_scheduler import criar_agendador_tape
@@ -34,10 +35,8 @@ from app.models.fire_asset import FireAsset     # noqa: F401
 from app.models.store_document import StoreDocument  # noqa: F401
 from app.models.water_asset import WaterAsset   # noqa: F401
 from app.models.auth import (                   # noqa: F401
-    Profile, Permission, ProfilePermission,
-    AppUser, OidcIdentity, UserSession,
-    UserPermissionOverride, AssistantConversation,
-    AssistantMessage, AiUsage, AuditLog, SecurityEvent,
+    AppUser, OidcIdentity, OidcLoginRequest, UserSession,
+    AssistantConversation, AssistantMessage, AiUsage, AuditLog, SecurityEvent,
 )
 
 app = FastAPI(title=APP_NAME, version=APP_VERSION)
@@ -75,18 +74,28 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     return response
 
 
+def _check_session_encryption_key() -> None:
+    """Sem chave válida o backend não consegue guardar o refresh token: falha na subida."""
+    if not config.OIDC_ISSUER_URL:
+        return
+    from cryptography.fernet import Fernet
+    try:
+        Fernet(config.SESSION_ENCRYPTION_KEY.encode())
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError(
+            "SESSION_ENCRYPTION_KEY ausente ou inválida. Gere com: python -c "
+            "\"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        ) from exc
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     import logging
     logger = logging.getLogger(__name__)
 
-    Base.metadata.create_all(bind=engine)
+    _check_session_encryption_key()
 
-    try:
-        from app.db.schema_updates import apply_schema_updates
-        apply_schema_updates(engine)
-    except Exception as exc:
-        logger.warning("atualização de schema falhou: %s", exc)
+    Base.metadata.create_all(bind=engine)
 
     try:
         from sqlalchemy import text as sa_text
@@ -95,25 +104,6 @@ def on_startup() -> None:
             conn.commit()
     except Exception:
         pass
-
-    try:
-        from app.db.session import SessionLocal
-        from app.services.auth import seed_profiles_and_permissions
-        with SessionLocal() as db:
-            seed_profiles_and_permissions(db)
-    except Exception as exc:
-        logger.warning("seed falhou: %s", exc)
-
-    if DEV_PROVISION_USERS:
-        try:
-            from app.db.session import SessionLocal
-            from app.services.keycloak_admin import get_identity_admin
-            from app.services.user_admin import provision_dev_users
-            with SessionLocal() as db:
-                summary = provision_dev_users(db, get_identity_admin())
-            logger.warning("Provisionamento DEV: %s", "; ".join(summary))
-        except Exception as exc:
-            logger.warning("provisionamento DEV falhou: %s", exc)
 
     if _scheduler_habilitado():
         app.state.tape_scheduler = criar_agendador_tape()

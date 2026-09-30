@@ -1,58 +1,50 @@
 """
-Rotas de autenticação — BFF para o fluxo OIDC.
+Rotas de autenticação — BFF para o fluxo OIDC com o Keycloak.
 
-O navegador NUNCA recebe access_token nem refresh_token.
-Toda a troca de código acontece server-side.
+O navegador NUNCA recebe access_token nem refresh_token: troca de código,
+renovação e revogação acontecem aqui. Perfis e permissões vêm dos papéis do
+client chat-bot-om-bff no token assinado.
 """
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import secrets
-from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Form, Request, Response
 from fastapi.responses import RedirectResponse
-
-logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, get_current_session, verify_csrf
-from app.core.config import (
-    OIDC_ISSUER_URL,
-    SESSION_COOKIE_NAME,
-    SESSION_COOKIE_SECURE,
-    OIDC_POST_LOGOUT_REDIRECT_URI,
-    FRONTEND_ORIGINS,
-)
+from app.api.dependencies import get_current_session, get_current_user, get_valid_session, verify_csrf
+from app.core import config
+from app.core.config import FRONTEND_ORIGINS, SESSION_COOKIE_NAME, SESSION_COOKIE_SECURE
 from app.db.session import get_db
 from app.models.auth import AppUser, UserSession
+from app.services import oidc
 from app.services.auth import (
-    check_user_active,
-    create_session,
-    exchange_code,
-    get_authorization_url,
-    get_logout_url,
-    get_user_permissions,
-    get_userinfo,
-    get_ai_limits,
     check_ai_rate_limit,
+    consume_login_request,
+    create_login_request,
+    create_session,
+    decrypt_secret,
     post_logout_redirect_uri,
     record_audit,
     record_security_event,
-    resolve_or_create_user,
     revoke_session,
-    get_session,
+    revoke_sessions_for_logout,
+    upsert_user,
 )
+from app.services.permissions import PROFILE_DISPLAY, primary_profile, snapshot_from_roles
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-# Armazenamento temporário em memória dos state/verifier para o fluxo PKCE.
-# Em produção com múltiplos workers, usar Redis ou PostgreSQL.
-_pending_states: dict[str, dict] = {}
-
 _FRONTEND_ORIGIN = FRONTEND_ORIGINS[0] if FRONTEND_ORIGINS else "http://localhost:5173"
+_NO_STORE = {"Cache-Control": "no-store"}
+
+# Prende o state do login ao navegador que o iniciou (proteção contra login CSRF).
+LOGIN_BINDING_COOKIE = "om_login_binding"
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -68,11 +60,18 @@ def _set_session_cookie(response: Response, token: str) -> None:
 
 
 def _clear_session_cookie(response: Response) -> None:
-    response.delete_cookie(
-        key=SESSION_COOKIE_NAME,
+    response.delete_cookie(key=SESSION_COOKIE_NAME, httponly=True, samesite="lax", path="/")
+
+
+def _set_login_binding_cookie(response: Response, binding: str) -> None:
+    response.set_cookie(
+        key=LOGIN_BINDING_COOKIE,
+        value=binding,
         httponly=True,
         samesite="lax",
-        path="/",
+        secure=SESSION_COOKIE_SECURE,
+        path="/auth",
+        max_age=config.OIDC_LOGIN_REQUEST_TTL_SECONDS,
     )
 
 
@@ -82,44 +81,55 @@ def _login_page_url(auth_error: str | None = None) -> str:
 
 
 def _redirect_auth_error(code: str) -> RedirectResponse:
-    resp = RedirectResponse(url=_login_page_url(code), status_code=302)
-    resp.headers["Cache-Control"] = "no-store"
-    return resp
+    return RedirectResponse(url=_login_page_url(code), status_code=302, headers=_NO_STORE)
 
 
 def _redirect_denied_after_login(code: str, id_token: str | None) -> RedirectResponse:
-    """Encerra a sessão SSO recém-criada no Keycloak e volta para /login.
+    """Encerra a sessão SSO recém-criada no Keycloak e volta para /login?auth_error=<code>.
 
-    Usado quando o Keycloak autenticou, mas o Chat-bot O&M não liberou o acesso
-    (pendente, bloqueado ou identidade não vinculável). Assim nenhuma sessão
-    fica parcialmente ativa e o próximo "Entrar" pede as credenciais de novo.
+    Assim a conta autenticada, mas sem papel do app, não fica com sessão pela
+    metade e o próximo "Entrar" pede as credenciais de novo.
     """
     target = _login_page_url(code)
     try:
-        url = get_logout_url(id_token_hint=id_token, redirect_uri=target) if OIDC_ISSUER_URL else target
-    except Exception:  # noqa: BLE001 — sem discovery, cai no redirect simples
+        url = oidc.end_session_url(id_token_hint=id_token, post_logout_redirect_uri=target)
+    except oidc.OidcError:
         url = target
-    resp = RedirectResponse(url=url, status_code=302)
-    resp.headers["Cache-Control"] = "no-store"
-    return resp
+    return RedirectResponse(url=url, status_code=302, headers=_NO_STORE)
+
+
+def _login_failed(db: Session, reason: str, severity: str = "high", **metadata) -> None:
+    record_security_event(db, event_type="LOGIN_FAILED", severity=severity,
+                          metadata={"reason": reason, **metadata})
+    db.commit()
+
+
+def _start_login(request: Request, db: Session, *, register: bool) -> RedirectResponse:
+    if not oidc.is_configured():
+        return _redirect_auth_error("provider_unavailable")
+    # Reaproveita o vínculo do navegador (abas paralelas compartilham o cookie).
+    binding = request.cookies.get(LOGIN_BINDING_COOKIE) or secrets.token_urlsafe(32)
+    state, code_verifier, nonce = create_login_request(db, binding=binding)
+    try:
+        url = oidc.authorization_url(state=state, nonce=nonce, code_verifier=code_verifier, register=register)
+    except oidc.OidcError as exc:
+        logger.warning("LOGIN: provedor de identidade indisponível (%s).", exc.code)
+        return _redirect_auth_error("provider_unavailable")
+    response = RedirectResponse(url=url, status_code=302, headers=_NO_STORE)
+    _set_login_binding_cookie(response, binding)
+    return response
 
 
 @router.get("/login")
-def login(request: Request) -> Response:
-    """Inicia o fluxo OIDC — redireciona para o Keycloak."""
-    if not OIDC_ISSUER_URL:
-        raise HTTPException(status_code=503, detail="Provedor de identidade não configurado.")
+def login(request: Request, db: Session = Depends(get_db)) -> Response:
+    """Inicia o login no Keycloak (código + PKCE S256 + nonce)."""
+    return _start_login(request, db, register=False)
 
-    state = secrets.token_urlsafe(32)
-    code_verifier = secrets.token_urlsafe(64)
-    _pending_states[state] = {"verifier": code_verifier}
 
-    try:
-        url = get_authorization_url(state, code_verifier)
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail="Erro ao contatar provedor de identidade.") from exc
-
-    return Response(status_code=302, headers={"Location": url})
+@router.get("/register")
+def register(request: Request, db: Session = Depends(get_db)) -> Response:
+    """Abre o autocadastro do Keycloak (prompt=create). A conta nasce sem perfil."""
+    return _start_login(request, db, register=True)
 
 
 @router.get("/callback")
@@ -130,89 +140,74 @@ def callback(
     error: str | None = None,
     db: Session = Depends(get_db),
 ) -> Response:
-    """Recebe o authorization code e cria sessão server-side."""
-    pending = _pending_states.pop(state, None) if state else None
+    """Recebe o código, valida os tokens e, havendo papel do app, cria a sessão."""
+    # Uso único, inclusive quando o provedor devolve erro. Só vale no navegador que iniciou o
+    # login: sem o cookie de vínculo correto o state é descartado e o callback recusado.
+    pending = consume_login_request(db, state, binding=request.cookies.get(LOGIN_BINDING_COOKIE))
     if error:
-        # Ex.: usuário cancelou ou o provedor recusou a autenticação.
         logger.warning("CALLBACK: provedor retornou erro: %s", error[:60])
-        record_security_event(db, event_type="LOGIN_FAILED", severity="medium",
-                              metadata={"reason": "provider_error", "error": error[:60]})
-        db.commit()
+        _login_failed(db, "provider_error", "medium", error=error[:60])
         return _redirect_auth_error("provider_error")
-    if not pending or not code:
-        logger.warning("CALLBACK: state inválido ou expirado: %s", (state or "")[:8])
-        record_security_event(db, event_type="LOGIN_FAILED", severity="high",
-                              metadata={"reason": "invalid_state"})
-        db.commit()
+    if pending is None or not code:
+        logger.warning("CALLBACK: state inválido, expirado, reutilizado ou de outro navegador.")
+        _login_failed(db, "invalid_state")
         return _redirect_auth_error("invalid_state")
 
+    code_verifier, nonce = pending
     try:
-        tokens = exchange_code(code, pending["verifier"])
-        userinfo = get_userinfo(tokens["access_token"])
-    except Exception as exc:
-        logger.error("CALLBACK: falha no token exchange: %s", exc, exc_info=True)
-        record_security_event(db, event_type="LOGIN_FAILED", severity="high",
-                              metadata={"reason": "token_exchange_failed"})
-        db.commit()
+        tokens = oidc.exchange_code(code, code_verifier=code_verifier, nonce=nonce)
+    except oidc.OidcUnavailable:
+        _login_failed(db, "provider_unavailable", "medium")
+        return _redirect_auth_error("provider_unavailable")
+    except oidc.OidcError as exc:
+        logger.warning("CALLBACK: tokens recusados (%s).", exc.code)
+        _login_failed(db, "token_exchange_failed", detail=exc.code)
         return _redirect_auth_error("token_exchange")
 
-    id_token = tokens.get("id_token") if isinstance(tokens, dict) else None
-
-    user = resolve_or_create_user(db, userinfo)
-    if user is None:
-        return _redirect_denied_after_login("no_user", id_token)
-
-    ok, reason = check_user_active(user)
-    if not ok:
-        code_str = "pending" if user.status == "pending" else "disabled"
-        logger.warning("CALLBACK: acesso negado após autenticação: user_id=%s status=%s", user.id, user.status)
+    snapshot = snapshot_from_roles(oidc.roles_from_access_claims(tokens.access_claims))
+    user = upsert_user(db, tokens.access_claims, profiles=snapshot.profiles)
+    if not snapshot.has_access:
         record_security_event(db, event_type="LOGIN_DENIED", severity="low", user_id=user.id,
-                              metadata={"status": user.status})
+                              metadata={"reason": "not_released"})
         db.commit()
-        return _redirect_denied_after_login(code_str, id_token)
+        oidc.revoke_refresh_token(tokens.refresh_token)
+        return _redirect_denied_after_login("not_released", tokens.id_token)
 
     ip = request.client.host if request.client else None
-    ua = request.headers.get("user-agent")
-    user.last_seen_at = datetime.utcnow()
-    token = create_session(db, user.id, ip=ip, ua=ua, id_token=id_token)
-
-    record_audit(db, user_id=user.id, action="LOGIN_SUCCESS",
-                 entity_type="app_user", entity_id=str(user.id))
+    token = create_session(db, user, tokens=tokens, snapshot=snapshot, ip=ip,
+                           ua=request.headers.get("user-agent"))
+    record_audit(db, user_id=user.id, action="LOGIN_SUCCESS", entity_type="app_user", entity_id=str(user.id))
     db.commit()
 
-    # O callback é acessado pelo browser em /auth/callback na origem do frontend
-    # (Vite/reverse proxy). O Set-Cookie é definido na própria resposta 302 que
-    # retorna ao navegador, criando um cookie host-only para localhost em DEV.
-    resp = RedirectResponse(url=_FRONTEND_ORIGIN, status_code=302)
-    resp.headers["Cache-Control"] = "no-store"
+    # O Set-Cookie vai na própria resposta 302 (cookie host-only da origem do frontend).
+    # O cookie de vínculo do login não é apagado: abas paralelas ainda precisam dele.
+    resp = RedirectResponse(url=_FRONTEND_ORIGIN, status_code=302, headers=_NO_STORE)
     _set_session_cookie(resp, token)
     return resp
 
 
 @router.get("/me")
 def me(
-    user: AppUser = Depends(get_current_user),
     session: UserSession = Depends(get_current_session),
+    user: AppUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Retorna dados do usuário atual, permissões e CSRF token."""
-    from app.models.auth import Profile
-    profile = db.get(Profile, user.profile_id) if user.profile_id else None
-    perms = get_user_permissions(db, user)
-    daily_limit, per_min_limit = get_ai_limits(db, user)
+    """Usuário atual, perfis e permissões (retrato vindo do Keycloak) e token CSRF."""
+    permissions = sorted(session.permissions or [])
+    profiles = list(session.profiles or [])
+    profile = primary_profile(profiles)
     rate = check_ai_rate_limit(db, user)
-
     return {
         "id": user.id,
         "email": user.email,
         "username": user.username,
         "display_name": user.display_name,
-        "profile": profile.name if profile else None,
-        "profile_display": profile.display_name if profile else None,
-        "status": user.status,
-        "access_expires_at": user.access_expires_at.isoformat() if user.access_expires_at else None,
-        "permissions": list(perms),
+        "profile": profile,
+        "profile_display": PROFILE_DISPLAY.get(profile) if profile else None,
+        "profiles": profiles,
+        "permissions": permissions,
         "csrf_token": session.csrf_secret,
+        "keycloak_console_url": (config.KEYCLOAK_CONSOLE_URL or None) if "users.view" in permissions else None,
         "ai_usage": {
             "used_today": rate["used_today"],
             "daily_limit": rate["daily_limit"],
@@ -226,33 +221,49 @@ def me(
 
 @router.post("/logout", dependencies=[Depends(verify_csrf)])
 def logout(
-    request: Request,
     response: Response,
-    session: UserSession = Depends(get_current_session),
+    session: UserSession = Depends(get_valid_session),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Revoga a sessão da aplicação e devolve a URL de logout do Keycloak.
-
-    Depende apenas da sessão (não do status do usuário) para que mesmo uma
-    conta bloqueada consiga encerrar a sessão por completo.
-    """
+    """Revoga a sessão do app e o refresh token no Keycloak; devolve a URL de logout OIDC."""
     id_token_hint = session.id_token_hint
+    refresh_token = decrypt_secret(session.refresh_token_enc)
     record_audit(db, user_id=session.user_id, action="LOGOUT",
                  entity_type="app_user", entity_id=str(session.user_id))
-    token = request.cookies.get(SESSION_COOKIE_NAME, "")
-    revoke_session(db, token)
+    revoke_session(db, session)
     db.commit()
+    oidc.revoke_refresh_token(refresh_token)
     _clear_session_cookie(response)
 
-    if OIDC_ISSUER_URL:
-        try:
-            logout_url = get_logout_url(id_token_hint=id_token_hint)
-        except Exception:  # noqa: BLE001 — provedor fora do ar: ao menos volta ao /login
-            logger.warning("LOGOUT: discovery OIDC indisponível; retornando direto ao /login.")
-            logout_url = post_logout_redirect_uri()
-    else:
-        logout_url = post_logout_redirect_uri()
+    target = post_logout_redirect_uri()
+    try:
+        logout_url = oidc.end_session_url(id_token_hint=id_token_hint, post_logout_redirect_uri=target)
+    except oidc.OidcError:
+        logger.warning("LOGOUT: provedor indisponível; retornando direto ao /login.")
+        logout_url = target
     return {"logout_url": logout_url}
+
+
+@router.post("/backchannel-logout")
+def backchannel_logout(logout_token: str = Form(default=""), db: Session = Depends(get_db)) -> Response:
+    """Keycloak → app: encerra as sessões do ``sid`` (ou, sem sid, todas do ``sub``).
+
+    Chamada servidor a servidor, autenticada pela assinatura do logout token
+    (sem cookie nem CSRF). Em produção, o proxy expõe este caminho só para a
+    rede do Keycloak.
+    """
+    try:
+        claims = oidc.verify_logout_token(logout_token)
+    except oidc.OidcError as exc:
+        record_security_event(db, event_type="BACKCHANNEL_LOGOUT_REJECTED", severity="high",
+                              metadata={"reason": exc.code})
+        db.commit()
+        return Response(status_code=400, headers=_NO_STORE)
+    revoked = revoke_sessions_for_logout(db, issuer=claims["iss"], sid=claims.get("sid"),
+                                         subject=claims.get("sub"))
+    record_security_event(db, event_type="BACKCHANNEL_LOGOUT", severity="low", metadata={"sessions": revoked})
+    db.commit()
+    return Response(status_code=200, headers=_NO_STORE)
 
 
 @router.get("/usage")

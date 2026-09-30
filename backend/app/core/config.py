@@ -52,17 +52,6 @@ OIDC_LOGIN_REQUEST_TTL_SECONDS = int(os.getenv("OIDC_LOGIN_REQUEST_TTL_SECONDS",
 # não guarda credencial administrativa do Keycloak.
 KEYCLOAK_CONSOLE_URL = os.getenv("KEYCLOAK_CONSOLE_URL", "").strip()
 
-# ─── Keycloak Admin API (gestão de usuários, somente server-side) ─────────────
-# Client confidencial com service account e papéis mínimos de realm-management.
-# Base URL e realm são derivados do OIDC_ISSUER_URL quando não informados.
-KEYCLOAK_ADMIN_CLIENT_ID = os.getenv("KEYCLOAK_ADMIN_CLIENT_ID", "").strip()
-KEYCLOAK_ADMIN_CLIENT_SECRET = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET", "").strip()
-KEYCLOAK_ADMIN_BASE_URL = os.getenv("KEYCLOAK_ADMIN_BASE_URL", "").strip()
-KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "").strip()
-KEYCLOAK_ADMIN_TIMEOUT_SECONDS = float(os.getenv("KEYCLOAK_ADMIN_TIMEOUT_SECONDS", "10"))
-# Validade do link de definição de senha enviado por e-mail (quando há SMTP).
-KEYCLOAK_ACTION_EMAIL_LIFESPAN_SECONDS = int(os.getenv("KEYCLOAK_ACTION_EMAIL_LIFESPAN_SECONDS", "86400"))
-
 # ─── sessão ───────────────────────────────────────────────────────────────────
 SESSION_SECRET = os.getenv("SESSION_SECRET", "")
 SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "om_session")
@@ -76,23 +65,3 @@ SESSION_ENCRYPTION_KEY = os.getenv("SESSION_ENCRYPTION_KEY", "").strip()
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 _raw_origins = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
 FRONTEND_ORIGINS: list[str] = [o.strip() for o in _raw_origins.split(",") if o.strip()]
-
-# ─── bootstrap ────────────────────────────────────────────────────────────────
-DEV_ADMIN_EMAIL = os.getenv("DEV_ADMIN_EMAIL", "").strip().lower()
-_CONFIGURED_BOOTSTRAP_ADMIN_EMAIL = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
-# Em desenvolvimento, o usuário DEV configurado é a referência de bootstrap.
-# Isso evita divergência quando DEV_ADMIN_EMAIL é alterado e o .env ainda
-# conserva o valor padrão antigo de BOOTSTRAP_ADMIN_EMAIL. Em produção, vale
-# exclusivamente BOOTSTRAP_ADMIN_EMAIL.
-BOOTSTRAP_ADMIN_EMAIL = (
-    DEV_ADMIN_EMAIL
-    if APP_ENV.strip().lower() == "development" and DEV_ADMIN_EMAIL
-    else _CONFIGURED_BOOTSTRAP_ADMIN_EMAIL
-)
-
-# Pré-provisionamento dos usuários DEV do Keycloak local (admin.om, analista.om...).
-# Nunca roda fora de APP_ENV=development.
-DEV_PROVISION_USERS = (
-    APP_ENV.strip().lower() == "development"
-    and os.getenv("DEV_PROVISION_USERS", "true").strip().lower() in {"1", "true", "yes", "on"}
-)

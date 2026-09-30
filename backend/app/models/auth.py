@@ -1,5 +1,9 @@
 """
-Modelos de autenticação, autorização, sessões e auditoria.
+Modelos de identidade local, sessões, conversas, uso da IA e auditoria.
+
+Perfis e permissões moram no Keycloak (papéis do client chat-bot-om-bff). O app
+guarda só o registro de identidade (issuer + subject) e, na sessão, o retrato
+dos papéis recebidos no token assinado.
 """
 
 from __future__ import annotations
@@ -7,7 +11,6 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean,
     DateTime,
     Enum,
     ForeignKey,
@@ -23,85 +26,27 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-# ─── Perfis ───────────────────────────────────────────────────────────────────
-
-class Profile(Base):
-    __tablename__ = "profiles"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    display_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    # Limites padrão de IA associados ao perfil
-    ai_daily_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
-    ai_per_minute_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
-
-    permissions: Mapped[list["ProfilePermission"]] = relationship(
-        "ProfilePermission", back_populates="profile", cascade="all, delete-orphan"
-    )
-    users: Mapped[list["AppUser"]] = relationship("AppUser", back_populates="profile")
-
-
-# ─── Permissões ───────────────────────────────────────────────────────────────
-
-class Permission(Base):
-    __tablename__ = "permissions"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    code: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
-    description: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-
-    profile_permissions: Mapped[list["ProfilePermission"]] = relationship(
-        "ProfilePermission", back_populates="permission"
-    )
-    user_overrides: Mapped[list["UserPermissionOverride"]] = relationship(
-        "UserPermissionOverride", back_populates="permission"
-    )
-
-
-class ProfilePermission(Base):
-    __tablename__ = "profile_permissions"
-    __table_args__ = (UniqueConstraint("profile_id", "permission_id"),)
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    profile_id: Mapped[int] = mapped_column(Integer, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
-    permission_id: Mapped[int] = mapped_column(Integer, ForeignKey("permissions.id", ondelete="CASCADE"), nullable=False)
-
-    profile: Mapped["Profile"] = relationship("Profile", back_populates="permissions")
-    permission: Mapped["Permission"] = relationship("Permission", back_populates="profile_permissions")
-
-
-# ─── Usuário da aplicação ─────────────────────────────────────────────────────
+# ─── Usuário da aplicação (registro de identidade) ────────────────────────────
 
 class AppUser(Base):
     __tablename__ = "app_users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    # Login no provedor de identidade (preferred_username). Informativo: a
-    # âncora da identidade continua sendo oidc_identities.issuer + subject.
+    # Informativo (vem do token) e pode repetir: a âncora é oidc_identities (issuer + subject).
+    email: Mapped[str] = mapped_column(String(255), nullable=False, default="", index=True)
     username: Mapped[str | None] = mapped_column(String(150), nullable=True)
     display_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
-    profile_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("profiles.id"), nullable=True)
-    # pending | active | disabled
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
-    access_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    ai_daily_limit_override: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    ai_per_minute_limit_override: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # flag: bootstrap admin já foi concedido uma única vez
-    bootstrap_admin_granted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Perfis vistos no último login/renovação: exibição e limites de IA. Não concede acesso.
+    last_profiles: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    profile: Mapped["Profile | None"] = relationship("Profile", back_populates="users")
     oidc_identities: Mapped[list["OidcIdentity"]] = relationship(
         "OidcIdentity", back_populates="user", cascade="all, delete-orphan"
     )
     sessions: Mapped[list["UserSession"]] = relationship(
         "UserSession", back_populates="user", cascade="all, delete-orphan"
-    )
-    permission_overrides: Mapped[list["UserPermissionOverride"]] = relationship(
-        "UserPermissionOverride", back_populates="user", cascade="all, delete-orphan"
     )
 
 
@@ -120,6 +65,21 @@ class OidcIdentity(Base):
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped["AppUser"] = relationship("AppUser", back_populates="oidc_identities")
+
+
+# ─── Login em andamento ───────────────────────────────────────────────────────
+
+class OidcLoginRequest(Base):
+    """state (hash), code_verifier e nonce de um login em andamento. Uso único, validade curta."""
+
+    __tablename__ = "oidc_login_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    state_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    code_verifier: Mapped[str] = mapped_column(String(128), nullable=False)
+    nonce: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
 
 
 # ─── Sessões ──────────────────────────────────────────────────────────────────
@@ -143,24 +103,19 @@ class UserSession(Base):
     # id_token do login, usado somente como id_token_hint no logout OIDC.
     # Nunca é enviado ao navegador fora do redirect de logout e é apagado na revogação.
     id_token_hint: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Sessão SSO do Keycloak (claim "sid"): alvo do backchannel logout.
+    sid: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    # Refresh token cifrado (Fernet, SESSION_ENCRYPTION_KEY). Apagado na revogação.
+    refresh_token_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Retrato do acesso: papéis do client chat-bot-om-bff recebidos no token.
+    permissions: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    profiles: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    snapshot_refreshed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    # Keycloak inacessível: início da falha e última tentativa de renovação.
+    refresh_failed_since: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    refresh_attempted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped["AppUser"] = relationship("AppUser", back_populates="sessions")
-
-
-# ─── Overrides de permissão ───────────────────────────────────────────────────
-
-class UserPermissionOverride(Base):
-    __tablename__ = "user_permission_overrides"
-    __table_args__ = (UniqueConstraint("user_id", "permission_id"),)
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("app_users.id", ondelete="CASCADE"), nullable=False)
-    permission_id: Mapped[int] = mapped_column(Integer, ForeignKey("permissions.id", ondelete="CASCADE"), nullable=False)
-    # "allow" ou "deny"
-    effect: Mapped[str] = mapped_column(Enum("allow", "deny", name="override_effect"), nullable=False)
-
-    user: Mapped["AppUser"] = relationship("AppUser", back_populates="permission_overrides")
-    permission: Mapped["Permission"] = relationship("Permission", back_populates="user_overrides")
 
 
 # ─── Conversas ────────────────────────────────────────────────────────────────

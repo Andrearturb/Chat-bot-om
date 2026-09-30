@@ -1,338 +1,243 @@
-"""
-Testes de autenticação, sessão, CSRF, permissões, overrides,
-controle de IA, conversas e isolamento — SQLite in-memory.
-"""
+"""Sessões, identidade local, registro de login, limites de IA e auditoria (app/services/auth.py)."""
 
 from __future__ import annotations
 
 import hashlib
-import secrets
 from datetime import datetime, timedelta
 
 import pytest
-from sqlalchemy import select
+from cryptography.fernet import Fernet
+from sqlalchemy import func, select
 
+from app.core import config
 from app.models.auth import (
-    AiUsage, AppUser, AssistantConversation, AuditLog,
-    Permission, Profile, ProfilePermission, SecurityEvent,
-    UserPermissionOverride, UserSession,
+    AiUsage,
+    AppUser,
+    AssistantConversation,
+    AuditLog,
+    OidcIdentity,
+    OidcLoginRequest,
+    SecurityEvent,
+    UserSession,
 )
-from app.services.auth import (
-    check_ai_rate_limit, check_user_active, create_session,
-    get_session, get_user_permissions, record_audit,
-    record_security_event, resolve_or_create_user,
-    revoke_session, seed_profiles_and_permissions,
-)
+from app.services import auth
+from app.services.permissions import snapshot_from_roles
+from tests.oidc_fake import ANALISTA, ISSUER, login_tokens
 
 
-def _sha256(v): return hashlib.sha256(v.encode()).hexdigest()
+def _sha256(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
 
 
-def _make_profile(db, name, perms, ai_daily=50, ai_per_min=5):
-    p = Profile(name=name, display_name=name, ai_daily_limit=ai_daily, ai_per_minute_limit=ai_per_min)
-    db.add(p); db.flush()
-    for code in perms:
-        perm = db.scalar(select(Permission).where(Permission.code == code))
-        if not perm:
-            perm = Permission(code=code, description=code); db.add(perm); db.flush()
-        db.add(ProfilePermission(profile_id=p.id, permission_id=perm.id))
-    db.flush(); return p
+def _claims(sub: str = "sub-1", email: str | None = "pessoa@exemplo.local", **extra) -> dict:
+    return {"iss": ISSUER, "sub": sub, "email": email, "preferred_username": "pessoa",
+            "name": "Pessoa Teste", **extra}
 
 
-def _make_user(db, email, profile=None, status="active"):
-    u = AppUser(email=email, display_name=email.split("@")[0],
-                profile_id=profile.id if profile else None, status=status)
-    db.add(u); db.flush(); return u
+def _user(db, sub: str = "sub-1", email: str | None = "pessoa@exemplo.local", profiles=("ANALISTA",)) -> AppUser:
+    user = auth.upsert_user(db, _claims(sub, email), profiles=profiles)
+    db.commit()
+    return user
 
 
-def _make_session(db, user):
-    token = create_session(db, user.id)
+def _session(db, provider, *, sub: str = "sub-1", roles=ANALISTA, sid: str | None = None):
+    user = _user(db, sub=sub)
+    tokens = login_tokens(provider, sub, roles, sid=sid)
+    token = auth.create_session(db, user, tokens=tokens, snapshot=snapshot_from_roles(roles))
+    db.commit()
     session = db.scalar(select(UserSession).where(UserSession.session_token_hash == _sha256(token)))
-    return token, session
-
-
-# ── Seed ──────────────────────────────────────────────────────────────────────
-
-def test_seed_idempotente(db):
-    seed_profiles_and_permissions(db)
-    seed_profiles_and_permissions(db)
-    assert db.scalar(select(Profile).where(Profile.name == "ADMINISTRADOR")) is not None
+    return user, token, session
 
 
 # ── Sessão ────────────────────────────────────────────────────────────────────
 
-def test_token_armazenado_como_hash(db):
-    p = _make_profile(db, "T1", []); u = _make_user(db, "t1@t.com", p)
-    token, s = _make_session(db, u)
-    assert s.session_token_hash != token
-    assert s.session_token_hash == _sha256(token)
-
-def test_get_session_valida(db):
-    p = _make_profile(db, "T2", []); u = _make_user(db, "t2@t.com", p)
-    token, _ = _make_session(db, u)
-    assert get_session(db, token) is not None
-
-def test_get_session_token_invalido(db):
-    assert get_session(db, "token_falso") is None
-
-def test_sessao_expirada_idle(db):
-    p = _make_profile(db, "T3", []); u = _make_user(db, "t3@t.com", p)
-    token, s = _make_session(db, u)
-    s.expires_at = datetime.utcnow() - timedelta(minutes=1); db.commit()
-    assert get_session(db, token) is None
-
-def test_sessao_expirada_absoluto(db):
-    p = _make_profile(db, "T4", []); u = _make_user(db, "t4@t.com", p)
-    token, s = _make_session(db, u)
-    s.absolute_expires_at = datetime.utcnow() - timedelta(minutes=1); db.commit()
-    assert get_session(db, token) is None
-
-def test_logout_revoga_sessao(db):
-    p = _make_profile(db, "T5", []); u = _make_user(db, "t5@t.com", p)
-    token, _ = _make_session(db, u)
-    revoke_session(db, token)
-    assert get_session(db, token) is None
+def test_token_da_sessao_guardado_somente_como_hash(db, provider):
+    _, token, session = _session(db, provider)
+    assert session.session_token_hash == _sha256(token)
+    assert token not in (session.session_token_hash, session.csrf_secret)
 
 
-# ── Usuário ───────────────────────────────────────────────────────────────────
-
-def test_pending_bloqueado(db):
-    u = _make_user(db, "p@t.com", status="pending")
-    ok, r = check_user_active(u); assert not ok; assert "pendente" in r.lower()
-
-def test_disabled_bloqueado(db):
-    u = _make_user(db, "d@t.com", status="disabled")
-    ok, r = check_user_active(u); assert not ok; assert "desativada" in r.lower()
-
-def test_ativo_ok(db):
-    u = _make_user(db, "a@t.com", status="active")
-    ok, _ = check_user_active(u); assert ok
-
-def test_expirado_bloqueado(db):
-    u = _make_user(db, "e@t.com", status="active")
-    u.access_expires_at = datetime.utcnow() - timedelta(hours=1); db.commit()
-    ok, r = check_user_active(u); assert not ok; assert "expirou" in r.lower()
+def test_refresh_token_guardado_cifrado(db, provider):
+    _, _, session = _session(db, provider)
+    [refresh_token] = provider.refresh_tokens
+    assert refresh_token not in session.refresh_token_enc
+    assert auth.decrypt_secret(session.refresh_token_enc) == refresh_token
 
 
-# ── Permissões ────────────────────────────────────────────────────────────────
-
-def test_perfil_analista(db):
-    seed_profiles_and_permissions(db)
-    p = db.scalar(select(Profile).where(Profile.name == "ANALISTA"))
-    u = _make_user(db, "an@t.com", p)
-    perms = get_user_permissions(db, u)
-    assert "assets.create" in perms
-    assert "assets.delete" not in perms
-    assert "audit.view" not in perms
-    assert "users.manage" not in perms
-
-def test_perfil_gerente(db):
-    seed_profiles_and_permissions(db)
-    p = db.scalar(select(Profile).where(Profile.name == "GERENTE"))
-    u = _make_user(db, "ge@t.com", p)
-    perms = get_user_permissions(db, u)
-    assert "assets.delete" in perms
-    assert "audit.view" in perms
-    assert "users.manage" not in perms
-
-def test_perfil_diretor(db):
-    seed_profiles_and_permissions(db)
-    p = db.scalar(select(Profile).where(Profile.name == "DIRETOR"))
-    u = _make_user(db, "di@t.com", p)
-    perms = get_user_permissions(db, u)
-    assert "assets.view" in perms
-    assert "assets.create" not in perms
-
-def test_perfil_convidado(db):
-    seed_profiles_and_permissions(db)
-    p = db.scalar(select(Profile).where(Profile.name == "CONVIDADO"))
-    u = _make_user(db, "co@t.com", p)
-    perms = get_user_permissions(db, u)
-    assert "assets.view" in perms
-    assert "documents.view" not in perms
-
-def test_perfil_admin(db):
-    seed_profiles_and_permissions(db)
-    p = db.scalar(select(Profile).where(Profile.name == "ADMINISTRADOR"))
-    u = _make_user(db, "ad@t.com", p)
-    perms = get_user_permissions(db, u)
-    assert "users.manage" in perms
-    assert "settings.manage" in perms
-    assert "sync.tape" in perms
+def test_sessao_guarda_retrato_sid_e_id_token(db, provider):
+    _, _, session = _session(db, provider, sid="sid-abc")
+    assert session.permissions == sorted(set(ANALISTA) - {"ANALISTA"})
+    assert session.profiles == ["ANALISTA"]
+    assert session.sid == "sid-abc"
+    assert session.id_token_hint and session.snapshot_refreshed_at is not None
 
 
-# ── Overrides ─────────────────────────────────────────────────────────────────
-
-def test_override_allow(db):
-    seed_profiles_and_permissions(db)
-    p = db.scalar(select(Profile).where(Profile.name == "ANALISTA"))
-    u = _make_user(db, "ova@t.com", p)
-    assert "assets.import" not in get_user_permissions(db, u)
-    perm = db.scalar(select(Permission).where(Permission.code == "assets.import"))
-    db.add(UserPermissionOverride(user_id=u.id, permission_id=perm.id, effect="allow")); db.commit()
-    assert "assets.import" in get_user_permissions(db, u)
-
-def test_override_deny(db):
-    seed_profiles_and_permissions(db)
-    p = db.scalar(select(Profile).where(Profile.name == "ANALISTA"))
-    u = _make_user(db, "ovd@t.com", p)
-    assert "assets.edit" in get_user_permissions(db, u)
-    perm = db.scalar(select(Permission).where(Permission.code == "assets.edit"))
-    db.add(UserPermissionOverride(user_id=u.id, permission_id=perm.id, effect="deny")); db.commit()
-    assert "assets.edit" not in get_user_permissions(db, u)
-
-def test_deny_prevalece(db):
-    seed_profiles_and_permissions(db)
-    p = db.scalar(select(Profile).where(Profile.name == "ANALISTA"))
-    u = _make_user(db, "ovd2@t.com", p)
-    assert "assets.view" in get_user_permissions(db, u)
-    perm = db.scalar(select(Permission).where(Permission.code == "assets.view"))
-    db.add(UserPermissionOverride(user_id=u.id, permission_id=perm.id, effect="deny")); db.commit()
-    assert "assets.view" not in get_user_permissions(db, u)
+def test_get_session_valida_e_token_desconhecido(db, provider):
+    _, token, session = _session(db, provider)
+    assert auth.get_session(db, token) is session
+    assert auth.get_session(db, "token-desconhecido") is None
 
 
-# ── Controle de IA ────────────────────────────────────────────────────────────
+@pytest.mark.parametrize("field", ["expires_at", "absolute_expires_at"])
+def test_sessao_expirada(db, provider, field):
+    _, token, session = _session(db, provider)
+    setattr(session, field, datetime.utcnow() - timedelta(seconds=1))
+    db.commit()
+    assert auth.get_session(db, token) is None
 
-def test_limite_diario_permitido(db):
-    p = _make_profile(db, "IA1", [], ai_daily=5, ai_per_min=2)
-    u = _make_user(db, "ia1@t.com", p)
-    r = check_ai_rate_limit(db, u)
-    assert r["allowed"] is True and r["daily_limit"] == 5
+
+def test_revogar_sessao_apaga_segredos(db, provider):
+    _, token, session = _session(db, provider)
+    auth.revoke_session(db, session)
+    db.commit()
+    assert session.revoked_at is not None
+    assert session.id_token_hint is None and session.refresh_token_enc is None
+    assert auth.get_session(db, token) is None
+
+
+def test_backchannel_revoga_por_sid_ou_por_subject(db, provider):
+    _session(db, provider, sid="s-a")
+    _session(db, provider, sid="s-b")
+    _session(db, provider, sub="sub-2", sid="s-c")
+    assert auth.revoke_sessions_for_logout(db, issuer=ISSUER, sid="s-a", subject=None) == 1
+    assert auth.revoke_sessions_for_logout(db, issuer=ISSUER, sid=None, subject="sub-1") == 1
+    assert auth.revoke_sessions_for_logout(db, issuer=ISSUER, sid="desconhecido", subject=None) == 0
+    db.commit()
+    ativas = db.scalars(select(UserSession).where(UserSession.revoked_at.is_(None))).all()
+    assert [s.sid for s in ativas] == ["s-c"]
+
+
+# ── Cifra do refresh token ────────────────────────────────────────────────────
+
+def test_cifra_e_decifra(provider):
+    cipher = auth.encrypt_secret("segredo")
+    assert cipher != "segredo" and auth.decrypt_secret(cipher) == "segredo"
+    assert auth.encrypt_secret(None) is None and auth.decrypt_secret(None) is None
+
+
+def test_chave_diferente_nao_decifra(provider, monkeypatch):
+    cipher = auth.encrypt_secret("segredo")
+    monkeypatch.setattr(config, "SESSION_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    assert auth.decrypt_secret(cipher) is None
+
+
+def test_sem_chave_nao_cifra(monkeypatch):
+    monkeypatch.setattr(config, "SESSION_ENCRYPTION_KEY", "")
+    with pytest.raises(RuntimeError):
+        auth.encrypt_secret("segredo")
+
+
+# ── Registro de login (state, code_verifier, nonce) ───────────────────────────
+
+def test_registro_de_login_e_de_uso_unico(db):
+    state, verifier, nonce = auth.create_login_request(db)
+    assert auth.consume_login_request(db, state) == (verifier, nonce)
+    assert auth.consume_login_request(db, state) is None
+
+
+def test_state_guardado_como_hash(db):
+    state, _, _ = auth.create_login_request(db)
+    row = db.scalar(select(OidcLoginRequest))
+    assert row.state_hash == _sha256(state)
+
+
+def test_state_vazio_ou_desconhecido(db):
+    assert auth.consume_login_request(db, None) is None
+    assert auth.consume_login_request(db, "desconhecido") is None
+
+
+def test_registro_expirado_e_recusado_e_apagado(db):
+    state, _, _ = auth.create_login_request(db)
+    db.scalar(select(OidcLoginRequest)).expires_at = datetime.utcnow() - timedelta(seconds=1)
+    db.commit()
+    assert auth.consume_login_request(db, state) is None
+    assert db.scalar(select(func.count(OidcLoginRequest.id))) == 0
+
+
+def test_registros_expirados_sao_limpos_ao_criar_outro(db):
+    auth.create_login_request(db)
+    db.scalar(select(OidcLoginRequest)).expires_at = datetime.utcnow() - timedelta(seconds=1)
+    db.commit()
+    auth.create_login_request(db)
+    assert db.scalar(select(func.count(OidcLoginRequest.id))) == 1
+
+
+# ── Identidade local (issuer + subject) ───────────────────────────────────────
+
+def test_primeiro_login_cria_usuario_e_identidade(db):
+    user = _user(db)
+    identity = db.scalar(select(OidcIdentity))
+    assert (identity.issuer, identity.subject, identity.user_id) == (ISSUER, "sub-1", user.id)
+    assert user.email == "pessoa@exemplo.local" and user.username == "pessoa"
+    assert user.display_name == "Pessoa Teste" and user.last_profiles == ["ANALISTA"]
+
+
+def test_login_seguinte_atualiza_os_dados_do_mesmo_registro(db):
+    first = _user(db)
+    again = auth.upsert_user(db, _claims(email="novo@exemplo.local", name="Nome Novo"), profiles=("GERENTE",))
+    db.commit()
+    assert again.id == first.id
+    assert again.email == "novo@exemplo.local" and again.display_name == "Nome Novo"
+    assert again.last_profiles == ["GERENTE"]
+
+
+def test_mesmo_email_com_outro_subject_vira_outro_usuario(db):
+    antigo = _user(db, sub="sub-antigo", email="pessoa@exemplo.local")
+    db.add(AssistantConversation(id="c-1", user_id=antigo.id, n8n_session_id="n-1"))
+    db.commit()
+    novo = _user(db, sub="sub-novo", email="pessoa@exemplo.local")
+    assert novo.id != antigo.id
+    assert db.scalar(select(func.count(AssistantConversation.id))
+                     .where(AssistantConversation.user_id == novo.id)) == 0
+    assert db.scalar(select(func.count(OidcIdentity.id))) == 2
+
+
+def test_usuario_sem_email_usa_o_login_como_nome(db):
+    user = auth.upsert_user(db, _claims(email=None, name=None), profiles=())
+    db.commit()
+    assert user.email == "" and user.display_name == "pessoa" and user.last_profiles == []
+
+
+# ── Limites de IA ─────────────────────────────────────────────────────────────
+
+def test_limites_pelos_perfis_do_ultimo_login(db):
+    assert auth.get_ai_limits(_user(db, profiles=("GERENTE", "ANALISTA"))) == (150, 10)
+    assert auth.get_ai_limits(_user(db, sub="sub-2", profiles=())) == (10, 2)
+
+
+def _uso(db, user, quantidade, *, status="success", ha=timedelta(seconds=5)):
+    for i in range(quantidade):
+        db.add(AiUsage(user_id=user.id, request_id=f"r-{status}-{i}-{ha.total_seconds()}", status=status,
+                       created_at=datetime.utcnow() - ha))
+    db.commit()
+
 
 def test_limite_diario_atingido(db):
-    p = _make_profile(db, "IA2", [], ai_daily=2, ai_per_min=5)
-    u = _make_user(db, "ia2@t.com", p)
-    for _ in range(2):
-        db.add(AiUsage(user_id=u.id, request_id=secrets.token_hex(8),
-                       status="success", created_at=datetime.utcnow()))
-    db.commit()
-    r = check_ai_rate_limit(db, u)
-    assert r["allowed"] is False and r["reason"] == "daily_limit"
-
-def test_limite_por_minuto(db):
-    p = _make_profile(db, "IA3", [], ai_daily=100, ai_per_min=2)
-    u = _make_user(db, "ia3@t.com", p)
-    for _ in range(2):
-        db.add(AiUsage(user_id=u.id, request_id=secrets.token_hex(8),
-                       status="success", created_at=datetime.utcnow()))
-    db.commit()
-    r = check_ai_rate_limit(db, u)
-    assert r["allowed"] is False and r["reason"] == "per_minute_limit"
-
-def test_erros_nao_contam(db):
-    p = _make_profile(db, "IA4", [], ai_daily=1, ai_per_min=1)
-    u = _make_user(db, "ia4@t.com", p)
-    db.add(AiUsage(user_id=u.id, request_id=secrets.token_hex(8),
-                   status="error", created_at=datetime.utcnow()))
-    db.commit()
-    assert check_ai_rate_limit(db, u)["allowed"] is True
-
-def test_override_individual(db):
-    p = _make_profile(db, "IA5", [], ai_daily=10, ai_per_min=3)
-    u = _make_user(db, "ia5@t.com", p)
-    u.ai_daily_limit_override = 50; u.ai_per_minute_limit_override = 10; db.commit()
-    r = check_ai_rate_limit(db, u)
-    assert r["daily_limit"] == 50 and r["per_minute_limit"] == 10
+    user = _user(db, profiles=("CONVIDADO",))
+    _uso(db, user, 20, ha=timedelta(seconds=90))  # fora da janela de 1 min, dentro do dia
+    rate = auth.check_ai_rate_limit(db, user)
+    assert rate["allowed"] is False and rate["reason"] == "daily_limit" and rate["daily_limit"] == 20
 
 
-# ── Conversas ─────────────────────────────────────────────────────────────────
+def test_limite_por_minuto_atingido(db):
+    user = _user(db, profiles=("CONVIDADO",))
+    _uso(db, user, 3)
+    rate = auth.check_ai_rate_limit(db, user)
+    assert rate["allowed"] is False and rate["reason"] == "per_minute_limit"
 
-def test_conversa_isolada(db):
-    p = _make_profile(db, "CV1", [], ai_daily=10, ai_per_min=5)
-    ua = _make_user(db, "a@cv.com", p); ub = _make_user(db, "b@cv.com", p)
-    c = AssistantConversation(id="conv-a", user_id=ua.id, n8n_session_id="s",
-                              title="A", created_at=datetime.utcnow(), updated_at=datetime.utcnow())
-    db.add(c); db.commit()
-    # B não vê conversa de A
-    result = db.scalar(select(AssistantConversation).where(
-        AssistantConversation.id == "conv-a", AssistantConversation.user_id == ub.id))
-    assert result is None
 
-def test_conversa_dono_acessa(db):
-    p = _make_profile(db, "CV2", [], ai_daily=10, ai_per_min=5)
-    u = _make_user(db, "o@cv.com", p)
-    c = AssistantConversation(id="conv-o", user_id=u.id, n8n_session_id="s",
-                              title="Minha", created_at=datetime.utcnow(), updated_at=datetime.utcnow())
-    db.add(c); db.commit()
-    result = db.scalar(select(AssistantConversation).where(
-        AssistantConversation.id == "conv-o", AssistantConversation.user_id == u.id))
-    assert result is not None
+def test_erros_nao_contam_no_limite(db):
+    user = _user(db, profiles=("CONVIDADO",))
+    _uso(db, user, 25, status="error")
+    assert auth.check_ai_rate_limit(db, user)["allowed"] is True
 
 
 # ── Auditoria ─────────────────────────────────────────────────────────────────
 
-def test_record_audit(db):
-    p = _make_profile(db, "AU1", [], 10, 5); u = _make_user(db, "au@t.com", p)
-    record_audit(db, user_id=u.id, action="ASSET_CREATE", entity_type="x", entity_id="1"); db.commit()
-    log = db.scalar(select(AuditLog).where(AuditLog.user_id == u.id))
-    assert log is not None and log.action == "ASSET_CREATE"
-
-def test_record_security_event(db):
-    record_security_event(db, event_type="CSRF_REJECTED", severity="high"); db.commit()
-    ev = db.scalar(select(SecurityEvent).where(SecurityEvent.event_type == "CSRF_REJECTED"))
-    assert ev is not None
-
-
-# ── Vinculação OIDC ───────────────────────────────────────────────────────────
-
-def test_novo_usuario_pending(db, monkeypatch):
-    monkeypatch.setattr("app.services.auth.BOOTSTRAP_ADMIN_EMAIL", "")
-    seed_profiles_and_permissions(db)
-    userinfo = {"iss": "http://kc/test", "sub": "sub1", "email": "novo@t.com", "name": "Novo"}
-    u = resolve_or_create_user(db, userinfo)
-    assert u.status == "pending"
-
-def test_bootstrap_admin(db, monkeypatch):
-    monkeypatch.setattr("app.services.auth.BOOTSTRAP_ADMIN_EMAIL", "boot@t.com")
-    seed_profiles_and_permissions(db)
-    userinfo = {"iss": "http://kc/test", "sub": "sub2", "email": "boot@t.com", "name": "Boot"}
-    u = resolve_or_create_user(db, userinfo)
-    assert u.status == "active" and u.bootstrap_admin_granted is True
-
-def test_bootstrap_apenas_uma_vez(db, monkeypatch):
-    monkeypatch.setattr("app.services.auth.BOOTSTRAP_ADMIN_EMAIL", "boot2@t.com")
-    seed_profiles_and_permissions(db)
-    userinfo = {"iss": "http://kc/test", "sub": "sub3", "email": "boot2@t.com", "name": "Boot2"}
-    u = resolve_or_create_user(db, userinfo)
-    assert u.bootstrap_admin_granted is True
-    u.status = "disabled"; db.commit()
-    u2 = resolve_or_create_user(db, userinfo)
-    assert u2.status == "disabled"
-
-
-
-def test_bootstrap_recupera_identidade_existente_pending(db, monkeypatch):
-    """Se o email de bootstrap for corrigido depois do primeiro login, o mesmo subject deve ser promovido."""
-    seed_profiles_and_permissions(db)
-    monkeypatch.setattr("app.services.auth.BOOTSTRAP_ADMIN_EMAIL", "")
-    userinfo = {"iss": "http://kc/test", "sub": "sub-recover", "email": "admin.real@empresa.com", "name": "Admin Real"}
-    u1 = resolve_or_create_user(db, userinfo)
-    assert u1.status == "pending"
-    assert u1.bootstrap_admin_granted is False
-
-    monkeypatch.setattr("app.services.auth.BOOTSTRAP_ADMIN_EMAIL", "admin.real@empresa.com")
-    u2 = resolve_or_create_user(db, userinfo)
-    assert u2.id == u1.id
-    assert u2.status == "active"
-    assert u2.bootstrap_admin_granted is True
-    assert u2.profile is not None and u2.profile.name == "ADMINISTRADOR"
-
-
-def test_identidade_existente_sincroniza_email_sem_duplicar(db, monkeypatch):
-    seed_profiles_and_permissions(db)
-    monkeypatch.setattr("app.services.auth.BOOTSTRAP_ADMIN_EMAIL", "")
-    original = {"iss": "http://kc/test", "sub": "sub-email-change", "email": "admin.om@local", "name": "Admin Local"}
-    u1 = resolve_or_create_user(db, original)
-    changed = {"iss": "http://kc/test", "sub": "sub-email-change", "email": "admin.real@empresa.com", "name": "Admin Real"}
-    u2 = resolve_or_create_user(db, changed)
-    assert u2.id == u1.id
-    assert u2.email == "admin.real@empresa.com"
-    assert u2.display_name == "Admin Real"
-
-def test_identidade_existente(db, monkeypatch):
-    monkeypatch.setattr("app.services.auth.BOOTSTRAP_ADMIN_EMAIL", "")
-    seed_profiles_and_permissions(db)
-    userinfo = {"iss": "http://kc/test", "sub": "sub4", "email": "exist@t.com", "name": "Exist"}
-    u1 = resolve_or_create_user(db, userinfo)
-    u2 = resolve_or_create_user(db, userinfo)
-    assert u1.id == u2.id
+def test_auditoria_e_evento_de_seguranca(db):
+    user = _user(db)
+    auth.record_audit(db, user_id=user.id, action="LOGIN_SUCCESS", entity_type="app_user", entity_id=str(user.id))
+    auth.record_security_event(db, event_type="ACCESS_DENIED", user_id=user.id, metadata={"path": "/x"})
+    db.commit()
+    assert db.scalar(select(AuditLog.action)) == "LOGIN_SUCCESS"
+    assert db.scalar(select(SecurityEvent.event_type)) == "ACCESS_DENIED"

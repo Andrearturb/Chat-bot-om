@@ -22,10 +22,8 @@ from app.models.fire_asset import FireAsset     # noqa: F401
 from app.models.store_document import StoreDocument  # noqa: F401
 from app.models.water_asset import WaterAsset   # noqa: F401
 from app.models.auth import (                   # noqa: F401
-    Profile, Permission, ProfilePermission,
-    AppUser, OidcIdentity, UserSession,
-    UserPermissionOverride, AssistantConversation,
-    AssistantMessage, AiUsage, AuditLog, SecurityEvent,
+    AppUser, OidcIdentity, OidcLoginRequest, UserSession,
+    AssistantConversation, AssistantMessage, AiUsage, AuditLog, SecurityEvent,
 )
 
 

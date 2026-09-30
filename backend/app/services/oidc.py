@@ -40,6 +40,7 @@ _lock = threading.Lock()
 _discovery: dict | None = None
 _keys: dict[str, object] = {}
 _keys_attempted_at: float | None = None
+_keys_last_failed = False
 
 
 class OidcError(Exception):
@@ -68,11 +69,12 @@ class TokenSet:
 
 
 def reset_cache() -> None:
-    global _discovery, _keys, _keys_attempted_at
+    global _discovery, _keys, _keys_attempted_at, _keys_last_failed
     with _lock:
         _discovery = None
         _keys = {}
         _keys_attempted_at = None
+        _keys_last_failed = False
 
 
 def is_configured() -> bool:
@@ -95,7 +97,13 @@ def _get_json(url: str, code: str) -> dict:
         raise OidcUnavailable(code) from exc
     if resp.status_code != 200:
         raise OidcUnavailable(code)
-    return resp.json()
+    try:
+        data = resp.json()
+    except ValueError as exc:
+        raise OidcUnavailable(code) from exc
+    if not isinstance(data, dict):
+        raise OidcUnavailable(code)
+    return data
 
 
 # ─── Discovery e JWKS ─────────────────────────────────────────────────────────
@@ -112,46 +120,38 @@ def discovery() -> dict:
     return _discovery
 
 
-def _load_keys(*, force: bool = False) -> dict[str, object]:
-    """Chaves RS256 de assinatura.
+def _refresh_keys() -> dict[str, object]:
+    """Busca o JWKS, no máximo uma tentativa por minuto (com ou sem sucesso).
 
-    O limite de 1 minuto vale para TENTATIVAS de busca (com ou sem sucesso), para que
-    um provedor lento ou fora do ar não seja martelado por tokens com ``kid`` aleatório.
-    A leitura do cache não usa o lock (``_keys`` é substituído, nunca alterado); o lock
-    só serializa a busca em si.
+    Só o lock serializa a busca. Quem espera o lock reaproveita o resultado da tentativa
+    que acabou de terminar: se ela falhou, levanta OidcUnavailable (o provedor está
+    instável, não o token inválido); se deu certo, devolve as chaves atuais.
     """
-    global _keys, _keys_attempted_at
-
-    def fresh() -> bool:
-        attempted = _keys_attempted_at
-        if attempted is None:
-            return False  # primeira carga: sempre busca
-        if not force and _keys:
-            return True
-        return clock() - attempted < JWKS_MIN_REFRESH_SECONDS
-
-    if fresh():
-        return _keys
+    global _keys, _keys_attempted_at, _keys_last_failed
     with _lock:
-        if fresh():  # outra thread acabou de tentar
+        attempted = _keys_attempted_at
+        if attempted is not None and clock() - attempted < JWKS_MIN_REFRESH_SECONDS:
+            if _keys_last_failed:
+                raise OidcUnavailable("jwks_failed")
             return _keys
         _keys_attempted_at = clock()  # registra a tentativa antes de buscar
+        _keys_last_failed = True
         data = _get_json(discovery()["jwks_uri"], "jwks_failed")
         keys = {}
         for jwk in data.get("keys", []):
-            if (jwk.get("kty") == "RSA" and jwk.get("use", "sig") == "sig"
+            if (isinstance(jwk, dict) and jwk.get("kty") == "RSA" and jwk.get("use", "sig") == "sig"
                     and jwk.get("alg", "RS256") == "RS256" and jwk.get("kid")):
                 keys[jwk["kid"]] = JsonWebKey.import_key(jwk)
-        _keys = keys
+        _keys, _keys_last_failed = keys, False  # o dict é substituído, nunca alterado
         return _keys
 
 
 def _signing_key(kid: str | None):
     if not kid:
         raise OidcError("missing_kid")
-    key = _load_keys().get(kid)
+    key = _keys.get(kid)  # caminho sem lock: só para chave já carregada
     if key is None:
-        key = _load_keys(force=True).get(kid)
+        key = _refresh_keys().get(kid)
     if key is None:
         raise OidcError("unknown_signing_key")
     return key

@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -106,18 +107,42 @@ class TestJwks:
         token = provider.sign(provider.access_claims("u1", ANALISTA), kid="kid-inexistente")
         now[0] += 61
         before = provider.attempts
-        with pytest.raises(oidc.OidcUnavailable):
-            oidc.verify_access_token(token)  # a tentativa que falha avisa quem a fez
-        for _ in range(3):
-            with pytest.raises(oidc.OidcError) as exc:
+        # Provedor fora do ar: todos recebem "indisponível" (a sessão não deve ser derrubada),
+        # mas só a primeira chamada vai à rede.
+        for _ in range(4):
+            with pytest.raises(oidc.OidcUnavailable):
                 oidc.verify_access_token(token)
-            assert not isinstance(exc.value, oidc.OidcUnavailable)
-            assert _code(exc) == "unknown_signing_key"
+        assert provider.attempts == before + 1
+        # Token com kid já carregado continua válido sem esperar nem tocar a rede.
+        assert oidc.verify_access_token(provider.sign(provider.access_claims("u1", ANALISTA)))["sub"] == "u1"
         assert provider.attempts == before + 1
         now[0] += 61
         with pytest.raises(oidc.OidcUnavailable):
             oidc.verify_access_token(token)
         assert provider.attempts == before + 2
+
+    def test_carga_inicial_concorrente_busca_o_jwks_uma_vez(self, provider, monkeypatch):
+        original = FakeProvider.jwks
+        monkeypatch.setattr(provider, "jwks", lambda: (time.sleep(0.3), original(provider))[1])
+        token = provider.sign(provider.access_claims("u1", ANALISTA))
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(lambda _: oidc.verify_access_token(token)["sub"], range(4)))
+        assert results == ["u1"] * 4
+        assert provider.jwks_requests == 1
+
+    def test_rotacao_concorrente_busca_o_jwks_uma_vez(self, provider, monkeypatch):
+        now = [1000.0]
+        monkeypatch.setattr(oidc, "clock", lambda: now[0])
+        oidc.verify_access_token(provider.sign(provider.access_claims("u1", ANALISTA)))
+        original = FakeProvider.jwks
+        monkeypatch.setattr(provider, "jwks", lambda: (time.sleep(0.3), original(provider))[1])
+        provider.rotate_key()
+        now[0] += 61
+        token = provider.sign(provider.access_claims("u1", ANALISTA))
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(lambda _: oidc.verify_access_token(token)["sub"], range(4)))
+        assert results == ["u1"] * 4
+        assert provider.jwks_requests == 2
 
     def test_chave_de_criptografia_nao_valida_assinatura(self, provider):
         token = provider.sign(provider.access_claims("u1", ANALISTA), kid="kid-enc")

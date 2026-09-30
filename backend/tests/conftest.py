@@ -85,3 +85,15 @@ def make_linha(
         },
         "created_on": created_on,
     }
+
+
+@pytest.fixture
+def provider(monkeypatch):
+    """Keycloak simulado instalado no app (config + transporte HTTP do módulo oidc)."""
+    from app.services import oidc
+    from tests.oidc_fake import FakeProvider, install
+
+    fake = FakeProvider()
+    install(monkeypatch, fake)
+    yield fake
+    oidc.reset_cache()

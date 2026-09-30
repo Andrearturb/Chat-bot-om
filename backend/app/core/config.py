@@ -43,6 +43,14 @@ OIDC_CLIENT_ID = os.getenv("OIDC_CLIENT_ID", "")
 OIDC_CLIENT_SECRET = os.getenv("OIDC_CLIENT_SECRET", "")
 OIDC_REDIRECT_URI = os.getenv("OIDC_REDIRECT_URI", "http://localhost:5173/auth/callback")
 OIDC_POST_LOGOUT_REDIRECT_URI = os.getenv("OIDC_POST_LOGOUT_REDIRECT_URI", "http://localhost:5173/login")
+# Tempos do fluxo OIDC (valores definidos no spec do Keycloak externo).
+OIDC_TOKEN_REFRESH_SECONDS = int(os.getenv("OIDC_TOKEN_REFRESH_SECONDS", "300"))
+OIDC_OFFLINE_GRACE_MINUTES = int(os.getenv("OIDC_OFFLINE_GRACE_MINUTES", "15"))
+OIDC_CLOCK_SKEW_SECONDS = int(os.getenv("OIDC_CLOCK_SKEW_SECONDS", "30"))
+OIDC_LOGIN_REQUEST_TTL_SECONDS = int(os.getenv("OIDC_LOGIN_REQUEST_TTL_SECONDS", "600"))
+# Link do console do realm exibido a quem tem users.view. É só um link: o app
+# não guarda credencial administrativa do Keycloak.
+KEYCLOAK_CONSOLE_URL = os.getenv("KEYCLOAK_CONSOLE_URL", "").strip()
 
 # ─── Keycloak Admin API (gestão de usuários, somente server-side) ─────────────
 # Client confidencial com service account e papéis mínimos de realm-management.
@@ -61,6 +69,9 @@ SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "om_session")
 SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").strip().lower() in {"1", "true", "yes"}
 SESSION_IDLE_TIMEOUT_MINUTES = int(os.getenv("SESSION_IDLE_TIMEOUT_MINUTES", "30"))
 SESSION_ABSOLUTE_TIMEOUT_HOURS = int(os.getenv("SESSION_ABSOLUTE_TIMEOUT_HOURS", "8"))
+# Chave Fernet que cifra o refresh token guardado na sessão (server-side).
+# Gere: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+SESSION_ENCRYPTION_KEY = os.getenv("SESSION_ENCRYPTION_KEY", "").strip()
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 _raw_origins = os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")

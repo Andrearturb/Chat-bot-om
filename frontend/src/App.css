@@ -19,7 +19,7 @@
   min-height: 100dvh;
   display: block;
   position: relative;
-  overflow: hidden;
+  overflow: clip;
   background: var(--bg);
 }
 

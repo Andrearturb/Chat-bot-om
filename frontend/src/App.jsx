@@ -20,12 +20,11 @@ import { toConversationItem } from './lib/conversations.js'
 // Telas pesadas (gráficos, planilhas) só baixam quando a pessoa as abre.
 const IndicatorsPage = lazy(() => import('./features/indicators/IndicatorsPage'))
 const AssetsPage = lazy(() => import('./features/assets/AssetsPage'))
-const UsersPage = lazy(() => import('./features/users/UsersPage.jsx'))
 const AuditModal = lazy(() => import('./features/audit/AuditModal.jsx'))
 
 // ── Preferências de navegação (sessionStorage — não sensível) ──────────────────
 const NAV_KEY = 'gentileza-navigation-v1'
-const VALID_SECTIONS = new Set(['assistant', 'indicators', 'assets', 'users'])
+const VALID_SECTIONS = new Set(['assistant', 'indicators', 'assets'])
 const VALID_INDICATORS = new Set(['home', 'performance', 'corrective', 'preventive', 'financial'])
 const GREETING_CONTENT = 'Olá! Eu me chamo Gentileza 👋 Como posso te ajudar com Obras & Manutenções hoje?'
 
@@ -49,7 +48,7 @@ function greetingMsg() {
 
 // ── Componente principal (dentro do AuthProvider) ─────────────────────────────
 function AppShell() {
-  const { auth_status, user, hasPermission, canViewUsers, keycloakConsoleUrl, auth_error, notice } = useAuth()
+  const { auth_status, user, hasPermission, auth_error, notice } = useAuth()
 
   const [nav] = useState(() => loadNav())
   const [activeSection, setActiveSection] = useState(nav.activeSection)
@@ -113,12 +112,6 @@ function AppShell() {
     try { sessionStorage.setItem(NAV_KEY, JSON.stringify({ activeSection, activeIndicator, historyOpen })) }
     catch { /* ignora */ }
   }, [activeSection, activeIndicator, historyOpen])
-
-  function openUsers() {
-    setSettingsOpen(false)
-    setHistoryOpen(false)
-    setActiveSection('users')
-  }
 
   // ── Navegação ─────────────────────────────────────────────────────────────────
   function abortRequest() {
@@ -204,9 +197,7 @@ function AppShell() {
   if (auth_status === 'unauthenticated') return <LoginScreen authError={auth_error} notice={notice} />
   if (auth_status === 'not_released')   return <AccountNotReleased />
 
-  // Gestão de Usuários (consulta) exige users.view — o backend também valida:
-  // se a permissão sair no Keycloak, a tela volta ao assistente.
-  const section = activeSection === 'users' && !canViewUsers ? 'assistant' : activeSection
+  const section = activeSection
 
   const canUseAssistant  = hasPermission('assistant.use')
   const canSeeHistory    = hasPermission('assistant.history')
@@ -231,7 +222,7 @@ function AppShell() {
           onOpenIndicators={canSeeIndicators ? () => { setHistoryOpen(false); setActiveSection('indicators') } : undefined}
           onOpenAssets={canSeeAssets ? () => { setHistoryOpen(false); setActiveSection('assets') } : undefined}
           onOpenSettings={canSeeSettings ? () => setSettingsOpen(true) : undefined}
-          historyOpen={historyOpen} settingsOpen={settingsOpen || section === 'users'}
+          historyOpen={historyOpen} settingsOpen={settingsOpen}
           permissions={{ canUseAssistant, canSeeHistory, canSeeIndicators, canSeeAssets, canSeeSettings }}
         />
 
@@ -246,7 +237,7 @@ function AppShell() {
           />
         )}
 
-        <div className={`workspace ${section === 'assistant' && active ? 'workspace--active' : ''} ${section === 'indicators' ? 'workspace--indicators' : ''} ${section === 'assets' ? 'workspace--assets' : ''} ${section === 'users' ? 'workspace--users' : ''}`}>
+        <div className={`workspace ${section === 'assistant' && active ? 'workspace--active' : ''} ${section === 'indicators' ? 'workspace--indicators' : ''} ${section === 'assets' ? 'workspace--assets' : ''}`}>
           <header className="workspace-header">
             <div className="workspace-title"><span className="header-accent" /> Gentil Negócios <span>· Obras &amp; Manutenções</span></div>
             <div className="header-greeting">
@@ -258,7 +249,6 @@ function AppShell() {
                 <button className="new-conversation" type="button" onClick={createNewConversation}>+ Nova conversa</button>
               )}
               <UserMenu
-                onOpenUsers={openUsers}
                 onOpenAudit={() => setAuditOpen(true)}
                 onOpenSettings={() => setSettingsOpen(true)}
               />
@@ -288,10 +278,6 @@ function AppShell() {
             <Suspense fallback={<div className="permission-denied" role="status">Carregando ativos...</div>}>
               <AssetsPage />
             </Suspense>
-          ) : section === 'users' && canViewUsers ? (
-            <Suspense fallback={<div className="permission-denied" role="status">Carregando usuários...</div>}>
-              <UsersPage currentUserId={user?.id} consoleUrl={keycloakConsoleUrl} />
-            </Suspense>
           ) : null}
         </div>
       </div>
@@ -299,7 +285,6 @@ function AppShell() {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        onOpenUsers={canViewUsers ? openUsers : undefined}
       />
 
       {auditOpen && hasPermission('audit.view') && (

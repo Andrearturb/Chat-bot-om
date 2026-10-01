@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAuth } from './authContext.js'
 import { logoutAndRedirect } from './api.js'
 
-export default function UserMenu({ onOpenUsers, onOpenAudit, onOpenSettings }) {
-  const { user, profile, hasPermission, canViewUsers } = useAuth()
+export default function UserMenu({ onOpenAudit, onOpenSettings }) {
+  const { user, profile, hasPermission } = useAuth()
   const [open, setOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
 
@@ -44,12 +44,6 @@ export default function UserMenu({ onOpenUsers, onOpenAudit, onOpenSettings }) {
               <small>{user.email}</small>
             </div>
             <div className="user-menu__items">
-              {canViewUsers && (
-                <button className="user-menu__item" role="menuitem" type="button"
-                        onClick={() => { setOpen(false); onOpenUsers?.() }}>
-                  Gestão de Usuários
-                </button>
-              )}
               {hasPermission('audit.view') && (
                 <button className="user-menu__item" role="menuitem" type="button"
                         onClick={() => { setOpen(false); onOpenAudit?.() }}>

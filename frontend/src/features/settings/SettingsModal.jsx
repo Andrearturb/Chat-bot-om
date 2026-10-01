@@ -72,16 +72,6 @@ function Icon({ name }) {
     )
   }
 
-  if (name === 'users') {
-    return (
-      <svg {...common}>
-        <circle cx="9" cy="8" r="3.5" />
-        <path d="M2.5 19.5c1-3.4 3.6-5.2 6.5-5.2s5.5 1.8 6.5 5.2" />
-        <path d="M16 4.8a3.3 3.3 0 0 1 0 6.4M17.6 14.6c2 .7 3.3 2.3 3.9 4.9" />
-      </svg>
-    )
-  }
-
   if (name === 'records') {
     return (
       <svg {...common}>
@@ -144,7 +134,7 @@ function StatusRow({ icon, label, description, status }) {
   )
 }
 
-function SettingsMenu({ onOpenStatus, onOpenUsers }) {
+function SettingsMenu({ onOpenStatus }) {
   return (
     <>
       <div className="settings-modal__heading">
@@ -162,16 +152,6 @@ function SettingsMenu({ onOpenStatus, onOpenUsers }) {
           </span>
           <span className="settings-option-card__arrow" aria-hidden="true">›</span>
         </button>
-        {onOpenUsers && (
-          <button className="settings-option-card" type="button" onClick={onOpenUsers}>
-            <span className="settings-option-card__icon settings-option-card__icon--users"><Icon name="users" /></span>
-            <span className="settings-option-card__copy">
-              <strong>Gestão de Usuários</strong>
-              <small>Consulte quem acessa o Chat-bot O&amp;M e abra o console do Keycloak para liberar ou bloquear contas.</small>
-            </span>
-            <span className="settings-option-card__arrow" aria-hidden="true">›</span>
-          </button>
-        )}
       </div>
 
       <div className="settings-modal__future-note">
@@ -276,13 +256,13 @@ function SystemStatus({ data, loading, error, checkedAt, onBack, onRefresh }) {
   )
 }
 
-export default function SettingsModal({ open, onClose, onOpenUsers }) {
+export default function SettingsModal({ open, onClose }) {
   if (!open) return null
   // O estado (tela atual, status carregado) mora em SettingsDialog: fechar a janela o descarta.
-  return <SettingsDialog onClose={onClose} onOpenUsers={onOpenUsers} />
+  return <SettingsDialog onClose={onClose} />
 }
 
-function SettingsDialog({ onClose, onOpenUsers }) {
+function SettingsDialog({ onClose }) {
   const [view, setView] = useState('menu')
   const [statusData, setStatusData] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -356,7 +336,7 @@ function SettingsDialog({ onClose, onOpenUsers }) {
         <button ref={closeButtonRef} className="settings-close" type="button" onClick={onClose} aria-label="Fechar configurações">×</button>
 
         {view === 'menu' ? (
-          <SettingsMenu onOpenStatus={openStatus} onOpenUsers={onOpenUsers} />
+          <SettingsMenu onOpenStatus={openStatus} />
         ) : (
           <SystemStatus
             data={statusData}

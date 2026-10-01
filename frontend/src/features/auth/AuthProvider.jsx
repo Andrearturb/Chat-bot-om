@@ -31,7 +31,6 @@ const EMPTY_SESSION = {
   profile: null,
   profiles: [],
   permissions: new Set(),
-  keycloakConsoleUrl: null,
   csrf_token: '',
   ai_usage: null,
 }
@@ -84,7 +83,6 @@ export function AuthProvider({ children }) {
         profile: { name: me.profile, display_name: me.profile_display },
         profiles: me.profiles || [],
         permissions: new Set(me.permissions || []),
-        keycloakConsoleUrl: me.keycloak_console_url || null,
         csrf_token: me.csrf_token || '',
         ai_usage: me.ai_usage || null,
         auth_error: null,
@@ -133,10 +131,9 @@ export function AuthProvider({ children }) {
   }, [refresh, state.auth_status])
 
   const hasPermission = useCallback(code => state.permissions.has(code), [state.permissions])
-  const canViewUsers = state.permissions.has('users.view')
 
   return (
-    <AuthContext.Provider value={{ ...state, hasPermission, canViewUsers, refresh }}>
+    <AuthContext.Provider value={{ ...state, hasPermission, refresh }}>
       {children}
     </AuthContext.Provider>
   )

@@ -1416,100 +1416,6 @@
   }
 }
 
-/* ── Central de Indicadores: seletor de painéis ─────────────────────── */
-.indicators-page .indicator-switcher {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.indicators-page .indicator-switcher__item {
-  position: relative;
-  min-width: 0;
-  min-height: 118px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid rgba(5, 56, 98, 0.12);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #0f172a;
-  box-shadow: 0 16px 38px rgba(7, 26, 48, 0.08);
-  cursor: pointer;
-  text-align: left;
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
-}
-
-.indicators-page .indicator-switcher__item:hover {
-  transform: translateY(-2px);
-  border-color: rgba(12, 116, 112, 0.3);
-  box-shadow: 0 20px 42px rgba(7, 26, 48, 0.12);
-}
-
-.indicators-page .indicator-switcher__item--active {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: linear-gradient(145deg, #073760 0%, #0a4f72 58%, #0c7470 100%);
-  color: #ffffff;
-  box-shadow: 0 18px 42px rgba(6, 49, 81, 0.22);
-}
-
-.indicators-page .indicator-switcher__icon {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 48px;
-  border-radius: 15px;
-  color: #073760;
-  background: #f3f8fb;
-  border: 1px solid rgba(5, 56, 98, 0.09);
-}
-
-.indicators-page .indicator-switcher__item--active .indicator-switcher__icon {
-  color: #ffcf59;
-  background: rgba(255,255,255,0.10);
-  border-color: rgba(255,255,255,0.12);
-}
-
-.indicators-page .indicator-switcher__copy {
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.indicators-page .indicator-switcher__copy strong {
-  font-size: 0.98rem;
-  line-height: 1.2;
-  letter-spacing: -0.015em;
-}
-
-.indicators-page .indicator-switcher__copy small {
-  color: #657384;
-  font-size: 0.78rem;
-  line-height: 1.38;
-}
-
-.indicators-page .indicator-switcher__item--active .indicator-switcher__copy small {
-  color: rgba(255,255,255,0.74);
-}
-
-.indicators-page .indicator-switcher__arrow {
-  color: #0c7470;
-  font-size: 1.22rem;
-  font-weight: 800;
-  transition: transform .18s ease;
-}
-
-.indicators-page .indicator-switcher__item:hover .indicator-switcher__arrow {
-  transform: translateX(3px);
-}
-
-.indicators-page .indicator-switcher__item--active .indicator-switcher__arrow {
-  color: #ffcf59;
-}
-
 /* Placeholder para os BIs que serão conectados depois. */
 .indicators-page .indicator-placeholder {
   min-height: 360px;
@@ -1586,23 +1492,6 @@
 
 .indicators-page .indicator-placeholder__status strong {
   font-size: 0.86rem;
-}
-
-@media (max-width: 1360px) {
-  .indicators-page .indicator-switcher {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 760px) {
-  .indicators-page .indicator-switcher {
-    grid-template-columns: 1fr;
-  }
-
-  .indicators-page .indicator-switcher__item {
-    min-height: 104px;
-  }
-
 }
 
 /* ── Central de Indicadores: home ───────────────────────────────────── */

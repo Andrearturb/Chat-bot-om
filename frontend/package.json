@@ -15,13 +15,12 @@
     "test": "node --test src/lib/apiClient.test.js src/features/auth/authErrors.test.js src/features/indicators/indicators.test.js src/features/assets/assets.test.js src/features/users/users.test.js"
   },
   "dependencies": {
-    "@n8n/chat": "^1.38.5",
+    "exceljs": "^4.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1",
-    "exceljs": "^4.4.0",
-    "recharts": "^2.15.4"
+    "recharts": "^2.15.4",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",

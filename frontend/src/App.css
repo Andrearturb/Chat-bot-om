@@ -73,7 +73,7 @@
 .header-greeting strong, .header-greeting small { display: block; }
 .header-greeting strong { color: var(--navy); font-size: 10px; }
 .header-greeting small { margin-top: 2px; color: #8a94a8; font-size: 9px; font-weight: 600; }
-.new-conversation { color: var(--muted); border: 0; background: none; font-size: 12px; font-weight: 700; }
+.new-conversation { color: var(--muted); border: 0; background: none; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .new-conversation:hover { color: var(--navy); }
 
 .hero { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 17px 24px 0; text-align: center; transition: flex .45s, opacity .3s; }
@@ -184,7 +184,9 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
 .assistant-footnote { position: absolute; right: 24px; bottom: 21px; margin: 0; color: #9aa5b8; font-size: 9px; pointer-events: none; }
 .assistant-footnote span { margin: 0 6px; }
 
-.conversation-history { width: 350px; height: 100%; display: flex; flex-direction: column; position: absolute; z-index: 30; top: 0; bottom: 0; left: 96px; background: rgba(255,255,255,.98); border-right: 1px solid var(--border); box-shadow: 12px 0 30px rgba(24,32,51,.06); }
+.conversation-scrim { position: absolute; z-index: 29; inset: 0 0 0 96px; background: rgba(16,24,62,.16); backdrop-filter: blur(1.5px); animation: scrim-in .18s ease-out; }
+@keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+.conversation-history { width: 350px; height: 100%; display: flex; flex-direction: column; position: absolute; z-index: 30; top: 0; bottom: 0; left: 96px; background: #fff; border-right: 1px solid var(--border); box-shadow: 12px 0 30px rgba(24,32,51,.06); }
 .conversation-history__header { display: flex; align-items: center; justify-content: space-between; padding: 28px 22px 18px; }
 .history-kicker { color: #8a96ab; font-size: 9px; font-weight: 800; letter-spacing: .2em; }
 .conversation-history h2 { margin: 5px 0 0; color: var(--navy); font-size: 25px; letter-spacing: -.04em; }
@@ -262,6 +264,7 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
   .message__content { max-width: 100%; }
   .assistant-footnote { right: auto; left: 16px; bottom: 7px; font-size: 8px; }
   .conversation-history { left: 62px; width: calc(100vw - 62px); max-width: 350px; }
+  .conversation-scrim { left: 62px; }
 }
 
 /* ── Permission denied ───────────────────────────────────────────────────────*/

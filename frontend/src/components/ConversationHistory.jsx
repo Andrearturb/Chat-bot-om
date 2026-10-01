@@ -47,8 +47,16 @@ export default function ConversationHistory({ conversations, activeConversationI
       if (historyPanelRef.current && !historyPanelRef.current.contains(event.target)) onClose()
     }
 
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') onClose()
+    }
+
     document.addEventListener('pointerdown', handleOutsideClick)
-    return () => document.removeEventListener('pointerdown', handleOutsideClick)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [onClose])
 
   const ordered = [...conversations].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
@@ -75,6 +83,8 @@ export default function ConversationHistory({ conversations, activeConversationI
   }
 
   return (
+    <>
+    <div className="conversation-scrim" aria-hidden="true" />
     <aside ref={historyPanelRef} className="conversation-history" aria-label="Histórico de conversas">
       <div className="conversation-history__header">
         <div><span className="history-kicker">HISTÓRICO</span><h2>Conversas</h2></div>
@@ -86,5 +96,6 @@ export default function ConversationHistory({ conversations, activeConversationI
         {renderGroup('Anteriores', previousConversations)}
       </div>
     </aside>
+    </>
   )
 }

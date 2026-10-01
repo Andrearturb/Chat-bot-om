@@ -12,7 +12,7 @@
  *   redirecionamento automático para não criar laços.
  */
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   clearLoginMarker,
   consumeLoggedOutNotice,
@@ -24,8 +24,7 @@ import {
 } from './api.js'
 import { setCsrfToken, setUnauthorizedHandler } from '../../lib/apiClient.js'
 import { getAuthError } from './authErrors.js'
-
-const AuthContext = createContext(null)
+import { AuthContext } from './authContext.js'
 
 const EMPTY_SESSION = {
   user: null,
@@ -61,12 +60,6 @@ function initialAuthState() {
   const authError = getAuthError(authErrorCode)
   if (authErrorCode === 'not_released') return { ...base, auth_status: 'not_released', auth_error: authError }
   return { ...base, auth_status: 'unauthenticated', auth_error: authError }
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth deve ser usado dentro de <AuthProvider>')
-  return ctx
 }
 
 export function AuthProvider({ children }) {

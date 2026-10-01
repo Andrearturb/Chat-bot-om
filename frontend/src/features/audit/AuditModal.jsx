@@ -9,9 +9,7 @@ const PAGE_SIZE = 50
 const NO_FILTERS = { action: '', dateFrom: '', dateTo: '' }
 
 export default function AuditModal({ onClose }) {
-  const [logs, setLogs] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [result, setResult] = useState({ key: null, logs: [], error: '' })
   const [filters, setFilters] = useState(NO_FILTERS)
   const [actions, setActions] = useState([])
   const [page, setPage] = useState(1)
@@ -29,19 +27,25 @@ export default function AuditModal({ onClose }) {
     api.get('/audit/actions').then(codes => setActions(actionOptions(codes))).catch(() => setActions([]))
   }, [])
 
+  const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
+  if (filters.action) params.set('action', filters.action)
+  if (filters.dateFrom) params.set('date_from', dayStartUtc(filters.dateFrom))
+  if (filters.dateTo) params.set('date_to', dayEndUtc(filters.dateTo))
+  const requestKey = params.toString()
+
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError('')
-    const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
-    if (filters.action) params.set('action', filters.action)
-    if (filters.dateFrom) params.set('date_from', dayStartUtc(filters.dateFrom))
-    if (filters.dateTo) params.set('date_to', dayEndUtc(filters.dateTo))
-    api.get(`/audit/logs?${params}`)
-      .then(data => { if (!cancelled) { setLogs(data?.logs || []); setLoading(false) } })
-      .catch(failure => { if (!cancelled) { setError(failure.message || 'Não foi possível carregar a auditoria.'); setLoading(false) } })
+    api.get(`/audit/logs?${requestKey}`)
+      .then(data => { if (!cancelled) setResult({ key: requestKey, logs: data?.logs || [], error: '' }) })
+      .catch(failure => {
+        if (!cancelled) setResult({ key: requestKey, logs: [], error: failure.message || 'Não foi possível carregar a auditoria.' })
+      })
     return () => { cancelled = true }
-  }, [page, filters])
+  }, [requestKey])
+
+  // Carregando = a última resposta recebida não é a do filtro/página atuais.
+  const loading = result.key !== requestKey
+  const { logs, error } = result
 
   function changeFilter(name, value) {
     setFilters(previous => ({ ...previous, [name]: value }))

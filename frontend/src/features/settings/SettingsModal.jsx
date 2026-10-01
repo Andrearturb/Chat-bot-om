@@ -277,6 +277,12 @@ function SystemStatus({ data, loading, error, checkedAt, onBack, onRefresh }) {
 }
 
 export default function SettingsModal({ open, onClose, onOpenUsers }) {
+  if (!open) return null
+  // O estado (tela atual, status carregado) mora em SettingsDialog: fechar a janela o descarta.
+  return <SettingsDialog onClose={onClose} onOpenUsers={onOpenUsers} />
+}
+
+function SettingsDialog({ onClose, onOpenUsers }) {
   const [view, setView] = useState('menu')
   const [statusData, setStatusData] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -288,26 +294,19 @@ export default function SettingsModal({ open, onClose, onOpenUsers }) {
   const dialogLabel = useMemo(() => view === 'menu' ? 'Configurações do Gentileza' : 'Status do sistema', [view])
 
   useEffect(() => {
-    if (!open) return undefined
-
     closeButtonRef.current?.focus()
     const onKeyDown = (event) => {
       if (event.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+  }, [onClose])
 
-  useEffect(() => {
-    if (open) return
+  // Ao fechar a janela, cancela a consulta de status que ainda esteja em andamento.
+  useEffect(() => () => {
     requestRef.current?.abort()
     requestRef.current = null
-    setView('menu')
-    setStatusData(null)
-    setError(null)
-    setLoading(false)
-    setCheckedAt('')
-  }, [open])
+  }, [])
 
   async function loadStatus() {
     requestRef.current?.abort()
@@ -337,8 +336,6 @@ export default function SettingsModal({ open, onClose, onOpenUsers }) {
     setView('status')
     loadStatus()
   }
-
-  if (!open) return null
 
   return (
     <div

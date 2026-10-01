@@ -13,7 +13,7 @@ import uuid
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_permission
@@ -51,6 +51,7 @@ class ConversationListItem(BaseModel):
     title: str
     created_at: str
     updated_at: str
+    message_count: int
 
 
 def _call_n8n(session_id: str, message: str) -> str:
@@ -172,9 +173,15 @@ def list_conversations(user: AppUser = Depends(get_current_user), db: Session = 
         AssistantConversation.user_id == user.id,
         AssistantConversation.archived_at.is_(None))
         .order_by(AssistantConversation.updated_at.desc()).limit(100)).all()
+    # Uma consulta agrupada para todas as conversas da lista (nada de N+1).
+    counts = dict(db.execute(
+        select(AssistantMessage.conversation_id, func.count(AssistantMessage.id))
+        .where(AssistantMessage.conversation_id.in_([c.id for c in convs]))
+        .group_by(AssistantMessage.conversation_id)).all()) if convs else {}
     return [ConversationListItem(id=c.id, title=c.title,
                                  created_at=iso_utc(c.created_at),
-                                 updated_at=iso_utc(c.updated_at)) for c in convs]
+                                 updated_at=iso_utc(c.updated_at),
+                                 message_count=counts.get(c.id, 0)) for c in convs]
 
 
 @router.get("/conversations/{conversation_id}",

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from './AuthProvider.jsx'
+import { useAuth } from './authContext.js'
 import { logoutAndRedirect } from './api.js'
 
 export default function UserMenu({ onOpenUsers, onOpenAudit, onOpenSettings }) {

@@ -50,32 +50,35 @@ export default function UsersPage({ currentUserId, consoleUrl }) {
   const [profileFilter, setProfileFilter] = useState('')
   const loadRef = useRef(null)
 
-  // initial: o primeiro carregamento já nasce com loading=true (sem setState síncrono no efeito).
-  const load = useCallback(async ({ initial = false } = {}) => {
+  // A página nasce com loading=true, então a carga inicial não precisa de setState síncrono.
+  const fetchUsersList = useCallback(() => {
     loadRef.current?.abort()
     const ctrl = new AbortController()
     loadRef.current = ctrl
-    if (!initial) {
-      setLoading(true)
-      setLoadError('')
-    }
-    try {
-      setUsers(sortUsers((await fetchUsers(ctrl.signal)) || []))
-    } catch (error) {
-      if (error?.name === 'AbortError') return
-      setLoadError(friendlyError(error))
-    } finally {
-      if (loadRef.current === ctrl) {
-        loadRef.current = null
-        setLoading(false)
-      }
-    }
+    return fetchUsers(ctrl.signal)
+      .then(list => setUsers(sortUsers(list || [])))
+      .catch(error => {
+        if (error?.name !== 'AbortError') setLoadError(friendlyError(error))
+      })
+      .finally(() => {
+        if (loadRef.current === ctrl) {
+          loadRef.current = null
+          setLoading(false)
+        }
+      })
   }, [])
 
+  // "Tentar novamente": volta ao estado de carregamento antes de buscar de novo.
+  const retry = useCallback(() => {
+    setLoading(true)
+    setLoadError('')
+    return fetchUsersList()
+  }, [fetchUsersList])
+
   useEffect(() => {
-    load({ initial: true })
+    fetchUsersList()
     return () => loadRef.current?.abort()
-  }, [load])
+  }, [fetchUsersList])
 
   const summary = useMemo(() => summarizeUsers(users), [users])
   const visibleUsers = useMemo(
@@ -168,7 +171,7 @@ export default function UsersPage({ currentUserId, consoleUrl }) {
           <div className="users-state users-state--error" role="alert">
             <span className="users-state__icon users-state__icon--error"><UsersIcon name="alert" size={22} /></span>
             <strong>{loadError}</strong>
-            <button className="users-button users-button--primary" type="button" onClick={() => load()}>Tentar novamente</button>
+            <button className="users-button users-button--primary" type="button" onClick={retry}>Tentar novamente</button>
           </div>
         ) : visibleUsers.length === 0 ? (
           <div className="users-state">

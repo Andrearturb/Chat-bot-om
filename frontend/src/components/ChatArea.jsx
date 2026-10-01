@@ -303,22 +303,15 @@ function Message({ message, suggestions = [] }) {
 }
 
 function ThinkingMessage({ startedAt }) {
-  const [elapsed, setElapsed] = useState(0)
+  const [now, setNow] = useState(() => performance.now())
 
   useEffect(() => {
-    if (!Number.isFinite(startedAt)) {
-      setElapsed(0)
-      return undefined
-    }
-
-    const updateElapsed = () => {
-      setElapsed(Math.max(0, (performance.now() - startedAt) / 1000))
-    }
-
-    updateElapsed()
-    const interval = setInterval(updateElapsed, 100)
+    if (!Number.isFinite(startedAt)) return undefined
+    const interval = setInterval(() => setNow(performance.now()), 100)
     return () => clearInterval(interval)
   }, [startedAt])
+
+  const elapsed = Number.isFinite(startedAt) ? Math.max(0, (now - startedAt) / 1000) : 0
 
   return (
     <article className="message message--assistant message--thinking" aria-label="Gentileza está processando a resposta">

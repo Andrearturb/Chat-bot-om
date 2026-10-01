@@ -8,12 +8,14 @@ import Sidebar from './components/Sidebar'
 import SuggestionChips from './components/SuggestionChips'
 import SettingsModal from './features/settings/SettingsModal'
 
-import { AuthProvider, useAuth } from './features/auth/AuthProvider.jsx'
+import { AuthProvider } from './features/auth/AuthProvider.jsx'
+import { useAuth } from './features/auth/authContext.js'
 import LoginScreen from './features/auth/LoginScreen.jsx'
 import AccountNotReleased from './features/auth/AccountNotReleased.jsx'
 import AuthLoading from './features/auth/AuthLoading.jsx'
 import UserMenu from './features/auth/UserMenu.jsx'
 import { api } from './lib/apiClient.js'
+import { toConversationItem } from './lib/conversations.js'
 
 // Telas pesadas (gráficos, planilhas) só baixam quando a pessoa as abre.
 const IndicatorsPage = lazy(() => import('./features/indicators/IndicatorsPage'))
@@ -93,13 +95,18 @@ function AppShell() {
     if (!hasPermission('assistant.history')) return
     try {
       const list = await api.get('/assistant/conversations')
-      setConversations(list || [])
+      setConversations((list || []).map(toConversationItem))
     } catch { /* silencia */ }
   }, [hasPermission])
 
   useEffect(() => {
-    if (auth_status === 'authenticated') loadConversations()
-  }, [auth_status, loadConversations])
+    if (auth_status !== 'authenticated' || !hasPermission('assistant.history')) return undefined
+    let cancelled = false
+    api.get('/assistant/conversations')
+      .then(list => { if (!cancelled) setConversations((list || []).map(toConversationItem)) })
+      .catch(() => { /* silencia */ })
+    return () => { cancelled = true }
+  }, [auth_status, hasPermission])
 
   // ── Persiste preferências de navegação ────────────────────────────────────────
   useEffect(() => {

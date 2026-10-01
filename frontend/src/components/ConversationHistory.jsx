@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { messageCountLabel } from '../lib/conversations.js'
 
 function formatConversationDate(value) {
   const date = new Date(value)
@@ -14,8 +15,6 @@ function formatConversationDate(value) {
 }
 
 function ConversationItem({ conversation, active, onSelect, onDelete }) {
-  const messageCount = conversation.messages.filter((message) => !message.isGreeting).length
-
   function handleDelete(event) {
     event.stopPropagation()
     if (window.confirm('Excluir esta conversa?')) onDelete(conversation.id)
@@ -31,7 +30,7 @@ function ConversationItem({ conversation, active, onSelect, onDelete }) {
         title={conversation.title}
       >
         <strong>{conversation.title}</strong>
-        <small>{formatConversationDate(conversation.updatedAt)} · {messageCount} mensagens</small>
+        <small>{formatConversationDate(conversation.updatedAt)} · {messageCountLabel(conversation.messageCount)}</small>
       </button>
       <button className="conversation-item__delete" type="button" onClick={handleDelete} aria-label="Excluir conversa" title="Excluir conversa">×</button>
     </div>

@@ -2,7 +2,7 @@
 
 **Data:** 2026-09-30
 **Status:** aprovado (2026-09-30)
-**Escopo:** Chat-bot O&M (este repositório) + novo repositório `gentil-identity`
+**Escopo:** Chat-bot O&M (este repositório) + novo repositório `keycloak-central`
 
 ## 1. Contexto e objetivo
 
@@ -37,7 +37,7 @@ para o ambiente da Gentil Negócios seja apenas troca de configuração.
 | Tema | Decisão |
 |---|---|
 | Onde roda o Keycloak | Projeto Docker próprio (DEV agora), mesmo formato para produção |
-| Versionamento | Repositório separado `gentil-identity`, pasta irmã deste projeto (`...\Projetos\gentil-identity`), sem remoto por enquanto |
+| Versionamento | Repositório separado `keycloak-central`, pasta irmã deste projeto (`...\Projetos\keycloak-central`), sem remoto por enquanto |
 | Permissões | Perfis **e** permissões como papéis de client no Keycloak (perfis = papéis compostos) |
 | Gestão de usuários | Somente no console do Keycloak; o app mostra uma consulta somente leitura |
 | Revogação | Bloqueio imediato (backchannel logout); perfil atualizado em até 5 min (refresh no servidor) |
@@ -51,7 +51,7 @@ para o ambiente da Gentil Negócios seja apenas troca de configuração.
 ## 3. Arquitetura
 
 ```
- gentil-identity (repo próprio)                 Chat-bot O&M (este repo)
+ keycloak-central (repo próprio)                 Chat-bot O&M (este repo)
  ┌──────────────────────────────┐               ┌────────────────────────────────┐
  │ keycloak (modo produção)     │◀── OIDC ─────▶│ backend FastAPI (BFF)          │
  │ keycloak-db (PostgreSQL)     │  code+PKCE,   │  - valida tokens (JWKS)        │
@@ -75,12 +75,12 @@ para o ambiente da Gentil Negócios seja apenas troca de configuração.
 - Keycloak → backend: backchannel logout (`POST /auth/backchannel-logout`).
 - DEV: o backend alcança o Keycloak em `http://localhost:8081` (via `extra_hosts: localhost:host-gateway`, como hoje); o Keycloak alcança o backend em `http://host.docker.internal:8040`.
 
-## 4. Projeto `gentil-identity`
+## 4. Projeto `keycloak-central`
 
 ### 4.1 Estrutura
 
 ```
-gentil-identity/
+keycloak-central/
   docker-compose.yml        keycloak, keycloak-db, keycloak-config, mailpit (profile dev)
   Dockerfile                imagem Keycloak com build otimizado e tema embutido
   .env.example              segredos e parâmetros deste projeto
@@ -286,7 +286,7 @@ expiração/limite de IA, status `pending`/`disabled` do app.
 
 Executada durante a implementação, com confirmação explícita antes de cada passo destrutivo:
 
-1. Subir o `gentil-identity` e validar (smoke test).
+1. Subir o `keycloak-central` e validar (smoke test).
 2. Parar e remover os containers de Keycloak do compose do app; remover o volume
    `keycloak_postgres_data`.
 3. Rodar `backend/scripts/reset_identity.sql`, que remove **somente** as tabelas de
@@ -299,7 +299,7 @@ Executada durante a implementação, com confirmação explícita antes de cada 
 
 ## 8. Migração para o ambiente da Gentil
 
-A TI sobe o `gentil-identity` (ou aplica o mesmo YAML num Keycloak corporativo) e
+A TI sobe o `keycloak-central` (ou aplica o mesmo YAML num Keycloak corporativo) e
 entrega ao app: URL do emissor, segredo do client e URL do console. Checklist
 obrigatório (em `docs/MIGRACAO_TI.md`):
 
@@ -334,7 +334,7 @@ obrigatório (em `docs/MIGRACAO_TI.md`):
   provisionamento, overrides) são removidos junto com o código.
 - **Frontend** (`node --test`): utilitários da tela somente leitura e mensagens de
   `auth_error`.
-- **gentil-identity**: `smoke-test.sh` sobe o ambiente, aplica o YAML, obtém um
+- **keycloak-central**: `smoke-test.sh` sobe o ambiente, aplica o YAML, obtém um
   token do `analista.om` e confere perfis, permissões, `aud` e ausência de papéis
   de outros clients.
 - **Ponta a ponta** (navegador): autocadastro → e-mail no Mailpit → "conta não

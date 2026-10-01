@@ -1,7 +1,7 @@
 /* ════════════════════════════════════════════════════════════════════
    Telas de acesso (/login, conta não liberada, indisponível) + menu do usuário.
    Mesma composição e tokens do tema de login do Keycloak
-   (../gentil-identity/themes/gentil-om/login/resources/css/gentil-om.css).
+   (../keycloak-central/themes/gentil-om/login/resources/css/gentil-om.css).
    ════════════════════════════════════════════════════════════════════ */
 
 .om-auth {

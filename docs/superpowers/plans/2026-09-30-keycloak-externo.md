@@ -1,5 +1,7 @@
 # Keycloak externo e autorização centralizada — Plano de implementação
 
+> **Nome atual:** após a execução deste plano, o repositório `gentil-identity` foi renomeado para `keycloak-central`. Os nomes e caminhos antigos abaixo documentam os passos originais. A instalação DEV preserva o nome anterior do projeto Docker Compose no `.env` local para reutilizar o volume existente.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Tirar o Keycloak de dentro do Chat-bot O&M (novo repositório `gentil-identity`, em modo produção) e fazer o Keycloak decidir perfis, permissões, cadastro, liberação e bloqueio; o app vira um cliente OIDC sem credencial administrativa.

@@ -36,7 +36,7 @@ services:
       N8N_HEALTH_URL: ${N8N_HEALTH_URL:-http://n8n:5678/healthz/readiness}
       N8N_CHAT_WEBHOOK_URL: ${N8N_CHAT_WEBHOOK_URL:-http://n8n:5678/webhook/9db5ead4-d4ca-4f5c-a1b4-3969e60cb8df/chat}
       N8N_GATEWAY_TOKEN: ${N8N_GATEWAY_TOKEN:-}
-      # OIDC — Keycloak do projeto gentil-identity (fora deste compose).
+      # OIDC — Keycloak do projeto keycloak-central (fora deste compose).
       # DEV: localhost:8081 é o issuer que o Keycloak coloca nos tokens; o backend
       # alcança o host pelo extra_hosts (localhost → host-gateway).
       OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-http://localhost:8081/realms/gentil-dev}
@@ -60,7 +60,7 @@ services:
     ports:
       - "127.0.0.1:8040:8000"
     # Permite que o container resolva "localhost" como o host Docker
-    # para alcançar o Keycloak do gentil-identity em localhost:8081 (DEV).
+    # para alcançar o Keycloak do keycloak-central em localhost:8081 (DEV).
     extra_hosts:
       - "localhost:host-gateway"
 

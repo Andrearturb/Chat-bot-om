@@ -2,7 +2,7 @@
 Catálogo de permissões e perfis do Chat-bot O&M.
 
 Perfis e permissões são papéis do client ``chat-bot-om-bff`` no Keycloak
-(gentil-identity/config/10-realm.yaml). Este módulo apenas interpreta os papéis
+(keycloak-central/config/10-realm.yaml). Este módulo apenas interpreta os papéis
 recebidos no token assinado; nada aqui concede acesso.
 """
 

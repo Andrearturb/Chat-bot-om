@@ -3,7 +3,7 @@
 ## Visão geral da arquitetura
 
 ```
- gentil-identity (repositório próprio)          Chat-bot O&M (este repositório)
+ keycloak-central (repositório próprio)          Chat-bot O&M (este repositório)
  ┌──────────────────────────────┐               ┌────────────────────────────────┐
  │ Keycloak 26 (modo produção)  │◀── OIDC ─────▶│ backend FastAPI (BFF)          │
  │ PostgreSQL próprio           │  código+PKCE, │  - valida tokens pelo JWKS     │
@@ -13,7 +13,7 @@
                                      logout      └────────────────────────────────┘
 ```
 
-- O Keycloak não roda neste compose: fica no projeto `gentil-identity` (pasta irmã deste repositório).
+- O Keycloak não roda neste compose: fica no projeto `keycloak-central` (pasta irmã deste repositório).
 - O app não guarda nenhuma credencial administrativa do Keycloak.
 - Perfis, permissões, cadastro, liberação e bloqueio são decididos no Keycloak. O backend aplica o que vem no token assinado; o frontend só exibe.
 
@@ -21,15 +21,15 @@
 
 | Componente | Responsabilidade |
 |---|---|
-| Keycloak (`gentil-identity`) | usuários, senhas, MFA, autocadastro, perfis, permissões, grupos, bloqueio, sessões SSO |
+| Keycloak (`keycloak-central`) | usuários, senhas, MFA, autocadastro, perfis, permissões, grupos, bloqueio, sessões SSO |
 | Backend | validar tokens, manter a sessão, exigir a permissão de cada rota, auditoria, limites de IA |
 | Frontend | exibir o que `/auth/me` informa; nenhuma regra de acesso |
 
-## Provedor de identidade (`gentil-identity`)
+## Provedor de identidade (`keycloak-central`)
 
-- Subir, parar, backup, e-mails do DEV (Mailpit) e gestão de acesso: `../gentil-identity/docs/OPERACAO.md`.
-- Usuários DEV: `admin.om`, `analista.om`, `gerente.om`, `diretor.om`, `convidado.om`. As senhas ficam nas variáveis `DEV_*_PASSWORD` do `.env` do `gentil-identity`.
-- Tema de login `gentil-om`: `../gentil-identity/themes/gentil-om`.
+- Subir, parar, backup, e-mails do DEV (Mailpit) e gestão de acesso: `../keycloak-central/docs/OPERACAO.md`.
+- Usuários DEV: `admin.om`, `analista.om`, `gerente.om`, `diretor.om`, `convidado.om`. As senhas ficam nas variáveis `DEV_*_PASSWORD` do `.env` do `keycloak-central`.
+- Tema de login `gentil-om`: `../keycloak-central/themes/gentil-om`.
 - Console do realm (gestores de acesso): `http://localhost:8081/admin/gentil-dev/console/`.
 
 ## OIDC configurável
@@ -159,7 +159,7 @@ Strict-Transport-Security: max-age=63072000 (apenas em produção)
 
 ## Migração para o Keycloak da Gentil
 
-Roteiro e checklist obrigatório: `../gentil-identity/docs/MIGRACAO_TI.md`. No app, basta atualizar o `.env`:
+Roteiro e checklist obrigatório: `../keycloak-central/docs/MIGRACAO_TI.md`. No app, basta atualizar o `.env`:
 `OIDC_ISSUER_URL`, `OIDC_CLIENT_SECRET` (novo), `OIDC_REDIRECT_URI`, `OIDC_POST_LOGOUT_REDIRECT_URI`, `KEYCLOAK_CONSOLE_URL`, `SESSION_ENCRYPTION_KEY` (nova) e `SESSION_COOKIE_SECURE=true`.
 
 ## Variáveis de ambiente relevantes

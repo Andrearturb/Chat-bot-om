@@ -10,9 +10,9 @@ from app.services.permissions import (
 )
 
 
-def test_catalogo_tem_17_permissoes_com_users_view():
-    assert len(PERMISSIONS) == 17
-    assert "users.view" in PERMISSIONS
+def test_catalogo_tem_16_permissoes_sem_users_view():
+    assert len(PERMISSIONS) == 16
+    assert "users.view" not in PERMISSIONS
     assert "users.manage" not in PERMISSIONS
 
 

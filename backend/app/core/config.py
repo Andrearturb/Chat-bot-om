@@ -48,9 +48,6 @@ OIDC_TOKEN_REFRESH_SECONDS = int(os.getenv("OIDC_TOKEN_REFRESH_SECONDS", "300"))
 OIDC_OFFLINE_GRACE_MINUTES = int(os.getenv("OIDC_OFFLINE_GRACE_MINUTES", "15"))
 OIDC_CLOCK_SKEW_SECONDS = int(os.getenv("OIDC_CLOCK_SKEW_SECONDS", "30"))
 OIDC_LOGIN_REQUEST_TTL_SECONDS = int(os.getenv("OIDC_LOGIN_REQUEST_TTL_SECONDS", "600"))
-# Link do console do realm exibido a quem tem users.view. É só um link: o app
-# não guarda credencial administrativa do Keycloak.
-KEYCLOAK_CONSOLE_URL = os.getenv("KEYCLOAK_CONSOLE_URL", "").strip()
 
 # ─── sessão ───────────────────────────────────────────────────────────────────
 SESSION_SECRET = os.getenv("SESSION_SECRET", "")

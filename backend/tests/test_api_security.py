@@ -122,9 +122,6 @@ class TestPermissions:
     def test_audit_sem_permissao_403(self, authed):
         assert authed.get("/audit/logs").status_code == 403
 
-    def test_users_sem_permissao_403(self, authed):
-        assert authed.get("/users").status_code == 403
-
 
 # ── Assistant ─────────────────────────────────────────────────────────────────
 

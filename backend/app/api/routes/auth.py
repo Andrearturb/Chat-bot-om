@@ -209,7 +209,6 @@ def me(
         "profiles": profiles,
         "permissions": permissions,
         "csrf_token": session.csrf_secret,
-        "keycloak_console_url": (config.KEYCLOAK_CONSOLE_URL or None) if "users.view" in permissions else None,
         "ai_usage": {
             "used_today": rate["used_today"],
             "daily_limit": rate["daily_limit"],

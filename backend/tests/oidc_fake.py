@@ -31,7 +31,7 @@ ANALISTA = ["ANALISTA", "assistant.use", "assistant.history", "indicators.view",
             "settings.view"]
 ADMINISTRADOR = ["ADMINISTRADOR", "assistant.use", "assistant.history", "indicators.view", "assets.view",
                  "assets.create", "assets.edit", "assets.delete", "assets.import", "documents.view",
-                 "documents.upload", "documents.replace", "documents.delete", "audit.view", "users.view",
+                 "documents.upload", "documents.replace", "documents.delete", "audit.view",
                  "settings.view", "settings.manage", "sync.tape"]
 
 

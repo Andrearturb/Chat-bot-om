@@ -16,7 +16,7 @@ PERMISSIONS: frozenset[str] = frozenset({
     "indicators.view",
     "assets.view", "assets.create", "assets.edit", "assets.delete", "assets.import",
     "documents.view", "documents.upload", "documents.replace", "documents.delete",
-    "audit.view", "users.view",
+    "audit.view",
     "settings.view", "settings.manage",
     "sync.tape",
 })

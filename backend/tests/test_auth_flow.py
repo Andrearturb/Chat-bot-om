@@ -104,24 +104,9 @@ def test_callback_cria_sessao_com_cookie_seguro_e_sem_tokens_no_navegador(client
     assert me_response.headers["cache-control"] == "no-store"
     me = me_response.json()
     assert set(me) == {"id", "email", "username", "display_name", "profile", "profile_display", "profiles",
-                       "permissions", "csrf_token", "keycloak_console_url", "ai_usage"}
+                       "permissions", "csrf_token", "ai_usage"}
     assert me["profile"] == "ANALISTA" and me["profile_display"] == "Analista"
     assert me["profiles"] == ["ANALISTA"] and "assets.create" in me["permissions"]
-    assert me["keycloak_console_url"] is None
-
-
-def test_sem_users_view_nao_recebe_link_do_console_configurado(client, provider, monkeypatch):
-    monkeypatch.setattr(config, "KEYCLOAK_CONSOLE_URL", "http://kc.test/admin/gentil-dev/console/")
-    _login(client, provider, roles=ANALISTA)
-    assert client.get("/auth/me").json()["keycloak_console_url"] is None
-
-
-def test_quem_tem_users_view_recebe_o_link_do_console(client, provider, monkeypatch):
-    monkeypatch.setattr(config, "KEYCLOAK_CONSOLE_URL", "http://kc.test/admin/gentil-dev/console/")
-    _login(client, provider, sub="adm", roles=ADMINISTRADOR)
-    me = client.get("/auth/me").json()
-    assert me["profile"] == "ADMINISTRADOR"
-    assert me["keycloak_console_url"] == "http://kc.test/admin/gentil-dev/console/"
 
 
 def test_replay_do_callback_nao_cria_segunda_sessao(client, provider):
@@ -317,27 +302,6 @@ def test_logout_token_invalido_e_recusado(client, provider):
     assert _count(SecurityEvent, SecurityEvent.event_type == "BACKCHANNEL_LOGOUT_REJECTED") == 3
 
 
-# ── Consulta de usuários ──────────────────────────────────────────────────────
-
-def test_users_exige_users_view(client, provider):
-    _login(client, provider)
-    assert client.get("/users").status_code == 403
-
-
-def test_users_somente_leitura_para_quem_tem_users_view(client, provider):
-    with TestSession() as db:
-        db.add(AppUser(email="nova@exemplo.local", display_name="Conta Nova", last_profiles=[]))
-        db.commit()
-    _login(client, provider, sub="adm", roles=ADMINISTRADOR)
-    users = {u["email"]: u for u in client.get("/users").json()}
-    assert users["adm@exemplo.local"]["profile"] == "ADMINISTRADOR"
-    assert users["adm@exemplo.local"]["active_session"] is True
-    assert users["nova@exemplo.local"]["profile"] is None
-    assert users["nova@exemplo.local"]["active_session"] is False
-    assert users["adm@exemplo.local"]["last_seen_at"].endswith("Z")
-    assert client.post("/users", json={}, headers={"X-CSRF-Token": _csrf(client)}).status_code == 405
-
-
 # ── Subida do backend ─────────────────────────────────────────────────────────
 
 def test_backend_nao_sobe_sem_chave_de_sessao_valida(provider, monkeypatch):
@@ -384,3 +348,8 @@ def test_verificacao_da_chave_aceita_chave_valida_e_ignora_sem_oidc(provider, mo
     monkeypatch.setattr(config, "OIDC_ISSUER_URL", "")
     monkeypatch.setattr(config, "SESSION_ENCRYPTION_KEY", "")
     main._check_session_encryption_key()  # sem OIDC o backend não guarda refresh token
+
+
+def test_rota_de_usuarios_nao_existe_mais(client, provider):
+    _login(client, provider)
+    assert client.get("/users").status_code == 404

@@ -180,7 +180,9 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
 .send-button:hover:not(:disabled), .send-button:focus-visible:not(:disabled) { background: #ffd35a; box-shadow: 0 6px 15px rgba(245,197,66,.3); outline: none; }
 .send-button:disabled { cursor: not-allowed; opacity: .45; }
 .spinner { width: 16px; height: 16px; border: 2px solid rgba(17,26,62,.25); border-top-color: var(--navy); border-radius: 50%; animation: spin .7s linear infinite; }
-.app-panel::after { position: absolute; right: 24px; bottom: 21px; content: 'IA da Gentil Negócios  •  Respostas com base nos dados da sua operação'; color: #9aa5b8; font-size: 9px; pointer-events: none; }
+/* Observação do assistente: só na tela do assistente (antes era um ::after da moldura e cobria as outras telas). */
+.assistant-footnote { position: absolute; right: 24px; bottom: 21px; margin: 0; color: #9aa5b8; font-size: 9px; pointer-events: none; }
+.assistant-footnote span { margin: 0 6px; }
 
 .conversation-history { width: 350px; height: 100%; display: flex; flex-direction: column; position: absolute; z-index: 30; top: 0; bottom: 0; left: 96px; background: rgba(255,255,255,.98); border-right: 1px solid var(--border); box-shadow: 12px 0 30px rgba(24,32,51,.06); }
 .conversation-history__header { display: flex; align-items: center; justify-content: space-between; padding: 28px 22px 18px; }
@@ -258,7 +260,7 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
   .composer { min-height: 100px; }
   .message__body { max-width: 84%; }
   .message__content { max-width: 100%; }
-  .app-panel::after { right: auto; left: 78px; bottom: 7px; font-size: 8px; }
+  .assistant-footnote { right: auto; left: 16px; bottom: 7px; font-size: 8px; }
   .conversation-history { left: 62px; width: calc(100vw - 62px); max-width: 350px; }
 }
 

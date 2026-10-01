@@ -1297,6 +1297,58 @@
   }
 }
 
+/* Banner fluido (≥ 1101 px). A coluna do texto tem largura garantida e o título encolhe
+   com ela; a personagem e o balão se ajustam ao espaço que sobra, e o balão some quando
+   não cabe. O banner cresce na altura em vez de cortar o texto. */
+@media (min-width: 1101px) {
+  .indicators-page .indicators-hero {
+    height: auto;
+    min-height: 330px;
+  }
+
+  .indicators-page .indicators-hero__left {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+    gap: 16px;
+  }
+
+  .indicators-page .indicators-hero__mascot-panel {
+    container: indicators-mascot / inline-size;
+  }
+
+  .indicators-page .indicators-hero__mascot {
+    left: 44%;
+    width: min(515px, 100cqi);
+    bottom: calc(min(515px, 100cqi) * -0.128);
+  }
+
+  .indicators-page .indicators-hero__speech {
+    top: 80px;
+    left: auto;
+    right: 0;
+    width: min(265px, 46cqi);
+    min-height: 0;
+    padding: 15px 18px;
+    font-size: clamp(13px, 2.9cqi, 16px);
+    text-wrap: balance;
+  }
+
+  .indicators-page .indicators-hero-copy {
+    container: indicators-copy / inline-size;
+    padding-left: 8px;
+  }
+
+  .indicators-page .indicators-hero h1 {
+    font-size: clamp(38px, 17cqi, 58px);
+  }
+
+  @container indicators-mascot (max-width: 400px) {
+    .indicators-page .indicators-hero__speech {
+      display: none;
+    }
+  }
+}
+
+
 @media (max-width: 1100px) {
   .indicators-page .indicators-hero {
     height: auto;

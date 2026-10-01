@@ -74,7 +74,8 @@ services:
     environment:
       # Proxy Vite interno aponta para o serviço backend pelo hostname Docker
       BACKEND_TARGET: http://backend:8000
-      # VITE_N8N_WEBHOOK_URL removido — frontend não chama n8n diretamente
+      # Pasta montada do Windows não gera eventos de arquivo: o Vite confere por polling.
+      VITE_USE_POLLING: "true"
     ports:
       - "127.0.0.1:5173:5173"
     volumes:

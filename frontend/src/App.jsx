@@ -266,6 +266,9 @@ function AppShell() {
                 {!active && <SuggestionChips onSelect={p => sendMessage(null, p)} active={active} />}
                 <ChatComposer value={prompt} onChange={setPrompt} onSubmit={sendMessage} loading={loading} />
               </div>
+              <p className="assistant-footnote">
+                IA da Gentil Negócios<span aria-hidden="true">•</span>Respostas com base nos dados da sua operação
+              </p>
             </>
           ) : section === 'assistant' && !canUseAssistant ? (
             <div className="permission-denied"><p>Você não tem permissão para usar o assistente.</p></div>

@@ -148,9 +148,7 @@ function CentralHero({ records, uploadData, loading, refreshing, onRefresh }) {
           <div className="indicators-hero__city" aria-hidden="true" />
           <img src={indicatorsMascot} alt="" className="indicators-hero__mascot" />
           <div className="indicators-hero__speech">
-            Aqui, todos os indicadores<br />
-            em um só lugar para apoiar<br />
-            suas decisões. 💡
+            Aqui, todos os indicadores em um só lugar para apoiar suas decisões. 💡
           </div>
         </div>
 

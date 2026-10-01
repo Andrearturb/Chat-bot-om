@@ -57,9 +57,7 @@ export function AssetsHero({ summary, loading }) {
           <div className="assets-hero__ring assets-hero__ring--two" aria-hidden="true" />
           <img src={mascot} alt="" className="assets-hero__mascot-img" />
           <div className="assets-hero__speech">
-            Aqui você encontra os equipamentos
-            <br />e documentos de cada loja
-            <br />em um só lugar.
+            Aqui você encontra os equipamentos e documentos de cada loja em um só lugar.
           </div>
         </div>
 

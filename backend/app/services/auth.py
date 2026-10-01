@@ -19,7 +19,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core import config
-from app.core.dates import iso_utc
+from app.core.dates import utcnow, iso_utc
 from app.models.auth import (
     AiUsage,
     AppUser,
@@ -74,7 +74,7 @@ def create_login_request(db: Session, *, binding: str) -> tuple[str, str, str]:
     """
     if not binding:
         raise ValueError("binding obrigatório: o login precisa estar preso ao navegador.")
-    now = datetime.utcnow()
+    now = utcnow()
     db.execute(delete(OidcLoginRequest).where(OidcLoginRequest.expires_at < now))
     state = secrets.token_urlsafe(32)
     code_verifier = secrets.token_urlsafe(64)
@@ -113,7 +113,7 @@ def consume_login_request(
         )
     ).first()
     db.commit()
-    if row is None or row.expires_at < datetime.utcnow():
+    if row is None or row.expires_at < utcnow():
         return None
     if not binding or not hmac.compare_digest(row.binding_hash, _sha256(binding)):
         return None
@@ -128,7 +128,7 @@ def upsert_user(db: Session, claims: dict, *, profiles: tuple[str, ...] | list[s
     Nunca vincula por e-mail: uma conta recriada no Keycloak (novo subject) vira
     um registro novo, sem herdar conversas nem auditoria do anterior.
     """
-    now = datetime.utcnow()
+    now = utcnow()
     email = (claims.get("email") or "").strip().lower()
     username = (claims.get("preferred_username") or "").strip().lower() or None
     display_name = (claims.get("name") or username or email or claims["sub"])[:200]
@@ -171,7 +171,7 @@ def create_session(
 ) -> str:
     """Cria a sessão server-side e devolve o token opaco do cookie (sem commit)."""
     token = secrets.token_urlsafe(32)
-    now = datetime.utcnow()
+    now = utcnow()
     sid = (tokens.id_claims or {}).get("sid") or tokens.access_claims.get("sid")
     db.add(UserSession(
         user_id=user.id,
@@ -198,7 +198,7 @@ def get_session(db: Session, token: str) -> UserSession | None:
     session = db.scalar(select(UserSession).where(UserSession.session_token_hash == _sha256(token)))
     if session is None or session.revoked_at is not None:
         return None
-    now = datetime.utcnow()
+    now = utcnow()
     if now > session.expires_at or now > session.absolute_expires_at:
         return None
     return session
@@ -221,7 +221,7 @@ def touch_session(db: Session, session: UserSession) -> None:
     Nunca espera por outra requisição: se a linha está travada (alguém renova o retrato no
     Keycloak), o toque é pulado e a transação termina. Quem renova toca a sessão ao concluir.
     """
-    now = datetime.utcnow()
+    now = utcnow()
     if (now - session.last_seen_at).total_seconds() <= 60:
         return
     locked = _lock_for_touch(db, session.id)
@@ -234,7 +234,7 @@ def touch_session(db: Session, session: UserSession) -> None:
 
 
 def revoke_session(db: Session, session: UserSession) -> None:
-    session.revoked_at = datetime.utcnow()
+    session.revoked_at = utcnow()
     session.id_token_hint = None
     session.refresh_token_enc = None
     db.flush()
@@ -277,7 +277,7 @@ def check_ai_rate_limit(db: Session, user: AppUser) -> dict[str, Any]:
      "resets_at": str, "reason": str | None}
     """
     daily_limit, per_min_limit = get_ai_limits(user)
-    now = datetime.utcnow()
+    now = utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     minute_start = now - timedelta(seconds=60)
 

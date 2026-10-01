@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import sessionmaker
 
+from app.core.dates import utcnow
 from app.models.auth import AppUser, SecurityEvent, UserSession
 from app.services import auth, oidc, session_refresh
 from app.services.permissions import snapshot_from_roles
@@ -30,7 +31,7 @@ def _login(db, provider, sub: str = "u1", roles=ANALISTA) -> UserSession:
 
 
 def _age(db, session: UserSession, minutes: int = 6) -> None:
-    session.snapshot_refreshed_at = datetime.utcnow() - timedelta(minutes=minutes)
+    session.snapshot_refreshed_at = utcnow() - timedelta(minutes=minutes)
     db.commit()
 
 
@@ -54,7 +55,7 @@ def test_retrato_vencido_renova_e_aplica_a_troca_de_perfil(db, provider):
     assert result.profiles == ["CONVIDADO"]
     assert "assets.create" not in result.permissions and "assets.view" in result.permissions
     assert result.refresh_token_enc != old_refresh
-    assert result.snapshot_refreshed_at > datetime.utcnow() - timedelta(minutes=1)
+    assert result.snapshot_refreshed_at > utcnow() - timedelta(minutes=1)
     assert db.get(AppUser, result.user_id).last_profiles == ["CONVIDADO"]
 
 
@@ -124,7 +125,7 @@ def test_duas_abas_usam_o_refresh_token_uma_unica_vez(db, provider):
 
     assert provider.token_requests == before + 1
     assert result.revoked_at is None
-    assert result.snapshot_refreshed_at > datetime.utcnow() - timedelta(minutes=1)
+    assert result.snapshot_refreshed_at > utcnow() - timedelta(minutes=1)
     outra_conexao.close()
 
 
@@ -154,7 +155,7 @@ def test_keycloak_fora_do_ar_por_15_minutos_encerra_a_sessao(db, provider):
     _age(db, session)
     provider.offline = True
     ensure_fresh_snapshot(db, session)
-    session.refresh_failed_since = datetime.utcnow() - timedelta(minutes=15, seconds=1)
+    session.refresh_failed_since = utcnow() - timedelta(minutes=15, seconds=1)
     db.commit()
     with pytest.raises(SessionRevoked) as exc:
         ensure_fresh_snapshot(db, session)
@@ -197,7 +198,7 @@ def _outra_conexao(db):
 def test_falha_na_tentativa_apos_a_carencia_de_15_minutos_encerra_a_sessao(db, provider):
     session = _login(db, provider)
     _age(db, session)
-    agora = datetime.utcnow()
+    agora = utcnow()
     session.refresh_failed_since = agora - timedelta(minutes=15, seconds=1)
     session.refresh_attempted_at = agora - timedelta(seconds=REFRESH_RETRY_SECONDS + 1)  # já pode tentar de novo
     db.commit()
@@ -238,7 +239,7 @@ def test_outra_aba_ja_falhou_e_a_carencia_acabou_a_aba_com_retrato_velho_encerra
     provider.offline = True
     attempts = provider.attempts
     ensure_fresh_snapshot(db, session)
-    session.refresh_failed_since = datetime.utcnow() - timedelta(minutes=15, seconds=1)
+    session.refresh_failed_since = utcnow() - timedelta(minutes=15, seconds=1)
     db.commit()
 
     with pytest.raises(SessionRevoked) as exc:
@@ -328,7 +329,7 @@ def test_sessao_travada_e_apagada_levanta_revoked(db, provider, monkeypatch):
 # ─── touch_session não espera a requisição que está renovando ─────────────────
 
 def _envelhecer_last_seen(db, session: UserSession, segundos: int = 120):
-    session.last_seen_at = datetime.utcnow() - timedelta(seconds=segundos)
+    session.last_seen_at = utcnow() - timedelta(seconds=segundos)
     db.commit()
     return session.last_seen_at, session.expires_at
 
@@ -341,7 +342,7 @@ def test_touch_normal_atualiza_last_seen_e_a_expiracao_ociosa(db, provider):
 
     assert session.last_seen_at > last_seen
     assert session.expires_at > expires
-    assert session.last_seen_at > datetime.utcnow() - timedelta(minutes=1)
+    assert session.last_seen_at > utcnow() - timedelta(minutes=1)
 
 
 def test_touch_dentro_de_um_minuto_nao_escreve(db, provider, monkeypatch):

@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.dates import utcnow
 from app.db.base import Base
 
 
@@ -16,5 +17,5 @@ class AssetStore(Base):
     bpcs_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     sap_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     praca: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)

@@ -23,6 +23,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.dates import utcnow
 from app.db.base import Base
 
 
@@ -38,8 +39,8 @@ class AppUser(Base):
     display_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     # Perfis vistos no último login/renovação: exibição e limites de IA. Não concede acesso.
     last_profiles: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     oidc_identities: Mapped[list["OidcIdentity"]] = relationship(
@@ -61,7 +62,7 @@ class OidcIdentity(Base):
     issuer: Mapped[str] = mapped_column(String(512), nullable=False)
     subject: Mapped[str] = mapped_column(String(512), nullable=False)
     email_at_link: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped["AppUser"] = relationship("AppUser", back_populates="oidc_identities")
@@ -84,7 +85,7 @@ class OidcLoginRequest(Base):
     binding_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     code_verifier: Mapped[str] = mapped_column(String(128), nullable=False)
     nonce: Mapped[str] = mapped_column(String(64), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
 
 
@@ -99,8 +100,8 @@ class UserSession(Base):
     # Hash SHA-256 do token opaco — nunca o token em texto puro
     session_token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     csrf_secret: Mapped[str] = mapped_column(String(64), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
-    last_seen_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)        # idle expiry
     absolute_expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -116,7 +117,7 @@ class UserSession(Base):
     # Retrato do acesso: papéis do client chat-bot-om-bff recebidos no token.
     permissions: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     profiles: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    snapshot_refreshed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    snapshot_refreshed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
     # Keycloak inacessível: início da falha e última tentativa de renovação.
     refresh_failed_since: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     refresh_attempted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -133,8 +134,8 @@ class AssistantConversation(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("app_users.id", ondelete="CASCADE"), nullable=False, index=True)
     n8n_session_id: Mapped[str] = mapped_column(String(36), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False, default="Nova conversa")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     messages: Mapped[list["AssistantMessage"]] = relationship(
@@ -150,7 +151,7 @@ class AssistantMessage(Base):
     role: Mapped[str] = mapped_column(Enum("user", "assistant", name="message_role"), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     response_time: Mapped[float | None] = mapped_column(nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
 
     conversation: Mapped["AssistantConversation"] = relationship("AssistantConversation", back_populates="messages")
 
@@ -166,7 +167,7 @@ class AiUsage(Base):
     request_id: Mapped[str] = mapped_column(String(36), nullable=False)
     # pending | success | error
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow, index=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     prompt_chars: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -191,7 +192,7 @@ class AuditLog(Base):
     old_values: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     new_values: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow, index=True)
 
 
 # ─── Eventos de segurança ─────────────────────────────────────────────────────
@@ -205,4 +206,4 @@ class SecurityEvent(Base):
     # low | medium | high | critical
     severity: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow, index=True)

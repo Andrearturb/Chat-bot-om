@@ -9,6 +9,7 @@ import pytest
 from cryptography.fernet import Fernet
 from sqlalchemy import func, select
 
+from app.core.dates import utcnow
 from app.core import config
 from app.models.auth import (
     AiUsage,
@@ -81,7 +82,7 @@ def test_get_session_valida_e_token_desconhecido(db, provider):
 @pytest.mark.parametrize("field", ["expires_at", "absolute_expires_at"])
 def test_sessao_expirada(db, provider, field):
     _, token, session = _session(db, provider)
-    setattr(session, field, datetime.utcnow() - timedelta(seconds=1))
+    setattr(session, field, utcnow() - timedelta(seconds=1))
     db.commit()
     assert auth.get_session(db, token) is None
 
@@ -151,7 +152,7 @@ def test_state_vazio_ou_desconhecido(db):
 
 def test_registro_expirado_e_recusado_e_apagado(db):
     state, _, _ = auth.create_login_request(db, binding=BINDING)
-    db.scalar(select(OidcLoginRequest)).expires_at = datetime.utcnow() - timedelta(seconds=1)
+    db.scalar(select(OidcLoginRequest)).expires_at = utcnow() - timedelta(seconds=1)
     db.commit()
     assert auth.consume_login_request(db, state, binding=BINDING) is None
     assert db.scalar(select(func.count(OidcLoginRequest.id))) == 0
@@ -159,7 +160,7 @@ def test_registro_expirado_e_recusado_e_apagado(db):
 
 def test_registros_expirados_sao_limpos_ao_criar_outro(db):
     auth.create_login_request(db, binding=BINDING)
-    db.scalar(select(OidcLoginRequest)).expires_at = datetime.utcnow() - timedelta(seconds=1)
+    db.scalar(select(OidcLoginRequest)).expires_at = utcnow() - timedelta(seconds=1)
     db.commit()
     auth.create_login_request(db, binding=BINDING)
     assert db.scalar(select(func.count(OidcLoginRequest.id))) == 1
@@ -241,7 +242,7 @@ def test_limites_pelos_perfis_do_ultimo_login(db):
 def _uso(db, user, quantidade, *, status="success", ha=timedelta(seconds=5)):
     for i in range(quantidade):
         db.add(AiUsage(user_id=user.id, request_id=f"r-{status}-{i}-{ha.total_seconds()}", status=status,
-                       created_at=datetime.utcnow() - ha))
+                       created_at=utcnow() - ha))
     db.commit()
 
 

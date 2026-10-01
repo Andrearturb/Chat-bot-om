@@ -8,14 +8,13 @@ perfil visto e se há sessão ativa.
 
 from __future__ import annotations
 
-from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_permission
-from app.core.dates import iso_utc
+from app.core.dates import utcnow, iso_utc
 from app.db.session import get_db
 from app.models.auth import AppUser, UserSession
 from app.services.permissions import primary_profile
@@ -46,7 +45,7 @@ def _one_per_person(users: list[AppUser]) -> list[AppUser]:
 
 @router.get("")
 def list_users(db: Session = Depends(get_db)) -> list[dict]:
-    now = datetime.utcnow()
+    now = utcnow()
     with_session = set(db.scalars(
         select(UserSession.user_id).where(
             UserSession.revoked_at.is_(None),

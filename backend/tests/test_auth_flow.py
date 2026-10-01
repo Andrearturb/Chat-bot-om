@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
+from app.core.dates import utcnow
 from tests.api_harness import TestSession, fastapi_app, reset_database  # antes de qualquer import de app.*
 from app.core import config  # isort: skip
 from app.models.auth import AppUser, OidcLoginRequest, SecurityEvent, UserSession  # isort: skip
@@ -55,7 +56,7 @@ def _count(model, *where) -> int:
 def _age_snapshots() -> None:
     with TestSession() as db:
         for session in db.scalars(select(UserSession)):
-            session.snapshot_refreshed_at = datetime.utcnow() - timedelta(minutes=6)
+            session.snapshot_refreshed_at = utcnow() - timedelta(minutes=6)
         db.commit()
 
 

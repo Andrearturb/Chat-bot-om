@@ -51,6 +51,7 @@ import app.models.service  # noqa: F401,E402
 import app.models.store_document  # noqa: F401,E402
 import app.models.upload  # noqa: F401,E402
 import app.models.water_asset  # noqa: F401,E402
+from app.core.dates import utcnow
 from app.core import config  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.db.session import get_db  # noqa: E402
@@ -88,7 +89,7 @@ def seed_session(permissions, profiles=("ANALISTA",), email: str = "api@test.com
         user = AppUser(email=email, display_name="API Test", last_profiles=list(profiles))
         db.add(user)
         db.flush()
-        token, csrf, now = secrets.token_urlsafe(32), secrets.token_urlsafe(32), datetime.utcnow()
+        token, csrf, now = secrets.token_urlsafe(32), secrets.token_urlsafe(32), utcnow()
         db.add(UserSession(
             user_id=user.id, session_token_hash=hashlib.sha256(token.encode()).hexdigest(),
             csrf_secret=csrf, created_at=now, last_seen_at=now,

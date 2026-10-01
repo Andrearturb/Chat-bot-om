@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from datetime import datetime
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -18,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_permission
-from app.core.dates import iso_utc
+from app.core.dates import utcnow, iso_utc
 from app.core.config import N8N_CHAT_WEBHOOK_URL, N8N_GATEWAY_TOKEN
 from app.db.session import get_db
 from app.models.auth import AiUsage, AppUser, AssistantConversation, AssistantMessage
@@ -95,7 +94,7 @@ def chat(payload: ChatRequest, user: AppUser = Depends(get_current_user),
                         else "Limite diário do assistente atingido."),
         })
 
-    now = datetime.utcnow()
+    now = utcnow()
     if payload.conversation_id:
         conversation = db.scalar(select(AssistantConversation).where(
             AssistantConversation.id == payload.conversation_id,
@@ -135,7 +134,7 @@ def chat(payload: ChatRequest, user: AppUser = Depends(get_current_user),
         raise HTTPException(status_code=503, detail="O assistente está temporariamente indisponível.") from exc
     finally:
         elapsed_ms = int((time.monotonic() - start_ms) * 1000)
-        ai_record.completed_at = datetime.utcnow()
+        ai_record.completed_at = utcnow()
         ai_record.duration_ms = elapsed_ms
         ai_record.status = "error" if error_code else "success"
         if error_code:
@@ -148,9 +147,9 @@ def chat(payload: ChatRequest, user: AppUser = Depends(get_current_user),
         id=str(uuid.uuid4()), conversation_id=conversation.id,
         role="assistant", content=assistant_text,
         response_time=round(time.monotonic() - start_ms, 2),
-        created_at=datetime.utcnow())
+        created_at=utcnow())
     db.add(assistant_msg)
-    conversation.updated_at = datetime.utcnow()
+    conversation.updated_at = utcnow()
     db.commit()
     db.refresh(assistant_msg)
 
@@ -206,5 +205,5 @@ def delete_conversation(conversation_id: str, user: AppUser = Depends(get_curren
         AssistantConversation.user_id == user.id))
     if conv is None:
         raise HTTPException(status_code=404, detail="Conversa não encontrada.")
-    conv.archived_at = datetime.utcnow()
+    conv.archived_at = utcnow()
     db.commit()

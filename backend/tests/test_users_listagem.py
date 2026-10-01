@@ -15,10 +15,11 @@ from datetime import datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.dates import utcnow
 from app.models.auth import AppUser, UserSession
 from tests.api_harness import SESSION_COOKIE, TestSession, fastapi_app, reset_database, seed_session
 
-AGORA = datetime.utcnow()
+AGORA = utcnow()
 
 
 @pytest.fixture(autouse=True)

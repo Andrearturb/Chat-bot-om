@@ -3,6 +3,7 @@ Ponto de entrada da aplicação.
 """
 
 import os
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
@@ -39,12 +40,53 @@ from app.models.auth import (                   # noqa: F401
     AssistantConversation, AssistantMessage, AiUsage, AuditLog, SecurityEvent,
 )
 
-app = FastAPI(title=APP_NAME, version=APP_VERSION)
-
 
 def _scheduler_habilitado() -> bool:
     return os.getenv("TAPE_SYNC_SCHEDULE_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
 
+
+def _check_session_encryption_key() -> None:
+    """Sem chave válida o backend não consegue guardar o refresh token: falha na subida."""
+    if not config.OIDC_ISSUER_URL:
+        return
+    from cryptography.fernet import Fernet
+    try:
+        Fernet(config.SESSION_ENCRYPTION_KEY.encode())
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError(
+            "SESSION_ENCRYPTION_KEY ausente ou inválida. Gere com: python -c "
+            "\"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        ) from exc
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Subida e parada: verifica a chave de sessão, prepara o banco e liga o agendador da Tape."""
+    _check_session_encryption_key()
+
+    Base.metadata.create_all(bind=engine)
+
+    try:
+        from sqlalchemy import text as sa_text
+        with engine.connect() as conn:
+            conn.execute(sa_text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+            conn.commit()
+    except Exception:
+        pass
+
+    if _scheduler_habilitado():
+        app.state.tape_scheduler = criar_agendador_tape()
+        app.state.tape_scheduler.start()
+
+    try:
+        yield
+    finally:
+        scheduler = getattr(app.state, "tape_scheduler", None)
+        if scheduler is not None:
+            scheduler.stop()
+
+
+app = FastAPI(title=APP_NAME, version=APP_VERSION, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -72,49 +114,6 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     if os.getenv("APP_ENV", "development") == "production":
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
     return response
-
-
-def _check_session_encryption_key() -> None:
-    """Sem chave válida o backend não consegue guardar o refresh token: falha na subida."""
-    if not config.OIDC_ISSUER_URL:
-        return
-    from cryptography.fernet import Fernet
-    try:
-        Fernet(config.SESSION_ENCRYPTION_KEY.encode())
-    except (ValueError, TypeError) as exc:
-        raise RuntimeError(
-            "SESSION_ENCRYPTION_KEY ausente ou inválida. Gere com: python -c "
-            "\"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
-        ) from exc
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    import logging
-    logger = logging.getLogger(__name__)
-
-    _check_session_encryption_key()
-
-    Base.metadata.create_all(bind=engine)
-
-    try:
-        from sqlalchemy import text as sa_text
-        with engine.connect() as conn:
-            conn.execute(sa_text("CREATE EXTENSION IF NOT EXISTS unaccent"))
-            conn.commit()
-    except Exception:
-        pass
-
-    if _scheduler_habilitado():
-        app.state.tape_scheduler = criar_agendador_tape()
-        app.state.tape_scheduler.start()
-
-
-@app.on_event("shutdown")
-def on_shutdown() -> None:
-    scheduler = getattr(app.state, "tape_scheduler", None)
-    if scheduler is not None:
-        scheduler.stop()
 
 
 app.include_router(auth_router)

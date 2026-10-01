@@ -21,6 +21,7 @@ from typing import NoReturn
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.dates import utcnow
 from app.core import config
 from app.models.auth import AppUser, OidcIdentity, UserSession
 from app.services import oidc
@@ -94,7 +95,7 @@ def _lock_session(db: Session, session_id: int) -> UserSession | None:
 
 def ensure_fresh_snapshot(db: Session, session: UserSession) -> UserSession:
     """Devolve a sessão com o retrato em dia ou levanta ``SessionRevoked``."""
-    now = datetime.utcnow()
+    now = utcnow()
     if _is_fresh(session, now):
         return session
     if _retry_throttled(session, now):

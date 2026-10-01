@@ -101,3 +101,14 @@ def test_opcoes_e_filtros_exigem_sessao_e_permissao(lojas):
     sem_sessao = TestClient(fastapi_app, raise_server_exceptions=False)
     assert sem_sessao.get("/assets/stores/options").status_code == 401
     assert cliente(["assistant.use"]).get("/assets/stores/options").status_code == 403
+
+
+def test_variantes_de_grafia_da_praca_valem_como_a_mesma(lojas):
+    db = TestSession()
+    db.add(AssetStore(store_key="b1", store_name="Ribeira", praca="Sao  Luis", bpcs_number="201", sap_number="B1"))
+    db.add(AssetStore(store_key="b2", store_name="Cohama", praca="São Luís", bpcs_number="202", sap_number="B2"))
+    db.commit()
+    db.close()
+    assert nomes(cliente().get("/assets/stores", params=[("praca", "São Luís")])) == ["Cohama", "Ribeira"]
+    assert nomes(cliente().get("/assets/stores", params=[("praca", "sao luis")])) == ["Cohama", "Ribeira"]
+    assert nomes(cliente().get("/assets/stores", params=[("praca", "São Luís"), ("praca", "Sao  Luis")])) == ["Cohama", "Ribeira"]

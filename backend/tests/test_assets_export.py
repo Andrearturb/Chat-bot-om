@@ -215,3 +215,14 @@ def test_exige_sessao_e_permissao(lojas):
     sem_permissao = cliente(["assistant.use"])
     assert sem_permissao.get("/assets/export").status_code == 403
     assert sem_permissao.get("/assets/export/preview").status_code == 403
+
+
+def test_caracteres_de_controle_nao_derrubam_a_exportacao(lojas):
+    db = TestSession()
+    db.add(ClimateAsset(store_id=lojas["Midway"], asset_code="CLI-0009", equipment_type="Split",
+                        location="Sala\x0b2", notes="linha\x00 colada\x1f do Word"))
+    db.commit()
+    db.close()
+    ws = planilha(baixar())["Climatização"]
+    linha = next(r for r in ws.iter_rows(min_row=2) if r[4].value == "CLI-0009")
+    assert linha[6].value == "Sala2" and linha[16].value == "linha colada do Word"

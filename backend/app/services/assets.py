@@ -355,16 +355,6 @@ def get_store_filters(db: Session) -> dict[str, list[str]]:
     return {"pracas": sorted(unique.values(), key=lambda item: normalize_key(item))}
 
 
-def _clean_pracas(praca: str | None, pracas: list[str] | None) -> list[str]:
-    """Junta a praça única (antiga) com a lista; sem repetição por caixa/espaços."""
-    unique: dict[str, str] = {}
-    for value in [*(pracas or []), *([praca] if praca else [])]:
-        text = (value or "").strip()
-        if text:
-            unique.setdefault(normalize_key(text), text)
-    return list(unique.values())
-
-
 def apply_store_filters(
     query,
     db: Session,
@@ -398,11 +388,11 @@ def apply_store_filters(
                 AssetStore.sap_number.ilike(pattern),
                 AssetStore.praca.ilike(pattern),
             ))
-    selected = _clean_pracas(praca, pracas)
-    if selected:
-        query = query.where(or_(*[
-            func.lower(func.trim(AssetStore.praca)) == func.lower(func.trim(value)) for value in selected
-        ]))
+    wanted = {normalize_key(value) for value in [*(pracas or []), *([praca] if praca else [])] if value and value.strip()}
+    if wanted:
+        # Mesma regra de get_store_filters: grafias da praça que normalizam igual valem como uma só.
+        stored = db.scalars(select(AssetStore.praca).where(AssetStore.praca.is_not(None)).distinct()).all()
+        query = query.where(AssetStore.praca.in_([value for value in stored if normalize_key(value) in wanted]))
     if store_ids:
         query = query.where(AssetStore.id.in_(store_ids))
     return query

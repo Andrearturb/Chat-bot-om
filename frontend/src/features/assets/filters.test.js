@@ -77,3 +77,11 @@ test('resumo da exportação só cita os tipos escolhidos', () => {
   assert.equal(exportSummary(previa, ['water']), '12 lojas · 3 água')
   assert.equal(exportSummary({ stores: 1, climatization: 0, fire_safety: 0, water: 0 }, ['water']), '1 loja · 0 água')
 })
+
+test('praça: espaços e pontuação diferentes valem como a mesma (igual ao servidor)', () => {
+  assert.ok(samePraca('São  Luís', 'Sao Luis'))
+  assert.ok(samePraca('sao-luis', 'São Luís'))
+  assert.ok(!samePraca('São Luís', 'Luís'))
+  const lojas = [{ id: 9, name: 'Ribeira', praca: 'Sao  Luis', bpcs: '1', sap: '1' }]
+  assert.deepEqual(storesForPracas(lojas, ['São Luís']).map(o => o.id), [9])
+})

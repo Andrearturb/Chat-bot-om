@@ -12,8 +12,13 @@ export function normalize(text) {
   return String(text ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 }
 
+/** Mesma regra do servidor (normalize_key): sem acento, caixa, espaços ou pontuação. */
+function pracaKey(text) {
+  return normalize(text).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
 export function samePraca(a, b) {
-  return normalize(a) === normalize(b)
+  return pracaKey(a) === pracaKey(b)
 }
 
 export function isFiltered(filters) {

@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from sqlalchemy import func, select
@@ -109,7 +110,7 @@ def _write(ws, row: int, column: int, value, kind: str) -> None:
     elif kind == "int" and isinstance(value, (int, float)):
         cell.value = value
     else:
-        cell.value = str(value)
+        cell.value = ILLEGAL_CHARACTERS_RE.sub("", str(value))
         cell.data_type = "s"   # sempre texto: o que começa com = + - @ nunca vira fórmula
 
 

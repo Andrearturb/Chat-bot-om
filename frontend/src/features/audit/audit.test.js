@@ -46,3 +46,10 @@ test('data inválida não quebra a tela', () => {
   assert.equal(formatDateTime('lixo'), '—')
   assert.match(formatDateTime('2026-10-01T03:40:42Z'), /\d{2}\/\d{2}\/\d{4}/)
 })
+
+test('exportação de ativos aparece na auditoria com o resumo', () => {
+  assert.equal(actionLabel('ASSET_EXPORT'), 'Exportou ativos')
+  assert.equal(entityLabel('asset_export'), 'Ativos')
+  assert.equal(describeLog({ new_values: { stores: 12, assets: 52 } }), '12 lojas · 52 equipamentos')
+  assert.equal(describeLog({ new_values: { stores: 1, assets: 1 } }), '1 loja · 1 equipamento')
+})

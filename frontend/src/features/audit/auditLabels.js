@@ -12,6 +12,7 @@ export const ACTION_LABELS = {
   DOCUMENT_VIEW: 'Visualizou documento',
   DOCUMENT_DOWNLOAD: 'Baixou documento',
   SYNC_TAPE: 'Sincronizou a Tape',
+  ASSET_EXPORT: 'Exportou ativos',
 }
 
 export const ENTITY_LABELS = {
@@ -21,6 +22,7 @@ export const ENTITY_LABELS = {
   water_asset: 'Água',
   store_document: 'Documento',
   upload: 'Importação',
+  asset_export: 'Ativos',
 }
 
 /** Texto de uma ação: o rótulo conhecido ou, para códigos novos, o código escrito por extenso. */
@@ -40,6 +42,10 @@ export function entityLabel(type) {
 export function describeLog(log) {
   const values = { ...(log.old_values || {}), ...(log.new_values || {}) }
   const parts = [log.store_name, values.asset_code, values.filename].filter(Boolean)
+  if (values.stores != null) {
+    parts.push(`${values.stores} ${values.stores === 1 ? 'loja' : 'lojas'}`)
+    if (values.assets != null) parts.push(`${values.assets} ${values.assets === 1 ? 'equipamento' : 'equipamentos'}`)
+  }
   return parts.length ? parts.join(' · ') : '—'
 }
 

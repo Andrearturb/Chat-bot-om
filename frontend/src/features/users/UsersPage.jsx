@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import mascot from '../../assets/gentileza-indicadores.png'
+import mascot from '../../assets/gentileza-indicadores.webp'
 import { fetchUsers } from './api.js'
 import { ProfileBadge, SessionBadge, UserAvatar, UsersIcon } from './components/UserVisuals.jsx'
 import {

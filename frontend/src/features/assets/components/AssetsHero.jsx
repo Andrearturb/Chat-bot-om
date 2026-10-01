@@ -1,4 +1,4 @@
-import mascot from "../../../assets/gentileza-indicadores.png";
+import mascot from "../../../assets/gentileza-indicadores.webp";
 
 function IconStore() {
   return (

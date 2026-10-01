@@ -6,8 +6,6 @@ import ConversationHistory from './components/ConversationHistory'
 import HeroAssistant from './components/HeroAssistant'
 import Sidebar from './components/Sidebar'
 import SuggestionChips from './components/SuggestionChips'
-import IndicatorsPage from './features/indicators/IndicatorsPage'
-import AssetsPage from './features/assets/AssetsPage'
 import SettingsModal from './features/settings/SettingsModal'
 
 import { AuthProvider, useAuth } from './features/auth/AuthProvider.jsx'
@@ -17,6 +15,9 @@ import AuthLoading from './features/auth/AuthLoading.jsx'
 import UserMenu from './features/auth/UserMenu.jsx'
 import { api } from './lib/apiClient.js'
 
+// Telas pesadas (gráficos, planilhas) só baixam quando a pessoa as abre.
+const IndicatorsPage = lazy(() => import('./features/indicators/IndicatorsPage'))
+const AssetsPage = lazy(() => import('./features/assets/AssetsPage'))
 const UsersPage = lazy(() => import('./features/users/UsersPage.jsx'))
 const AuditModal = lazy(() => import('./features/audit/AuditModal.jsx'))
 
@@ -273,9 +274,13 @@ function AppShell() {
           ) : section === 'assistant' && !canUseAssistant ? (
             <div className="permission-denied"><p>Você não tem permissão para usar o assistente.</p></div>
           ) : section === 'indicators' && canSeeIndicators ? (
-            <IndicatorsPage activeIndicator={activeIndicator} onIndicatorChange={setActiveIndicator} />
+            <Suspense fallback={<div className="permission-denied" role="status">Carregando indicadores...</div>}>
+              <IndicatorsPage activeIndicator={activeIndicator} onIndicatorChange={setActiveIndicator} />
+            </Suspense>
           ) : section === 'assets' && canSeeAssets ? (
-            <AssetsPage />
+            <Suspense fallback={<div className="permission-denied" role="status">Carregando ativos...</div>}>
+              <AssetsPage />
+            </Suspense>
           ) : section === 'users' && canViewUsers ? (
             <Suspense fallback={<div className="permission-denied" role="status">Carregando usuários...</div>}>
               <UsersPage currentUserId={user?.id} consoleUrl={keycloakConsoleUrl} />

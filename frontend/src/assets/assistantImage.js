@@ -1,10 +1,4 @@
-import jpegFallback from './assistente-obras.jpeg'
+// Imagem do assistente (WebP com transparência, ~140 KB).
+import assistantImage from './assistente-obras.webp'
 
-const transparentAssets = import.meta.glob('./assistente-obras.png', {
-  eager: true,
-  import: 'default',
-  query: '?url',
-})
-
-export const assistantImage = transparentAssets['./assistente-obras.png'] || jpegFallback
-export const hasTransparentAssistant = Boolean(transparentAssets['./assistente-obras.png'])
+export { assistantImage }

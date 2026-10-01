@@ -18,7 +18,7 @@ import {
   buildSupplierProductivity,
   defaultFilters,
 } from './utils/dashboardData'
-import indicatorsMascot from '../../assets/gentileza-indicadores.png'
+import indicatorsMascot from '../../assets/gentileza-indicadores.webp'
 import './indicators.css'
 
 const PERFORMANCE_STATE_KEY = 'gentileza-indicators-performance-v1'

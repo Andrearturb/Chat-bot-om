@@ -15,6 +15,11 @@ SQLAlchemy==2.0.48
 psycopg[binary]==3.3.6
 greenlet==3.3.2
 
+# Migrações do banco (Alembic)
+alembic==1.20.0
+Mako==1.4.3
+MarkupSafe==3.0.3
+
 # Importação de planilhas e consultas estruturadas
 pandas==3.0.1
 numpy==2.4.2

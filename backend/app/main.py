@@ -24,21 +24,11 @@ from app.api.routes.users import router as users_router
 from app.api.routes.audit import router as audit_router
 from app.core import config
 from app.core.config import APP_NAME, APP_VERSION, FRONTEND_ORIGINS
-from app.db.base import Base
+from app.db.migrations import run_migrations
 from app.db.session import engine
 from app.tasks.tape_scheduler import criar_agendador_tape
 
-from app.models.service import Service          # noqa: F401
-from app.models.upload import Upload            # noqa: F401
-from app.models.asset_store import AssetStore   # noqa: F401
-from app.models.climate_asset import ClimateAsset  # noqa: F401
-from app.models.fire_asset import FireAsset     # noqa: F401
-from app.models.store_document import StoreDocument  # noqa: F401
-from app.models.water_asset import WaterAsset   # noqa: F401
-from app.models.auth import (                   # noqa: F401
-    AppUser, OidcIdentity, OidcLoginRequest, UserSession,
-    AssistantConversation, AssistantMessage, AiUsage, AuditLog, SecurityEvent,
-)
+import app.models.registry  # noqa: F401  (registra todos os modelos em Base.metadata)
 
 
 def _scheduler_habilitado() -> bool:
@@ -64,7 +54,7 @@ async def lifespan(app: FastAPI):
     """Subida e parada: verifica a chave de sessão, prepara o banco e liga o agendador da Tape."""
     _check_session_encryption_key()
 
-    Base.metadata.create_all(bind=engine)
+    run_migrations(engine)
 
     try:
         from sqlalchemy import text as sa_text

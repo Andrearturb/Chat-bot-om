@@ -356,16 +356,12 @@ def test_startup_verifica_a_chave_antes_de_tocar_no_banco(provider, monkeypatch)
         calls.append("check")
         raise RuntimeError("sentinela")
 
-    class _Metadata:
-        @staticmethod
-        def create_all(**kwargs) -> None:
-            calls.append("create_all")
-
-    class _Base:
-        metadata = _Metadata
+    def migrar(engine) -> str:
+        calls.append("migrations")
+        return "migrado"
 
     monkeypatch.setattr(main, "_check_session_encryption_key", chave_recusada)
-    monkeypatch.setattr(main, "Base", _Base)
+    monkeypatch.setattr(main, "run_migrations", migrar)
     with pytest.raises(RuntimeError, match="sentinela"):
         with TestClient(fastapi_app):
             pass

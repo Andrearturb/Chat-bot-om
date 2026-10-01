@@ -57,6 +57,8 @@ services:
         condition: service_healthy
     volumes:
       - asset_documents_data:/app/storage/assets_documents
+      # Novas migrações criadas dentro do container (alembic revision) caem no repositório.
+      - ./backend/migrations:/app/migrations
     ports:
       - "127.0.0.1:8040:8000"
     # Permite que o container resolva "localhost" como o host Docker

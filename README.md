@@ -21,6 +21,18 @@ O login e os perfis vêm do Keycloak do repositório irmão **keycloak-central**
 3. `docker compose up -d --build`
 4. Abra http://localhost:5173 e entre com um usuário DEV (as senhas ficam no `.env` do keycloak-central).
 
+## Banco de dados e migrações
+
+O esquema é versionado com Alembic (`backend/migrations/`). Ao subir, o backend aplica as migrações pendentes; um banco criado antes do Alembic é adotado sem perder dados.
+
+Para mudar um modelo:
+
+1. Edite o modelo em `backend/app/models/`.
+2. `docker compose exec backend alembic revision --autogenerate -m "o que mudou"` — o arquivo aparece em `backend/migrations/versions/`; revise-o antes de seguir.
+3. `docker compose restart backend` (ou `docker compose exec backend alembic upgrade head`) aplica a migração.
+
+O teste `backend/tests/test_migracoes.py` falha se um modelo mudar sem a migração correspondente.
+
 ## Testes
 
 - Backend: `cd backend && ../.venv/Scripts/python.exe -m pytest -q`

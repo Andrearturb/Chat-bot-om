@@ -2247,3 +2247,103 @@
     justify-content: flex-start;
   }
 }
+
+/* ── Janela "Exportar ativos" ─────────────────────────────────────────── */
+.assets-export {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 26px;
+  color: var(--assets-ink);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(7, 26, 48, 0.28);
+}
+
+.assets-export__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.assets-export__header h2 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+
+.assets-export__close {
+  width: 34px;
+  height: 34px;
+  color: var(--assets-muted);
+  border: 0;
+  border-radius: 10px;
+  background: #f4f7fb;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.assets-export__group {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+
+.assets-export__group legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--assets-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.assets-export__group label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--assets-border);
+  border-radius: 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.assets-export__group label.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.assets-export__hint,
+.assets-export__error {
+  margin: 0;
+  font-size: 13px;
+}
+
+.assets-export__hint {
+  color: #914c55;
+}
+
+.assets-export__error {
+  padding: 9px 12px;
+  color: #914c55;
+  border: 1px solid #f0ced2;
+  border-radius: 10px;
+  background: #fff7f8;
+}
+
+.assets-export__summary {
+  min-height: 22px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  color: #0b7270;
+  border-radius: 12px;
+  background: #f1fbfa;
+  font-size: 13px;
+  font-weight: 700;
+}

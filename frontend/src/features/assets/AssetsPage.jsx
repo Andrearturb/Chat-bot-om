@@ -16,6 +16,7 @@ import "./assets.css";
 import { AssetForm, DocumentForm } from "./components/AssetForms";
 import { AssetFilters } from "./components/AssetFilters";
 import { AssetsHero } from "./components/AssetsHero";
+import { ExportDialog } from "./components/ExportDialog";
 import { EMPTY_FILTERS, isFiltered } from "./filters";
 import { AssetGlyph, CategoryPanel, DocumentsPanel, Toast } from "./components/AssetPanels";
 
@@ -117,6 +118,7 @@ export default function AssetsPage() {
   const [tab, setTab] = useState("overview");
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [storeOptions, setStoreOptions] = useState([]);
+  const [exportOpen, setExportOpen] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(true);
@@ -303,6 +305,15 @@ export default function AssetsPage() {
   return (
     <section className="assets-page" aria-label="Central de Ativos">
       <Toast toast={toast} />
+      {exportOpen ? (
+        <ExportDialog
+          filters={filters}
+          filteredCount={stores.length}
+          totalCount={storeOptions.length}
+          onClose={() => setExportOpen(false)}
+          onToast={setToast}
+        />
+      ) : null}
 
       {!selectedStore ? (
         <>
@@ -315,7 +326,12 @@ export default function AssetsPage() {
                 <h2 id="stores-heading">Lojas</h2>
                 <p>Encontre a loja e acesse rapidamente seus equipamentos e documentos.</p>
               </div>
-              <span className="assets-section-mark" aria-hidden="true">● Base centralizada</span>
+              <div className="assets-section-actions">
+                <button className="assets-button assets-button--quiet" type="button" onClick={() => setExportOpen(true)}>
+                  Exportar
+                </button>
+                <span className="assets-section-mark" aria-hidden="true">● Base centralizada</span>
+              </div>
             </div>
 
             <AssetFilters

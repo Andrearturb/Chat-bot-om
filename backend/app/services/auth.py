@@ -19,6 +19,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core import config
+from app.core.dates import iso_utc
 from app.models.auth import (
     AiUsage,
     AppUser,
@@ -296,14 +297,14 @@ def check_ai_rate_limit(db: Session, user: AppUser) -> dict[str, Any]:
         "daily_limit": daily_limit,
         "used_this_minute": used_this_minute,
         "per_minute_limit": per_min_limit,
-        "resets_at": (today_start + timedelta(days=1)).isoformat(),
+        "resets_at": iso_utc(today_start + timedelta(days=1)),
         "reason": None,
     }
     if used_today >= daily_limit:
         result.update(allowed=False, reason="daily_limit")
     elif used_this_minute >= per_min_limit:
         result.update(allowed=False, reason="per_minute_limit",
-                      resets_at=(now + timedelta(seconds=60)).isoformat())
+                      resets_at=iso_utc(now + timedelta(seconds=60)))
     return result
 
 

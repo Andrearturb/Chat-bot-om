@@ -1,84 +1,132 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../../lib/apiClient.js'
+import {
+  actionLabel, actionOptions, dayEndUtc, dayStartUtc, describeLog, entityLabel, formatDateTime,
+} from './auditLabels.js'
 import './audit.css'
 
-const actionLabel = {
-  ASSET_CREATE: 'Criou ativo', ASSET_UPDATE: 'Editou ativo', ASSET_DELETE: 'Excluiu ativo',
-  DOCUMENT_UPLOAD: 'Upload doc.', DOCUMENT_REPLACE: 'Substituiu doc.', DOCUMENT_DELETE: 'Excluiu doc.',
-  DOCUMENT_VIEW: 'Visualizou doc.', DOCUMENT_DOWNLOAD: 'Download doc.',
-  USER_ACTIVATE: 'Ativou usuário', USER_DISABLE: 'Desativou usuário',
-  USER_ROLE_CHANGE: 'Alterou perfil', USER_PERMISSION_OVERRIDE: 'Override permissão',
-  USER_AI_LIMIT_CHANGE: 'Alterou limite IA', LOGIN_SUCCESS: 'Login', LOGOUT: 'Logout',
-  SYNC_TAPE: 'Sincronizou Tape',
-}
+const PAGE_SIZE = 50
+const NO_FILTERS = { action: '', dateFrom: '', dateTo: '' }
 
 export default function AuditModal({ onClose }) {
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [filters, setFilters] = useState({ action: '', date_from: '', date_to: '' })
+  const [error, setError] = useState('')
+  const [filters, setFilters] = useState(NO_FILTERS)
+  const [actions, setActions] = useState([])
   const [page, setPage] = useState(1)
+  const closeRef = useRef(null)
+
+  // Esc fecha; o foco começa no botão de fechar (como nas Configurações).
+  useEffect(() => {
+    closeRef.current?.focus()
+    const onKeyDown = event => { if (event.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  useEffect(() => {
+    api.get('/audit/actions').then(codes => setActions(actionOptions(codes))).catch(() => setActions([]))
+  }, [])
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true); setError(null)
-    const p = new URLSearchParams({ page: String(page), page_size: '50' })
-    if (filters.action) p.set('action', filters.action)
-    if (filters.date_from) p.set('date_from', filters.date_from)
-    if (filters.date_to) p.set('date_to', filters.date_to)
-    api.get(`/audit/logs?${p}`)
-      .then(d => { if (!cancelled) { setLogs(d?.logs || []); setLoading(false) } })
-      .catch(e => { if (!cancelled) { setError(e.message); setLoading(false) } })
+    setLoading(true)
+    setError('')
+    const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) })
+    if (filters.action) params.set('action', filters.action)
+    if (filters.dateFrom) params.set('date_from', dayStartUtc(filters.dateFrom))
+    if (filters.dateTo) params.set('date_to', dayEndUtc(filters.dateTo))
+    api.get(`/audit/logs?${params}`)
+      .then(data => { if (!cancelled) { setLogs(data?.logs || []); setLoading(false) } })
+      .catch(failure => { if (!cancelled) { setError(failure.message || 'Não foi possível carregar a auditoria.'); setLoading(false) } })
     return () => { cancelled = true }
   }, [page, filters])
 
+  function changeFilter(name, value) {
+    setFilters(previous => ({ ...previous, [name]: value }))
+    setPage(1)
+  }
+
+  const hasFilters = Boolean(filters.action || filters.dateFrom || filters.dateTo)
+
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Auditoria">
-      <div className="modal-panel modal-panel--wide">
-        <div className="modal-header">
-          <h2 className="modal-title">Auditoria</h2>
-          <button className="modal-close" type="button" onClick={onClose} aria-label="Fechar">✕</button>
-        </div>
+    <div
+      className="audit-overlay"
+      role="presentation"
+      onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}
+    >
+      <section className="audit-modal" role="dialog" aria-modal="true" aria-labelledby="audit-title">
+        <header className="audit-header">
+          <div>
+            <p className="audit-kicker">Segurança</p>
+            <h2 id="audit-title">Auditoria</h2>
+            <p className="audit-subtitle">Quem fez o quê no sistema, do mais recente para o mais antigo.</p>
+          </div>
+          <button ref={closeRef} className="audit-close" type="button" onClick={onClose} aria-label="Fechar auditoria">×</button>
+        </header>
+
         <div className="audit-filters">
-          <input className="audit-input" type="text" placeholder="Ação (ex: ASSET_CREATE)"
-                 value={filters.action} onChange={e => { setFilters(f => ({ ...f, action: e.target.value })); setPage(1) }} />
-          <input className="audit-input" type="datetime-local" title="De"
-                 value={filters.date_from} onChange={e => { setFilters(f => ({ ...f, date_from: e.target.value })); setPage(1) }} />
-          <input className="audit-input" type="datetime-local" title="Até"
-                 value={filters.date_to} onChange={e => { setFilters(f => ({ ...f, date_to: e.target.value })); setPage(1) }} />
+          <label className="audit-field">
+            <span>Ação</span>
+            <select value={filters.action} onChange={event => changeFilter('action', event.target.value)}>
+              <option value="">Todas as ações</option>
+              {actions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="audit-field">
+            <span>De</span>
+            <input type="date" value={filters.dateFrom} max={filters.dateTo || undefined}
+                   onChange={event => changeFilter('dateFrom', event.target.value)} />
+          </label>
+          <label className="audit-field">
+            <span>Até</span>
+            <input type="date" value={filters.dateTo} min={filters.dateFrom || undefined}
+                   onChange={event => changeFilter('dateTo', event.target.value)} />
+          </label>
+          {hasFilters && (
+            <button className="audit-clear" type="button" onClick={() => { setFilters(NO_FILTERS); setPage(1) }}>
+              Limpar filtros
+            </button>
+          )}
         </div>
-        {loading && <div className="modal-loading">Carregando logs…</div>}
-        {error && <div className="modal-error">{error}</div>}
+
+        {loading && <p className="audit-state" role="status">Carregando registros…</p>}
+        {error && <p className="audit-state audit-state--error" role="alert">{error}</p>}
+
         {!loading && !error && (
           <>
-            <div className="audit-table-wrapper">
-              <table className="audit-table">
-                <thead>
-                  <tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Entidade</th><th>ID</th></tr>
-                </thead>
-                <tbody>
-                  {logs.length === 0
-                    ? <tr><td colSpan={5} style={{ textAlign: 'center', opacity: .5 }}>Nenhum registro encontrado.</td></tr>
-                    : logs.map(log => (
+            {logs.length === 0 ? (
+              <p className="audit-state">Nenhum registro encontrado{hasFilters ? ' para esses filtros' : ''}.</p>
+            ) : (
+              <div className="audit-table-wrapper">
+                <table className="audit-table">
+                  <thead>
+                    <tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Onde</th><th>Detalhe</th></tr>
+                  </thead>
+                  <tbody>
+                    {logs.map(log => (
                       <tr key={log.id}>
-                        <td className="audit-table__date">{new Date(log.created_at).toLocaleString('pt-BR')}</td>
-                        <td>{log.user_display || (log.user_id ? `#${log.user_id}` : '—')}</td>
-                        <td><span className="audit-action">{actionLabel[log.action] || log.action}</span></td>
-                        <td>{log.entity_type || '—'}</td>
-                        <td className="audit-table__date">{log.entity_id || '—'}</td>
+                        <td data-label="Quando" className="audit-table__date">{formatDateTime(log.created_at)}</td>
+                        <td data-label="Quem">{log.user_display || (log.user_id ? `Usuário ${log.user_id}` : 'Sistema')}</td>
+                        <td data-label="Ação"><span className="audit-action">{actionLabel(log.action)}</span></td>
+                        <td data-label="Onde">{entityLabel(log.entity_type)}</td>
+                        <td data-label="Detalhe" className="audit-table__detail">{describeLog(log)}</td>
                       </tr>
                     ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="audit-pagination">
-              <button className="action-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Anterior</button>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <footer className="audit-pagination">
+              <button type="button" disabled={page === 1} onClick={() => setPage(value => value - 1)}>← Anterior</button>
               <span>Página {page}</span>
-              <button className="action-btn" disabled={logs.length < 50} onClick={() => setPage(p => p + 1)}>Próxima →</button>
-            </div>
+              <button type="button" disabled={logs.length < PAGE_SIZE} onClick={() => setPage(value => value + 1)}>Próxima →</button>
+            </footer>
           </>
         )}
-      </div>
+      </section>
     </div>
   )
 }

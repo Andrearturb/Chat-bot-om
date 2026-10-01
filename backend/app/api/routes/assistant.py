@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_permission
+from app.core.dates import iso_utc
 from app.core.config import N8N_CHAT_WEBHOOK_URL, N8N_GATEWAY_TOKEN
 from app.db.session import get_db
 from app.models.auth import AiUsage, AppUser, AssistantConversation, AssistantMessage
@@ -158,7 +159,7 @@ def chat(payload: ChatRequest, user: AppUser = Depends(get_current_user),
         conversation_id=conversation.id,
         message=MessageOut(id=assistant_msg.id, role=assistant_msg.role, content=assistant_msg.content,
                            response_time=assistant_msg.response_time,
-                           created_at=assistant_msg.created_at.isoformat()),
+                           created_at=iso_utc(assistant_msg.created_at)),
         ai_usage={"used_today": updated_rate["used_today"], "daily_limit": updated_rate["daily_limit"],
                   "remaining": max(0, updated_rate["daily_limit"] - updated_rate["used_today"]),
                   "resets_at": updated_rate["resets_at"]},
@@ -173,8 +174,8 @@ def list_conversations(user: AppUser = Depends(get_current_user), db: Session = 
         AssistantConversation.archived_at.is_(None))
         .order_by(AssistantConversation.updated_at.desc()).limit(100)).all()
     return [ConversationListItem(id=c.id, title=c.title,
-                                 created_at=c.created_at.isoformat(),
-                                 updated_at=c.updated_at.isoformat()) for c in convs]
+                                 created_at=iso_utc(c.created_at),
+                                 updated_at=iso_utc(c.updated_at)) for c in convs]
 
 
 @router.get("/conversations/{conversation_id}",
@@ -189,10 +190,10 @@ def get_conversation(conversation_id: str, user: AppUser = Depends(get_current_u
     msgs = db.scalars(select(AssistantMessage).where(
         AssistantMessage.conversation_id == conversation_id)
         .order_by(AssistantMessage.created_at.asc())).all()
-    return {"id": conv.id, "title": conv.title, "created_at": conv.created_at.isoformat(),
-            "updated_at": conv.updated_at.isoformat(),
+    return {"id": conv.id, "title": conv.title, "created_at": iso_utc(conv.created_at),
+            "updated_at": iso_utc(conv.updated_at),
             "messages": [{"id": m.id, "role": m.role, "content": m.content,
-                          "response_time": m.response_time, "created_at": m.created_at.isoformat()}
+                          "response_time": m.response_time, "created_at": iso_utc(m.created_at)}
                          for m in msgs]}
 
 

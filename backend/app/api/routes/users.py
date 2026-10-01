@@ -15,16 +15,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_permission
+from app.core.dates import iso_utc
 from app.db.session import get_db
 from app.models.auth import AppUser, UserSession
 from app.services.permissions import primary_profile
 
 router = APIRouter(prefix="/users", tags=["Users"], dependencies=[Depends(require_permission("users.view"))])
-
-
-def _iso(value: datetime | None) -> str | None:
-    # Datas gravadas em UTC sem fuso: explicita o "Z" para o navegador.
-    return value.isoformat() + "Z" if value else None
 
 
 @router.get("")
@@ -46,8 +42,8 @@ def list_users(db: Session = Depends(get_db)) -> list[dict]:
             "username": user.username,
             "profile": primary_profile(user.last_profiles or []),
             "profiles": list(user.last_profiles or []),
-            "last_seen_at": _iso(user.last_seen_at),
-            "created_at": _iso(user.created_at),
+            "last_seen_at": iso_utc(user.last_seen_at),
+            "created_at": iso_utc(user.created_at),
             "active_session": user.id in with_session,
         }
         for user in users

@@ -1,62 +1,303 @@
+/* Auditoria — mesma identidade das Configurações (janela clara, cantos arredondados). */
+.audit-overlay {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(10, 20, 43, 0.34);
+  backdrop-filter: blur(6px);
+}
+
+.audit-modal {
+  width: min(1020px, calc(100vw - 48px));
+  max-height: min(820px, calc(100dvh - 48px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #182033;
+  border: 1px solid rgba(16, 24, 62, 0.08);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.985);
+  box-shadow: 0 30px 90px rgba(16, 24, 62, 0.22);
+}
+
+.audit-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 30px 8px;
+}
+
+.audit-kicker {
+  margin: 0 0 6px;
+  color: #73809a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.audit-header h2 {
+  margin: 0;
+  color: #10183e;
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+
+.audit-subtitle {
+  margin: 6px 0 0;
+  color: #73809a;
+  font-size: 14px;
+}
+
+.audit-close {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  color: #7d899f;
+  border: 0;
+  border-radius: 12px;
+  background: #f4f7fb;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.audit-close:hover,
+.audit-close:focus-visible {
+  color: #10183e;
+  background: #fff7da;
+  outline: none;
+}
+
 .audit-filters {
-  display: flex; gap: .75rem; padding: 1rem 1.5rem;
-  flex-wrap: wrap; border-bottom: 1px solid #2d3148;
-}
-.audit-input {
-  flex: 1; min-width: 160px; background: #161824; border: 1px solid #2d3148;
-  border-radius: 8px; color: #c0ccd8; padding: .5rem .75rem; font-size: .85rem;
-}
-.audit-input:focus { outline: none; border-color: #4f6ef7; }
-.audit-action {
-  display: inline-block; padding: .15rem .5rem; background: rgba(79,110,247,.1);
-  border-radius: 4px; font-size: .78rem; color: #7b9ef7;
-}
-.audit-pagination {
-  display: flex; align-items: center; justify-content: center;
-  gap: 1rem; padding: 1rem; font-size: .85rem; color: #8b9cb0;
-  border-top: 1px solid #2d3148;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 16px 30px 18px;
+  border-bottom: 1px solid #e5eaf2;
 }
 
-/* Estrutura do modal de auditoria (antes compartilhada com o antigo users.css). */
-.modal-overlay {
-  position: fixed; inset: 0; z-index: 2000;
-  background: rgba(0,0,0,.7); display: flex; align-items: flex-start;
-  justify-content: center; padding: 2rem 1rem; overflow-y: auto;
+.audit-field {
+  min-width: 150px;
+  flex: 1 1 170px;
+  display: grid;
+  gap: 5px;
 }
-.modal-panel {
-  background: #1e2130; border: 1px solid #2d3148; border-radius: 14px;
-  width: 100%; max-width: 640px; box-shadow: 0 20px 60px rgba(0,0,0,.6);
-}
-.modal-panel--wide { max-width: 960px; }
-.modal-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1.25rem 1.5rem; border-bottom: 1px solid #2d3148;
-}
-.modal-title { font-size: 1.1rem; font-weight: 600; color: #e8eaf0; margin: 0; }
-.modal-close {
-  background: none; border: none; color: #8b9cb0; font-size: 1rem;
-  cursor: pointer; padding: .25rem .5rem; border-radius: 4px; transition: background .12s, color .12s;
-}
-.modal-close:hover { background: rgba(255,255,255,.08); color: #e8eaf0; }
-.modal-loading, .modal-error { padding: 2rem 1.5rem; text-align: center; color: #8b9cb0; font-size: .9rem; }
-.modal-error { color: #e05c5c; }
 
-.audit-table-wrapper { padding: 0 0 1.5rem; overflow-x: auto; }
-.audit-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.audit-field span {
+  color: #4c5a74;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.audit-field select,
+.audit-field input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  color: #182033;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  background: #fbfcfe;
+  font: inherit;
+  font-size: 14px;
+}
+
+.audit-field select:focus-visible,
+.audit-field input:focus-visible {
+  border-color: #274f9d;
+  outline: 3px solid rgba(39, 79, 157, 0.16);
+}
+
+.audit-clear {
+  min-height: 40px;
+  padding: 0 14px;
+  color: #274f9d;
+  border: 0;
+  border-radius: 12px;
+  background: #eef4ff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.audit-clear:hover,
+.audit-clear:focus-visible {
+  background: #dfeaff;
+  outline: none;
+}
+
+.audit-state {
+  margin: 0;
+  padding: 40px 30px;
+  color: #73809a;
+  text-align: center;
+  font-size: 14px;
+}
+
+.audit-state--error {
+  color: #a34e59;
+}
+
+.audit-table-wrapper {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
 .audit-table th {
-  text-align: left; padding: .6rem .75rem; background: #161824; color: #8b9cb0;
-  font-weight: 600; font-size: .75rem; text-transform: uppercase;
-  letter-spacing: .04em; border-bottom: 1px solid #2d3148;
+  position: sticky;
+  top: 0;
+  padding: 12px 18px;
+  color: #4c5a74;
+  background: #f8fafd;
+  border-bottom: 1px solid #e5eaf2;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
-.audit-table td {
-  padding: .7rem .75rem; color: #c0ccd8;
-  border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle;
-}
-.audit-table__date { font-size: .78rem; white-space: nowrap; }
 
-.action-btn {
-  padding: .3rem .65rem; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
-  border-radius: 6px; color: #c0ccd8; font-size: .78rem; cursor: pointer; transition: background .12s;
+.audit-table th:first-child,
+.audit-table td:first-child {
+  padding-left: 30px;
 }
-.action-btn:hover    { background: rgba(255,255,255,.1); }
-.action-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.audit-table td {
+  padding: 13px 18px;
+  color: #182033;
+  border-bottom: 1px solid #eef2f8;
+  vertical-align: middle;
+}
+
+.audit-table tbody tr:hover {
+  background: #fbfcfe;
+}
+
+.audit-table__date {
+  color: #4c5a74;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.audit-table__detail {
+  color: #73809a;
+}
+
+.audit-action {
+  display: inline-block;
+  padding: 3px 10px;
+  color: #274f9d;
+  border-radius: 999px;
+  background: #eef4ff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.audit-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 14px 30px 18px;
+  color: #73809a;
+  border-top: 1px solid #e5eaf2;
+  font-size: 13px;
+}
+
+.audit-pagination button {
+  min-height: 36px;
+  padding: 0 14px;
+  color: #10183e;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.audit-pagination button:hover:not(:disabled),
+.audit-pagination button:focus-visible {
+  background: #fff7da;
+  border-color: #f5c542;
+  outline: none;
+}
+
+.audit-pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Celular: cada registro vira um cartão (sem tabela cortada nem rolagem lateral). */
+@media (max-width: 760px) {
+  .audit-overlay {
+    padding: 0;
+    align-items: end;
+  }
+
+  .audit-modal {
+    width: 100vw;
+    max-height: 94dvh;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .audit-header,
+  .audit-filters,
+  .audit-pagination {
+    padding-inline: 18px;
+  }
+
+  .audit-table thead {
+    display: none;
+  }
+
+  .audit-table,
+  .audit-table tbody {
+    display: block;
+  }
+
+  .audit-table tr {
+    display: grid;
+    gap: 4px;
+    padding: 12px 18px;
+    border-bottom: 1px solid #eef2f8;
+  }
+
+  .audit-table td,
+  .audit-table td:first-child {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 0;
+    border: 0;
+    text-align: right;
+  }
+
+  .audit-table td::before {
+    content: attr(data-label);
+    flex: none;
+    color: #73809a;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+  }
+}

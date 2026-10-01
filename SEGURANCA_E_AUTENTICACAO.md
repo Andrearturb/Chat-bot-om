@@ -30,11 +30,11 @@
 - Subir, parar, backup, e-mails do DEV (Mailpit) e gestão de acesso: `../keycloak-central/docs/OPERACAO.md`.
 - Usuários DEV: `admin.om`, `analista.om`, `gerente.om`, `diretor.om`, `convidado.om`. As senhas ficam nas variáveis `DEV_*_PASSWORD` do `.env` do `keycloak-central`.
 - Tema de login `gentil-om`: `../keycloak-central/themes/gentil-om`.
-- Console do realm (gestores de acesso): `http://localhost:8081/admin/gentil-dev/console/`.
+- Gestão de usuários (cadastro, liberação, bloqueio, sessões): Painel de acesso do `keycloak-central`, não neste app.
 
 ## OIDC configurável
 
-Tudo vem do `.env` do app: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `OIDC_POST_LOGOUT_REDIRECT_URI` e `KEYCLOAK_CONSOLE_URL`. Trocar de Keycloak é trocar esses valores.
+Tudo vem do `.env` do app: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI` e `OIDC_POST_LOGOUT_REDIRECT_URI`. Trocar de Keycloak é trocar esses valores.
 
 ## BFF (Backend-for-Frontend)
 
@@ -75,8 +75,8 @@ Tudo vem do `.env` do app: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SEC
 
 - **Vínculo de identidade:** somente `issuer + subject` (`oidc_identities`). O e-mail é informativo e nunca é usado para vincular. Uma conta recriada no Keycloak vira um registro novo.
 - **Conta nova:** o autocadastro exige confirmação de e-mail e nasce sem perfil. Um gestor de acesso libera incluindo a pessoa no grupo do perfil.
-- **Gestão de Usuários (Configurações):** consulta somente leitura, com a permissão `users.view`. Mostra quem já entrou, o perfil do último acesso e se há sessão ativa, e tem o botão "Gerenciar no Keycloak".
-- **Bloqueio imediato:** no console, desligar **Enabled** e encerrar as sessões (**Sign out**). Só desligar derruba o acesso em até 5 min.
+- **Gestão de usuários:** fora deste app. Cadastro, liberação, perfil, bloqueio e sessões são feitos no Painel de acesso do `keycloak-central` — o Chat-bot só usa login e os papéis do token.
+- **Bloqueio imediato:** no Painel, desligar a conta e encerrar as sessões. Só desligar derruba o acesso em até 5 min.
 
 ## Perfis e permissões
 
@@ -160,7 +160,7 @@ Strict-Transport-Security: max-age=63072000 (apenas em produção)
 ## Migração para o Keycloak da Gentil
 
 Roteiro e checklist obrigatório: `../keycloak-central/docs/MIGRACAO_TI.md`. No app, basta atualizar o `.env`:
-`OIDC_ISSUER_URL`, `OIDC_CLIENT_SECRET` (novo), `OIDC_REDIRECT_URI`, `OIDC_POST_LOGOUT_REDIRECT_URI`, `KEYCLOAK_CONSOLE_URL`, `SESSION_ENCRYPTION_KEY` (nova) e `SESSION_COOKIE_SECURE=true`.
+`OIDC_ISSUER_URL`, `OIDC_CLIENT_SECRET` (novo), `OIDC_REDIRECT_URI`, `OIDC_POST_LOGOUT_REDIRECT_URI`, `SESSION_ENCRYPTION_KEY` (nova) e `SESSION_COOKIE_SECURE=true`.
 
 ## Variáveis de ambiente relevantes
 
@@ -168,7 +168,6 @@ Roteiro e checklist obrigatório: `../keycloak-central/docs/MIGRACAO_TI.md`. No 
 |---|---|
 | `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | Client `chat-bot-om-bff` no Keycloak |
 | `OIDC_REDIRECT_URI`, `OIDC_POST_LOGOUT_REDIRECT_URI` | Retorno do login e do logout |
-| `KEYCLOAK_CONSOLE_URL` | Link do console para quem tem `users.view` |
 | `SESSION_SECRET`, `SESSION_ENCRYPTION_KEY` | Sessão e cifra do refresh token |
 | `SESSION_COOKIE_SECURE`, `SESSION_IDLE_TIMEOUT_MINUTES`, `SESSION_ABSOLUTE_TIMEOUT_HOURS` | Cookie e tempos da sessão |
 | `FRONTEND_ORIGINS` | CORS e destino após o login |

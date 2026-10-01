@@ -142,15 +142,17 @@ def ensure_fresh_snapshot(db: Session, session: UserSession) -> UserSession:
     except oidc.OidcError as exc:
         _revoke(db, locked, exc.code)
 
+    # O provedor pode manter o refresh token atual sem repeti-lo na resposta.
+    next_refresh_token = tokens.refresh_token or refresh_token
     snapshot = snapshot_from_roles(oidc.roles_from_access_claims(tokens.access_claims))
     if not snapshot.has_access:
         # Revoga e confirma localmente ANTES da chamada de rede (melhor esforço): a
         # trava da linha é liberada e nenhuma conexão fica presa esperando o Keycloak.
         _end_session(db, locked, "access_removed")
-        oidc.revoke_refresh_token(tokens.refresh_token)
+        oidc.revoke_refresh_token(next_refresh_token)
         raise SessionRevoked("access_removed")
 
-    locked.refresh_token_enc = encrypt_secret(tokens.refresh_token)
+    locked.refresh_token_enc = encrypt_secret(next_refresh_token)
     if tokens.id_token:
         locked.id_token_hint = tokens.id_token
     locked.permissions = sorted(snapshot.permissions)

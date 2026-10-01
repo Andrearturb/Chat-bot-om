@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta
 
 import httpx
@@ -55,6 +56,28 @@ def test_retrato_vencido_renova_e_aplica_a_troca_de_perfil(db, provider):
     assert result.refresh_token_enc != old_refresh
     assert result.snapshot_refreshed_at > datetime.utcnow() - timedelta(minutes=1)
     assert db.get(AppUser, result.user_id).last_profiles == ["CONVIDADO"]
+
+
+def test_provedor_sem_novo_refresh_token_preserva_o_atual_ate_a_revogacao(db, provider, monkeypatch):
+    session = _login(db, provider)
+    original = auth.decrypt_secret(session.refresh_token_enc)
+    refresh = oidc.refresh
+
+    def sem_rotacao(token, *, expected_sub):
+        renewed = refresh(token, expected_sub=expected_sub)
+        provider.refresh_tokens[token] = provider.refresh_tokens.pop(renewed.refresh_token)
+        return replace(renewed, refresh_token=None)
+
+    monkeypatch.setattr(oidc, "refresh", sem_rotacao)
+    _age(db, session)
+    renewed_session = ensure_fresh_snapshot(db, session)
+    assert auth.decrypt_secret(renewed_session.refresh_token_enc) == original
+
+    provider.roles_by_sub["u1"] = []
+    _age(db, session)
+    with pytest.raises(SessionRevoked, match="access_removed"):
+        ensure_fresh_snapshot(db, session)
+    assert provider.revoked == [original]
 
 
 def test_renovacao_recusada_revoga_a_sessao(db, provider):

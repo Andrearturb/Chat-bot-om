@@ -39,6 +39,14 @@ class AssetStoreResponse(BaseModel):
     updated_at: datetime
 
 
+class AssetStoreOptionResponse(BaseModel):
+    id: int
+    name: str
+    praca: str | None
+    bpcs: str | None
+    sap: str | None
+
+
 class AssetSummaryResponse(BaseModel):
     stores_count: int
     equipment_count: int

@@ -355,18 +355,30 @@ def get_store_filters(db: Session) -> dict[str, list[str]]:
     return {"pracas": sorted(unique.values(), key=lambda item: normalize_key(item))}
 
 
-def list_stores(
+def _clean_pracas(praca: str | None, pracas: list[str] | None) -> list[str]:
+    """Junta a praça única (antiga) com a lista; sem repetição por caixa/espaços."""
+    unique: dict[str, str] = {}
+    for value in [*(pracas or []), *([praca] if praca else [])]:
+        text = (value or "").strip()
+        if text:
+            unique.setdefault(normalize_key(text), text)
+    return list(unique.values())
+
+
+def apply_store_filters(
+    query,
     db: Session,
+    *,
     q: str | None = None,
     praca: str | None = None,
-    page: int = 1,
-    page_size: int = 1000,
-    *,
-    sync: bool = False,
-) -> list[dict[str, Any]]:
-    if sync or (db.scalar(select(func.count(AssetStore.id))) or 0) == 0:
-        sync_asset_stores(db)
-    query = select(AssetStore).order_by(AssetStore.store_name)
+    pracas: list[str] | None = None,
+    store_ids: list[int] | None = None,
+):
+    """Filtro único das lojas (lista da tela e exportação).
+
+    Dentro de cada filtro os valores se somam (praça A ou B). Entre filtros, estreita:
+    praça marcada E loja marcada E texto da busca.
+    """
     if q:
         term = q.strip()
         pattern = f"%{term}%"
@@ -386,11 +398,48 @@ def list_stores(
                 AssetStore.sap_number.ilike(pattern),
                 AssetStore.praca.ilike(pattern),
             ))
-    if praca:
-        query = query.where(func.lower(func.trim(AssetStore.praca)) == func.lower(func.trim(praca)))
+    selected = _clean_pracas(praca, pracas)
+    if selected:
+        query = query.where(or_(*[
+            func.lower(func.trim(AssetStore.praca)) == func.lower(func.trim(value)) for value in selected
+        ]))
+    if store_ids:
+        query = query.where(AssetStore.id.in_(store_ids))
+    return query
+
+
+def list_stores(
+    db: Session,
+    q: str | None = None,
+    praca: str | None = None,
+    page: int = 1,
+    page_size: int = 1000,
+    *,
+    sync: bool = False,
+    pracas: list[str] | None = None,
+    store_ids: list[int] | None = None,
+) -> list[dict[str, Any]]:
+    if sync or (db.scalar(select(func.count(AssetStore.id))) or 0) == 0:
+        sync_asset_stores(db)
+    query = apply_store_filters(
+        select(AssetStore).order_by(AssetStore.store_name), db,
+        q=q, praca=praca, pracas=pracas, store_ids=store_ids,
+    )
     stores = db.scalars(query.offset((page - 1) * page_size).limit(page_size)).all()
     counts = _all_count_maps(db)
     return [store_response(store, counts) for store in stores]
+
+
+def list_store_options(db: Session) -> list[dict[str, Any]]:
+    """Lista leve de lojas (sem contagens) para o seletor de Lojas."""
+    if (db.scalar(select(func.count(AssetStore.id))) or 0) == 0:
+        sync_asset_stores(db)
+    stores = db.scalars(select(AssetStore).order_by(AssetStore.store_name)).all()
+    return [
+        {"id": store.id, "name": store.store_name, "praca": (store.praca or "").strip() or None,
+         "bpcs": store.bpcs_number, "sap": store.sap_number}
+        for store in stores
+    ]
 
 
 def get_store_detail(db: Session, store_id: int) -> dict[str, Any]:

@@ -26,7 +26,7 @@ from app.models.fire_asset import FireAsset
 from app.models.store_document import StoreDocument
 from app.models.water_asset import WaterAsset
 from app.schemas.assets import (
-    AssetStoreDetailResponse, AssetStoreFiltersResponse, AssetStoreResponse,
+    AssetStoreDetailResponse, AssetStoreFiltersResponse, AssetStoreOptionResponse, AssetStoreResponse,
     AssetSummaryResponse, ClimateAssetCreate, ClimateAssetResponse, ClimateAssetUpdate,
     FireAssetCreate, FireAssetResponse, FireAssetUpdate,
     StoreDocumentCreate, StoreDocumentResponse, StoreDocumentUpdate,
@@ -34,7 +34,7 @@ from app.schemas.assets import (
 )
 from app.services.assets import (
     create_asset, delete_asset, delete_stored_document, document_response,
-    get_asset_summary, get_store, get_store_detail, get_store_filters, list_stores,
+    get_asset_summary, get_store, get_store_detail, get_store_filters, list_store_options, list_stores,
     save_document_file, update_asset, update_document_record,
 )
 from app.services.auth import record_audit
@@ -73,20 +73,33 @@ def asset_summary(db: Session = Depends(get_db)):
     return get_asset_summary(db, sync=True)
 
 
+def _check_filter_sizes(praca: list[str] | None, store_id: list[int] | None) -> None:
+    if (praca and (len(praca) > 100 or any(len(value) > 150 for value in praca))) or (store_id and len(store_id) > 1000):
+        raise HTTPException(status_code=422, detail="Filtro grande demais.")
+
+
 @router.get("/stores", response_model=list[AssetStoreResponse],
             dependencies=[Depends(require_permission("assets.view"))])
 def asset_stores(q: str | None = Query(default=None, max_length=150),
-                 praca: str | None = Query(default=None, max_length=150),
+                 praca: list[str] | None = Query(default=None),
+                 store_id: list[int] | None = Query(default=None),
                  page: int = Query(default=1, ge=1),
                  page_size: int = Query(default=1000, ge=1, le=1000),
                  db: Session = Depends(get_db)):
-    return list_stores(db, q=q, praca=praca, page=page, page_size=page_size)
+    _check_filter_sizes(praca, store_id)
+    return list_stores(db, q=q, pracas=praca, store_ids=store_id, page=page, page_size=page_size)
 
 
 @router.get("/stores/filters", response_model=AssetStoreFiltersResponse,
             dependencies=[Depends(require_permission("assets.view"))])
 def asset_store_filters(db: Session = Depends(get_db)):
     return get_store_filters(db)
+
+
+@router.get("/stores/options", response_model=list[AssetStoreOptionResponse],
+            dependencies=[Depends(require_permission("assets.view"))])
+def asset_store_options(db: Session = Depends(get_db)):
+    return list_store_options(db)
 
 
 @router.get("/stores/{store_id}", response_model=AssetStoreDetailResponse,

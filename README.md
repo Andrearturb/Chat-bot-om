@@ -45,5 +45,6 @@ O teste `backend/tests/test_migracoes.py` falha se um modelo mudar sem a migraç
 - `docs/integracao-bi.md` — regras da Central de Indicadores (BI de Resultados).
 - `n8n/README.md` e `n8n/*.md` — workflow do assistente e suas regras de interpretação.
 - `qa/README.md` — testes do assistente contra o n8n e o banco.
+- Central de Ativos: filtros por Praças e Lojas (múltipla escolha, estreitam entre si) e exportação para planilha .xlsx, uma aba por tipo de ativo. Design em `docs/superpowers/specs/2026-10-01-exportacao-ativos-design.md`.
 - `docs/historico/` — registros de revisões anteriores.
 - `docs/superpowers/` — especificações e planos de implementação.

@@ -19,6 +19,7 @@ from app.api.routes.imports import router as imports_router
 from app.api.routes.services import router as services_router
 from app.api.routes.chatbot import router as chatbot_router
 from app.api.routes.assets import router as assets_router
+from app.api.routes.assets_export import router as assets_export_router
 from app.api.routes.assistant import router as assistant_router
 from app.api.routes.users import router as users_router
 from app.api.routes.audit import router as audit_router
@@ -112,6 +113,7 @@ app.include_router(imports_router)
 app.include_router(services_router)
 app.include_router(chatbot_router)
 app.include_router(assets_router)
+app.include_router(assets_export_router)
 app.include_router(assistant_router)
 app.include_router(users_router)
 app.include_router(audit_router)

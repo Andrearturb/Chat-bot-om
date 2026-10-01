@@ -6,6 +6,7 @@ import {
   fetchAssetStoreFilters,
   fetchAssetStores,
   fetchAssetSummary,
+  fetchStoreOptions,
   removeAsset,
   removeDocument,
   updateAsset,
@@ -13,7 +14,10 @@ import {
 } from "./api";
 import "./assets.css";
 import { AssetForm, DocumentForm } from "./components/AssetForms";
+import { AssetFilters } from "./components/AssetFilters";
 import { AssetsHero } from "./components/AssetsHero";
+import { ExportDialog } from "./components/ExportDialog";
+import { EMPTY_FILTERS, isFiltered } from "./filters";
 import { AssetGlyph, CategoryPanel, DocumentsPanel, Toast } from "./components/AssetPanels";
 
 const TABS = [
@@ -112,8 +116,9 @@ export default function AssetsPage() {
   const [pracas, setPracas] = useState([]);
   const [selectedStore, setSelectedStore] = useState(null);
   const [tab, setTab] = useState("overview");
-  const [query, setQuery] = useState("");
-  const [praca, setPraca] = useState("");
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [storeOptions, setStoreOptions] = useState([]);
+  const [exportOpen, setExportOpen] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(true);
@@ -125,16 +130,17 @@ export default function AssetsPage() {
 
   const initializedRef = useRef(false);
   const searchControllerRef = useRef(null);
-  const loadStores = useCallback(async (search, region) => {
-    const q = search !== undefined ? search : query;
-    const p = region !== undefined ? region : praca;
+  const loadStores = useCallback(async (nextFilters) => {
+    const current = nextFilters ?? filters;
     searchControllerRef.current?.abort();
     const controller = new AbortController();
     searchControllerRef.current = controller;
     try {
       setSearching(true);
       setError("");
-      const storeData = await fetchAssetStores({ q, praca: p, signal: controller.signal });
+      const storeData = await fetchAssetStores({
+        pracas: current.pracas, storeIds: current.storeIds, signal: controller.signal,
+      });
       setStores(storeData);
     } catch (err) {
       if (err?.name !== "AbortError") setError(err.message);
@@ -144,7 +150,7 @@ export default function AssetsPage() {
         setSearching(false);
       }
     }
-  }, [query, praca]);
+  }, [filters]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -155,12 +161,14 @@ export default function AssetsPage() {
         setError("");
         const summaryData = await fetchAssetSummary({ signal: controller.signal });
         setSummary(summaryData);
-        const [filtersData, storeData] = await Promise.all([
+        const [filtersData, storeData, optionsData] = await Promise.all([
           fetchAssetStoreFilters({ signal: controller.signal }),
           fetchAssetStores({ signal: controller.signal }),
+          fetchStoreOptions({ signal: controller.signal }),
         ]);
         setPracas(filtersData?.pracas || []);
         setStores(storeData);
+        setStoreOptions(optionsData || []);
         initializedRef.current = true;
       } catch (err) {
         if (err?.name !== "AbortError") setError(err.message);
@@ -178,9 +186,9 @@ export default function AssetsPage() {
 
   useEffect(() => {
     if (!initializedRef.current) return undefined;
-    const timer = window.setTimeout(() => loadStores(query, praca), 300);
+    const timer = window.setTimeout(() => loadStores(filters), 150);
     return () => window.clearTimeout(timer);
-  }, [query, praca, loadStores]);
+  }, [filters, loadStores]);
 
   useEffect(() => {
     if (!toast || toast.kind === "confirm") return undefined;
@@ -211,13 +219,15 @@ export default function AssetsPage() {
     const summaryData = await fetchAssetSummary();
     setSummary(summaryData);
     const requests = [
-      fetchAssetStores({ q: query, praca }),
+      fetchAssetStores({ pracas: filters.pracas, storeIds: filters.storeIds }),
       fetchAssetStoreFilters(),
+      fetchStoreOptions(),
     ];
     if (selectedStore) requests.push(fetchAssetStore(selectedStore.id));
-    const [storeData, filtersData, detail] = await Promise.all(requests);
+    const [storeData, filtersData, optionsData, detail] = await Promise.all(requests);
     setStores(storeData);
     setPracas(filtersData?.pracas || []);
+    setStoreOptions(optionsData || []);
     if (detail) setSelectedStore(detail);
   }
 
@@ -290,11 +300,20 @@ export default function AssetsPage() {
   const detailCount = selectedStore
     ? selectedStore.climatization_count + selectedStore.fire_safety_count + selectedStore.water_count
     : 0;
-  const hasFilters = Boolean(query.trim() || praca);
+  const hasFilters = isFiltered(filters);
 
   return (
     <section className="assets-page" aria-label="Central de Ativos">
       <Toast toast={toast} />
+      {exportOpen ? (
+        <ExportDialog
+          filters={filters}
+          filteredCount={stores.length}
+          totalCount={storeOptions.length}
+          onClose={() => setExportOpen(false)}
+          onToast={setToast}
+        />
+      ) : null}
 
       {!selectedStore ? (
         <>
@@ -307,50 +326,22 @@ export default function AssetsPage() {
                 <h2 id="stores-heading">Lojas</h2>
                 <p>Encontre a loja e acesse rapidamente seus equipamentos e documentos.</p>
               </div>
-              <span className="assets-section-mark" aria-hidden="true">● Base centralizada</span>
+              <div className="assets-section-actions">
+                <button className="assets-button assets-button--quiet" type="button" onClick={() => setExportOpen(true)}>
+                  Exportar
+                </button>
+                <span className="assets-section-mark" aria-hidden="true">● Base centralizada</span>
+              </div>
             </div>
 
-            <div className="assets-search-row">
-              <label className="assets-search">
-                <span className="assets-search__icon" aria-hidden="true"><SearchIcon /></span>
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Pesquisar por loja, BPCS, SAP ou praça..."
-                  aria-label="Pesquisar lojas"
-                  autoComplete="off"
-                />
-                {searching ? <span className="assets-search__spinner" aria-label="Pesquisando" /> : null}
-              </label>
-              <select value={praca} onChange={(event) => setPraca(event.target.value)} aria-label="Filtrar por praça">
-                <option value="">Todas as praças</option>
-                {pracas.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-
-            <div className="assets-search-meta" aria-live="polite">
-              <span>
-                <strong>{stores.length}</strong> {stores.length === 1 ? "loja encontrada" : "lojas encontradas"}
-                {searching ? " · atualizando resultados..." : ""}
-              </span>
-              {hasFilters ? (
-                <div className="assets-active-filters">
-                  {query.trim() ? (
-                    <button type="button" onClick={() => setQuery("")} title="Remover pesquisa">
-                      Pesquisa: {query.trim()} <b aria-hidden="true">×</b>
-                    </button>
-                  ) : null}
-                  {praca ? (
-                    <button type="button" onClick={() => setPraca("")} title="Remover filtro de praça">
-                      Praça: {praca} <b aria-hidden="true">×</b>
-                    </button>
-                  ) : null}
-                  <button className="assets-clear-filters" type="button" onClick={() => { setQuery(""); setPraca(""); }}>
-                    Limpar filtros
-                  </button>
-                </div>
-              ) : null}
-            </div>
+            <AssetFilters
+              pracas={pracas}
+              storeOptions={storeOptions}
+              filters={filters}
+              onChange={setFilters}
+              shownCount={stores.length}
+              searching={searching}
+            />
 
             {error && stores.length > 0 ? <p className="assets-inline-error" role="alert">{error}</p> : null}
 
@@ -373,7 +364,7 @@ export default function AssetsPage() {
                 <strong>Nenhuma loja encontrada para esta pesquisa.</strong>
                 <span>Ajuste os termos ou limpe os filtros para visualizar outras lojas.</span>
                 {hasFilters ? (
-                  <button className="assets-button assets-button--quiet" type="button" onClick={() => { setQuery(""); setPraca(""); }}>
+                  <button className="assets-button assets-button--quiet" type="button" onClick={() => setFilters(EMPTY_FILTERS)}>
                     Limpar filtros
                   </button>
                 ) : null}

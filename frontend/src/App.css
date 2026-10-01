@@ -24,8 +24,8 @@
 }
 
 .ambient-glow { position: absolute; pointer-events: none; border-radius: 50%; }
-.ambient-glow--blue { width: 680px; height: 680px; right: -250px; top: -360px; background: radial-gradient(circle, rgba(115,170,255,.15), transparent 68%); }
-.ambient-glow--yellow { width: 570px; height: 570px; left: -300px; bottom: 0; background: radial-gradient(circle, rgba(250,211,88,.16), transparent 68%); }
+.ambient-glow--blue { width: 680px; height: 680px; right: -250px; top: -360px; background: radial-gradient(circle, rgba(115,170,255,.24), transparent 68%); }
+.ambient-glow--yellow { width: 570px; height: 570px; left: -300px; bottom: 0; background: radial-gradient(circle, rgba(250,211,88,.24), transparent 68%); }
 
 .app-panel {
   width: 100%;
@@ -86,8 +86,19 @@ h1 b { width: 92px; height: 5px; display: block; margin: 7px auto 0; border-radi
 .hero-stage { width: min(100%, 920px); min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; flex: 1 1 auto; margin-top: 10px; }
 .assistant-portrait { width: auto; height: clamp(300px, 38vh, 390px); display: flex; align-items: flex-end; justify-content: center; position: relative; z-index: 1; }
 .assistant-portrait__glow { width: 350px; height: 350px; position: absolute; left: 50%; bottom: -9px; z-index: -1; border-radius: 50%; background: radial-gradient(circle, rgba(207,225,255,.88) 0%, rgba(231,240,255,.58) 52%, transparent 72%); transform: translateX(-50%); }
-.assistant-portrait img { width: auto; height: 100%; display: block; object-fit: contain; filter: drop-shadow(0 20px 16px rgba(29,58,111,.16)); }
-.line-art { width: 300px; height: 230px; position: absolute; bottom: 18px; opacity: .08; background: repeating-linear-gradient(90deg, transparent 0 28px, #6c9ce4 29px 30px), repeating-linear-gradient(0deg, transparent 0 26px, #6c9ce4 27px 28px); mask-image: linear-gradient(to top, #000, transparent); }
+.assistant-portrait img {
+  width: auto;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 20px 16px rgba(29,58,111,.16));
+  /* O arquivo-fonte tem fundo branco opaco e corte reto na altura do quadril — sem isso,
+     o drop-shadow desenha a sombra do retângulo inteiro. A máscara esmaece a base da
+     própria imagem antes da sombra, então o corte dissolve em vez de aparecer como uma linha reta. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 76%, transparent 94%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 76%, transparent 94%);
+}
+.line-art { width: 300px; height: 230px; position: absolute; bottom: 18px; opacity: .13; background: repeating-linear-gradient(90deg, transparent 0 28px, #6c9ce4 29px 30px), repeating-linear-gradient(0deg, transparent 0 26px, #6c9ce4 27px 28px); mask-image: linear-gradient(to top, #000, transparent); }
 .line-art--left { left: 5%; transform: skewY(-7deg); }
 .line-art--right { right: 5%; transform: skewY(7deg); }
 .side-note { position: absolute; z-index: 1; margin: 0; color: #7182a4; font-family: Georgia, serif; font-size: 17px; font-style: italic; line-height: 1.25; text-align: left; }

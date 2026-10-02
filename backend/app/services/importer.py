@@ -19,7 +19,9 @@ from __future__ import annotations
 import json
 import logging
 import re
+import unicodedata
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -208,6 +210,54 @@ def normalizar_status(status_original: object) -> str | None:
 
     # Status desconhecido — preservar o valor original sem inferir
     return status_limpo
+
+
+def derivar_sla_atrasado(valor: object) -> str | None:
+    """Lê a marca de atraso do campo 620293, que a Tape devolve como badge HTML.
+
+    A planilha exportada achata o badge para o texto "Atrasado", mas a API
+    entrega '<div ...>Atrasado</div>'. Comparar por igualdade marcaria zero
+    chamados como atrasados.
+    """
+    texto = normalizar_texto(valor)
+
+    if texto is None:
+        return None
+
+    sem_tags = re.sub(r"<[^>]*>", " ", texto)
+    sem_acento = "".join(
+        caractere
+        for caractere in unicodedata.normalize("NFKD", sem_tags)
+        if not unicodedata.combining(caractere)
+    )
+
+    return "Atrasado" if "atrasado" in sem_acento.lower() else None
+
+
+def converter_decimal(valor: object) -> Decimal | None:
+    """Converte o valor aprovado em número. Zero é valor válido, não ausência."""
+    if valor is None:
+        return None
+
+    if isinstance(valor, bool):
+        return None
+
+    if isinstance(valor, (int, float, Decimal)):
+        return Decimal(str(valor))
+
+    texto = normalizar_texto(valor)
+
+    if texto is None:
+        return None
+
+    # "1.234,56" (formato brasileiro) e "1234.56" chegam ao mesmo número.
+    if "," in texto:
+        texto = texto.replace(".", "").replace(",", ".")
+
+    try:
+        return Decimal(texto)
+    except InvalidOperation:
+        return None
 
 
 def tratar_local_atendimento(valor: object) -> dict[str, str | None]:

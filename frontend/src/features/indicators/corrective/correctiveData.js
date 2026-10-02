@@ -109,3 +109,43 @@ export function buildStatusCounters(records) {
     ]),
   )
 }
+
+/** Normaliza o status de assinatura para o vocabulário do painel. */
+function signatureBucket(value) {
+  const texto = normalize(value)
+  if (!texto) return ''
+  if (texto.includes('conclu') || texto.includes('complet')) return 'concluido'
+  if (texto.includes('pend') || texto.includes('aguard')) return 'pendente'
+  return ''
+}
+
+export function buildCorrectiveKpis(records) {
+  const concluidos = records.filter(isConcluded)
+
+  let atrasado = 0
+  for (const record of concluidos) {
+    if (record.slaLate === true) atrasado += 1
+  }
+  const noPrazo = concluidos.length - atrasado
+  const totalConsiderado = concluidos.length
+  const percent = totalConsiderado === 0 ? 0 : Math.round((noPrazo / totalConsiderado) * 100)
+
+  // Concluído sem valor aprovado entra no denominador como zero: regra do BI.
+  const soma = concluidos.reduce(
+    (acc, record) => acc + (typeof record.approvedValue === 'number' ? record.approvedValue : 0),
+    0,
+  )
+  const custoMedio = concluidos.length === 0 ? 0 : Math.round(soma / concluidos.length)
+
+  const totalOs = records.filter((record) => {
+    const bucket = signatureBucket(record.signatureStatus)
+    return bucket === 'pendente' || bucket === 'concluido'
+  }).length
+
+  return {
+    totalChamados: records.length,
+    totalOs,
+    custoMedio,
+    sla: { percent, noPrazo, atrasado, totalConsiderado },
+  }
+}

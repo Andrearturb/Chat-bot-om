@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   applyCorrectiveFilters,
+  buildCorrectiveKpis,
   buildFilterOptions,
   buildStatusCounters,
   defaultCorrectiveFilters,
@@ -109,4 +110,66 @@ test('data de criação nula não quebra o filtro nem gera opção inválida', (
       .map((item) => item.ticketId),
     ['B'],
   )
+})
+
+test('SLA conta só concluídos e ignora atraso em chamado não concluído', () => {
+  const { sla } = buildCorrectiveKpis([
+    record({ canonicalStatus: 'Concluído', slaLate: true }),
+    record({ canonicalStatus: 'Concluído', slaLate: false }),
+    record({ canonicalStatus: 'Concluído', slaLate: false }),
+    record({ canonicalStatus: 'Concluído', slaLate: false }),
+    // Atrasado, mas não concluído: fora dos dois lados da conta.
+    record({ canonicalStatus: 'Não Aprovado', slaLate: true }),
+    record({ canonicalStatus: 'Em atendimento', slaLate: true }),
+  ])
+
+  assert.equal(sla.atrasado, 1)
+  assert.equal(sla.noPrazo, 3)
+  assert.equal(sla.totalConsiderado, 4)
+  assert.equal(sla.percent, 75)
+})
+
+test('custo médio divide pelos concluídos, com os sem valor entrando como zero', () => {
+  const { custoMedio } = buildCorrectiveKpis([
+    record({ canonicalStatus: 'Concluído', approvedValue: 300 }),
+    record({ canonicalStatus: 'Concluído', approvedValue: 100 }),
+    record({ canonicalStatus: 'Concluído', approvedValue: null }),
+    record({ canonicalStatus: 'Concluído', approvedValue: 0 }),
+    // Não concluído não entra em nenhum dos lados.
+    record({ canonicalStatus: 'Em aberto', approvedValue: 900 }),
+  ])
+
+  // (300 + 100 + 0 + 0) / 4 concluídos = 100
+  assert.equal(custoMedio, 100)
+})
+
+test('total de O.S conta apenas assinatura pendente ou concluída', () => {
+  const { totalOs } = buildCorrectiveKpis([
+    record({ signatureStatus: 'concluido' }),
+    record({ signatureStatus: 'Concluída' }),
+    record({ signatureStatus: 'pendente' }),
+    record({ signatureStatus: 'Aguardando assinatura' }),
+    record({ signatureStatus: '' }),
+    record({ signatureStatus: 'cancelado' }),
+  ])
+
+  assert.equal(totalOs, 4)
+})
+
+test('base sem concluídos devolve zero em vez de dividir por zero', () => {
+  const kpis = buildCorrectiveKpis([record({ canonicalStatus: 'Em aberto', approvedValue: 500 })])
+
+  assert.equal(kpis.totalChamados, 1)
+  assert.equal(kpis.custoMedio, 0)
+  assert.equal(kpis.sla.percent, 0)
+  assert.equal(kpis.sla.totalConsiderado, 0)
+})
+
+test('base vazia devolve tudo em zero', () => {
+  const kpis = buildCorrectiveKpis([])
+
+  assert.equal(kpis.totalChamados, 0)
+  assert.equal(kpis.totalOs, 0)
+  assert.equal(kpis.custoMedio, 0)
+  assert.equal(kpis.sla.percent, 0)
 })

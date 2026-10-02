@@ -43,6 +43,9 @@ def listar_servicos(db: Session = Depends(get_db)) -> ServiceListResponse:
             analyst_responsible=s.analyst_responsible,
             non_approval_reason=s.non_approval_reason,
             category=s.category, subcategory=s.subcategory,
+            sla_late=s.sla_late,
+            approved_value=float(s.approved_value) if s.approved_value is not None else None,
+            raw_status=s.raw_status,
         )
         for s in services
     ]

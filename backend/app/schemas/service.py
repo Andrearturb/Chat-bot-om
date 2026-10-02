@@ -35,6 +35,9 @@ class ServiceItemResponse(BaseModel):
     non_approval_reason: str | None
     category: str | None
     subcategory: str | None
+    sla_late: str | None
+    approved_value: float | None
+    raw_status: str | None
 
 
 class ServiceListResponse(BaseModel):

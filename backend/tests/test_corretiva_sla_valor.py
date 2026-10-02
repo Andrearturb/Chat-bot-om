@@ -140,3 +140,25 @@ def test_persiste_e_atualiza_campos_novos(db, upload, agora):
     assert service.sla_late is None
     assert service.approved_value == Decimal("420.00")
     assert service.raw_status == "Solicitação Finalizada"
+
+
+def test_services_api_expoe_campos_da_corretiva(db, upload):
+    db.add(Service(
+        ticket="7005",
+        status="Concluído",
+        raw_status="Chamado Concluído",
+        praca="Natal",
+        store_name="Loja Teste",
+        sla_late="Atrasado",
+        approved_value=Decimal("350.00"),
+        upload_id=upload.id,
+    ))
+    db.commit()
+
+    from app.api.routes.services import listar_servicos
+
+    match = next(d for d in listar_servicos(db=db).dados if d.ticket == "7005")
+
+    assert match.sla_late == "Atrasado"
+    assert match.approved_value == 350.0
+    assert match.raw_status == "Chamado Concluído"

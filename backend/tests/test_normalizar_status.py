@@ -327,6 +327,7 @@ class TestMudancaStatusDetectada:
             bpcs_number="100",
             sap_number="200",
             service_description="Descrição padrão",  # igual ao default do make_linha
+            raw_status="Em Aberto",  # igual ao status passado ao make_linha abaixo
             upload_id=upload.id,
         )
         db.add(svc)

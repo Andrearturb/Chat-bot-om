@@ -64,6 +64,7 @@ def make_linha(
     service_description="Descrição padrão", solution_text=None,
     signature_status=None, signed_pdf_url=None, created_on=None,
     requester=None, analyst_responsible=None, non_approval_reason=None,
+    sla_late=None, approved_value=None,
 ) -> dict:
     return {
         "field_values": {
@@ -80,6 +81,8 @@ def make_linha(
             "requester":            {"field_id": 580436, "label": "Requisitante",               "value": requester},
             "analyst_responsible":  {"field_id": 603645, "label": "Analista Responsável",       "value": analyst_responsible},
             "non_approval_reason":  {"field_id": 617502, "label": "Motivo da Não Aprovação",    "value": non_approval_reason},
+            "sla_late":             {"field_id": 620293, "label": "  ",                        "value": sla_late},
+            "approved_value":       {"field_id": 613329, "label": "Valor Aprovado",            "value": approved_value},
         },
         "created_on": created_on,
     }

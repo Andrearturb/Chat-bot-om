@@ -66,6 +66,7 @@ def criar_service(
         requester=requester,
         analyst_responsible=analyst_responsible,
         non_approval_reason=non_approval_reason,
+        raw_status="Em aberto",  # igual ao default do make_linha
         upload_id=upload_id,
     )
     db.add(svc)

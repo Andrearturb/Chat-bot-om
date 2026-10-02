@@ -13,8 +13,9 @@ id, upload_id, synced_at.
 """
 
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -72,6 +73,15 @@ class Service(Base):
 
     # Subcategoria do chamado (field 601598 da Tape)
     subcategory: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Marca de atraso de SLA (field 620293 da Tape, devolvido como badge HTML)
+    sla_late: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Valor aprovado do serviço (field 613329 da Tape)
+    approved_value: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+
+    # Status original da Tape, sem a normalização aplicada em `status`
+    raw_status: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Campo interno: FK da última sincronização que tocou este registro
     upload_id: Mapped[int] = mapped_column(

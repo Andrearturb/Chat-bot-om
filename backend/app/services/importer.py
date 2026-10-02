@@ -61,6 +61,9 @@ CAMPOS_SINCRONIZADOS: tuple[str, ...] = (
     "non_approval_reason",
     "category",
     "subcategory",
+    "sla_late",
+    "approved_value",
+    "raw_status",
 )
 
 
@@ -431,9 +434,10 @@ def extrair_campos_negocio(linha: dict[str, object]) -> dict[str, Any]:
     visit_date = converter_data(
         obter_valor_campo(linha, "visit_date", obter_field_id_por_alias("visit_date"))
     )
-    status = normalizar_status(
-        status_original=obter_valor_campo(linha, "status", obter_field_id_por_alias("status")),
+    status_original = obter_valor_campo(
+        linha, "status", obter_field_id_por_alias("status")
     )
+    status = normalizar_status(status_original=status_original)
 
     created_on = converter_data(
         obter_valor_campo(linha, "created_on")
@@ -485,6 +489,13 @@ def extrair_campos_negocio(linha: dict[str, object]) -> dict[str, Any]:
         "subcategory": normalizar_texto(
             obter_valor_campo(linha, "subcategory", obter_field_id_por_alias("subcategory"))
         ),
+        "sla_late": derivar_sla_atrasado(
+            obter_valor_campo(linha, "sla_late", obter_field_id_por_alias("sla_late"))
+        ),
+        "approved_value": converter_decimal(
+            obter_valor_campo(linha, "approved_value", obter_field_id_por_alias("approved_value"))
+        ),
+        "raw_status": normalizar_texto(status_original),
     }
 
 

@@ -54,6 +54,7 @@ def criar_service_existente(
     signature_status: str | None = None,
     signed_pdf_url: str | None = None,
     created_on: datetime | None = None,
+    raw_status: str | None = "Em aberto",  # igual ao default do make_linha
 ) -> Service:
     svc = Service(
         ticket=ticket,
@@ -69,6 +70,7 @@ def criar_service_existente(
         signature_status=signature_status,
         signed_pdf_url=signed_pdf_url,
         created_on=created_on,
+        raw_status=raw_status,
         upload_id=upload_id,
     )
     db.add(svc)
@@ -327,6 +329,7 @@ class TestCriterioAceitacao:
                 bpcs_number=str(i),
                 sap_number=str(i),
                 service_description=f"Descrição {i}",
+                raw_status="Em aberto",  # igual ao default do make_linha
                 upload_id=upload_id,
             )
             for i in range(1, 1001)

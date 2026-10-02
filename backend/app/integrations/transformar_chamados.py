@@ -93,6 +93,14 @@ FIELD_ALIASES: dict[str, dict[str, Any]] = {
         "field_ids": [580453],
         "labels": ["Status"],
     },
+    "sla_late": {
+        "field_ids": [620293],
+        "labels": [],
+    },
+    "approved_value": {
+        "field_ids": [613329],
+        "labels": ["Valor Aprovado"],
+    },
     "raw_location": {
         "field_ids": [580441],
         "labels": ["Local de Atendimento"],
@@ -328,7 +336,10 @@ class TapeTransformer:
 
             field_values[alias] = {
                 "field_id": field_id,
-                "label": definicao.get("labels", [None])[0],
+                # Alguns aliases (ex.: sla_late) não têm rótulo utilizável na
+                # Tape e declaram "labels": [] de propósito — (lista or [None])
+                # evita IndexError nesse caso, em vez de supor lista não-vazia.
+                "label": (definicao.get("labels") or [None])[0],
                 "value": None,
             }
 

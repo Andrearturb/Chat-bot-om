@@ -8,6 +8,7 @@ import { AnalystProductivityBlock } from './components/AnalystProductivityBlock'
 import IndicatorDashboardHeader from './components/IndicatorDashboardHeader'
 import IndicatorPlaceholder from './components/IndicatorPlaceholder'
 import IndicatorsHome from './home/IndicatorsHome'
+import CorrectivePanel from './corrective/CorrectivePanel'
 import {
   applyFilters,
   buildAnalystProductivity,
@@ -373,7 +374,9 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
   }
 
   const dashboardBody = (() => {
-    if (activeIndicator !== 'performance') {
+    const panelIndicators = ['performance', 'corrective']
+
+    if (!panelIndicators.includes(activeIndicator)) {
       return <IndicatorPlaceholder type={activeIndicator} />
     }
 
@@ -388,6 +391,20 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
 
     if (error && records.length === 0) return <ErrorState error={error} onRetry={refresh} />
     if (records.length === 0) return <EmptyState onRetry={refresh} />
+
+    if (activeIndicator === 'corrective') {
+      return (
+        <>
+          {error && (
+            <div className="indicators-inline-warning" role="status">
+              A última atualização falhou. Os dados carregados anteriormente continuam visíveis.
+              <button type="button" onClick={refresh}>Tentar novamente</button>
+            </div>
+          )}
+          <CorrectivePanel records={records} />
+        </>
+      )
+    }
 
     return (
       <>

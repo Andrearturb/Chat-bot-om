@@ -2239,3 +2239,63 @@
     flex: 0 0 auto;
   }
 }
+
+/* Painel de chamados corretivos */
+.corrective-panel { display: flex; flex-direction: column; gap: 18px; }
+
+.corrective-filters {
+  display: grid; gap: 12px; align-items: end;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  background: #fff; border: 1px solid rgba(5, 56, 98, 0.12);
+  border-radius: 14px; padding: 16px;
+}
+.corrective-select { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.corrective-select span { color: #5b6b7a; font-weight: 600; }
+.corrective-select select {
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid rgba(5, 56, 98, 0.2); background: #fff; font-size: 13px;
+}
+.corrective-filters__clear {
+  padding: 9px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px solid rgba(5, 56, 98, 0.2); background: #f4f7fb;
+  font-size: 13px; font-weight: 600; color: #053862;
+}
+
+.corrective-kpis, .corrective-status { display: grid; gap: 12px; }
+.corrective-kpis { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.corrective-status { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+
+.corrective-kpi, .corrective-mini {
+  display: flex; flex-direction: column; gap: 6px; text-align: left;
+  background: #fff; border: 1px solid rgba(5, 56, 98, 0.12);
+  border-radius: 14px; padding: 16px; cursor: pointer; font: inherit;
+}
+.corrective-kpi:disabled, .corrective-mini:disabled { cursor: default; }
+.corrective-kpi:not(:disabled):hover, .corrective-mini:not(:disabled):hover {
+  border-color: rgba(5, 56, 98, 0.3);
+}
+.corrective-kpi h3 { margin: 0; font-size: 12px; color: #5b6b7a; text-transform: uppercase; letter-spacing: 0.04em; }
+.corrective-kpi strong { font-size: 26px; color: #053862; }
+.corrective-kpi small { font-size: 11px; color: #5b6b7a; }
+.corrective-mini h4 { margin: 0; font-size: 12px; color: #5b6b7a; }
+.corrective-mini strong { font-size: 20px; color: #053862; }
+.corrective-mini--emphasis { background: #eef6ff; border-color: rgba(47, 111, 179, 0.35); }
+
+.corrective-charts, .corrective-ranks {
+  display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+.corrective-chart, .corrective-rank {
+  background: #fff; border: 1px solid rgba(5, 56, 98, 0.12);
+  border-radius: 14px; padding: 16px;
+}
+.corrective-chart h3, .corrective-rank h3 { margin: 0 0 12px; font-size: 14px; color: #053862; }
+.corrective-rank table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.corrective-rank th, .corrective-rank td {
+  padding: 7px 6px; border-bottom: 1px solid rgba(5, 56, 98, 0.08);
+}
+.corrective-rank th { color: #5b6b7a; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.corrective-empty { margin: 0; color: #5b6b7a; font-size: 13px; }
+
+@media (max-width: 640px) {
+  .corrective-filters { grid-template-columns: 1fr; }
+}

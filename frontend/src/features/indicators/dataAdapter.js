@@ -39,12 +39,13 @@ export function statusDisplayLabel(value) {
 }
 
 export function adaptService(service = {}) {
-  const rawStatus = normalizeText(service.status)
+  const canonicalStatus = normalizeText(service.status)
+  const approvedValue = Number(service.approved_value)
 
   return {
     ticketId: normalizeText(service.ticket),
-    status: statusDisplayLabel(rawStatus),
-    statusGroup: classifyStatus(rawStatus),
+    status: statusDisplayLabel(canonicalStatus),
+    statusGroup: classifyStatus(canonicalStatus),
     recurring: '',
     region: normalizeText(service.praca) || FALLBACK_TEXT,
     location: normalizeText(service.store_name) || FALLBACK_TEXT,
@@ -59,7 +60,14 @@ export function adaptService(service = {}) {
     inAttendanceDate: normalizeApiDate(service.in_attendance_date),
     visitDate: normalizeApiDate(service.visit_date),
     slaProgress: '',
-    rawStatus: rawStatus || FALLBACK_TEXT,
+    canonicalStatus: canonicalStatus || FALLBACK_TEXT,
+    rawStatus: normalizeText(service.raw_status) || FALLBACK_TEXT,
+    slaLate: normalizeText(service.sla_late).toLowerCase() === 'atrasado',
+    approvedValue:
+      service.approved_value === null || service.approved_value === undefined || Number.isNaN(approvedValue)
+        ? null
+        : approvedValue,
+    signatureStatus: normalizeText(service.signature_status),
   }
 }
 

@@ -38,7 +38,7 @@ test('adapter mapeia o contrato do GET /services para o dashboard', () => {
   const record = adaptService(service())
 
   assert.equal(record.ticketId, '1001')
-  assert.equal(record.rawStatus, 'Concluído')
+  assert.equal(record.canonicalStatus, 'Concluído')
   assert.equal(record.statusGroup, 'concluded')
   assert.equal(record.region, 'Natal')
   assert.equal(record.location, 'ER Centro')
@@ -169,4 +169,38 @@ test('produtividade de analista continua usando createdOn e não inAttendanceDat
   assert.equal(rows.length, 1)
   assert.equal(rows[0].name, 'Analista Teste')
   assert.equal(rows[0].avgDays, 4)
+})
+
+test('adaptService expõe SLA, valor aprovado e status cru da corretiva', () => {
+  const record = adaptService(service({
+    status: 'Concluído',
+    raw_status: 'Chamado Concluído',
+    sla_late: 'Atrasado',
+    approved_value: 350,
+  }))
+
+  assert.equal(record.canonicalStatus, 'Concluído')
+  assert.equal(record.rawStatus, 'Chamado Concluído')
+  assert.equal(record.slaLate, true)
+  assert.equal(record.approvedValue, 350)
+})
+
+test('adaptService expõe o status de assinatura para o Total de O.S', () => {
+  const record = adaptService(service({ signature_status: 'Concluída' }))
+
+  assert.equal(record.signatureStatus, 'Concluída')
+})
+
+test('adaptService trata ausência dos campos da corretiva', () => {
+  const record = adaptService(service({ raw_status: null, sla_late: null, approved_value: null }))
+
+  assert.equal(record.rawStatus, 'Não informado')
+  assert.equal(record.slaLate, false)
+  assert.equal(record.approvedValue, null)
+})
+
+test('adaptService preserva valor aprovado zero', () => {
+  const record = adaptService(service({ approved_value: 0 }))
+
+  assert.equal(record.approvedValue, 0)
 })

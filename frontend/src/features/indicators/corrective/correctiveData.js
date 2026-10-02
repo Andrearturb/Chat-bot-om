@@ -149,3 +149,62 @@ export function buildCorrectiveKpis(records) {
     sla: { percent, noPrazo, atrasado, totalConsiderado },
   }
 }
+
+const RANK_FALLBACK = {
+  location: 'Sem loja',
+  category: 'Sem categoria',
+  region: 'Sem praça',
+  analyst: 'Sem analista',
+}
+
+const MESES_PT = [
+  'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
+  'jul', 'ago', 'set', 'out', 'nov', 'dez',
+]
+
+function contarPor(records, campo) {
+  const contagem = new Map()
+
+  for (const record of records) {
+    const bruto = String(record[campo] ?? '').trim()
+    const label = bruto && bruto !== 'Não informado' ? bruto : (RANK_FALLBACK[campo] ?? 'Não informado')
+    contagem.set(label, (contagem.get(label) ?? 0) + 1)
+  }
+
+  return [...contagem.entries()]
+    .map(([label, total]) => ({ label, total }))
+    .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'pt-BR'))
+}
+
+export function buildRank(records, campo, limit = 8) {
+  const total = records.length
+
+  return contarPor(records, campo)
+    .slice(0, limit)
+    .map((item) => ({
+      ...item,
+      percent: total === 0 ? 0 : Math.round((item.total / total) * 100),
+    }))
+}
+
+export function buildAnalystSeries(records, limit = 8) {
+  return contarPor(records, 'analyst').slice(0, limit)
+}
+
+export function buildMonthlySeries(records) {
+  const porMes = new Map()
+
+  for (const record of records) {
+    const parts = dateParts(record.createdOn)
+    if (parts === null) continue
+
+    const key = `${parts.ano}-${parts.mes}`
+    const atual = porMes.get(key) ?? { key, label: '', total: 0, concluidos: 0 }
+    atual.total += 1
+    if (isConcluded(record)) atual.concluidos += 1
+    atual.label = `${MESES_PT[Number(parts.mes) - 1]}/${parts.ano.slice(2)}`
+    porMes.set(key, atual)
+  }
+
+  return [...porMes.values()].sort((a, b) => a.key.localeCompare(b.key))
+}

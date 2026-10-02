@@ -3,8 +3,11 @@ import assert from 'node:assert/strict'
 
 import {
   applyCorrectiveFilters,
+  buildAnalystSeries,
   buildCorrectiveKpis,
   buildFilterOptions,
+  buildMonthlySeries,
+  buildRank,
   buildStatusCounters,
   defaultCorrectiveFilters,
 } from './correctiveData.js'
@@ -172,4 +175,58 @@ test('base vazia devolve tudo em zero', () => {
   assert.equal(kpis.totalOs, 0)
   assert.equal(kpis.custoMedio, 0)
   assert.equal(kpis.sla.percent, 0)
+})
+
+test('ranking traz quantidade, percentual e rótulo de ausência', () => {
+  const registros = [
+    record({ location: 'ER Centro' }),
+    record({ location: 'ER Centro' }),
+    record({ location: 'ER Praia' }),
+    record({ location: '' }),
+  ]
+
+  const rank = buildRank(registros, 'location')
+
+  assert.deepEqual(rank[0], { label: 'ER Centro', total: 2, percent: 50 })
+  assert.deepEqual(rank[1], { label: 'ER Praia', total: 1, percent: 25 })
+  assert.equal(rank[2].label, 'Sem loja')
+  assert.equal(rank[2].total, 1)
+})
+
+test('ranking respeita o limite', () => {
+  const registros = Array.from({ length: 12 }, (_, indice) =>
+    record({ category: `Categoria ${indice}` }),
+  )
+
+  assert.equal(buildRank(registros, 'category').length, 8)
+  assert.equal(buildRank(registros, 'category', 3).length, 3)
+})
+
+test('série de analistas ordena do maior para o menor', () => {
+  const series = buildAnalystSeries([
+    record({ analyst: 'Ana' }),
+    record({ analyst: 'Ana' }),
+    record({ analyst: 'Bruno' }),
+  ])
+
+  assert.deepEqual(series, [
+    { label: 'Ana', total: 2 },
+    { label: 'Bruno', total: 1 },
+  ])
+})
+
+test('série mensal separa concluídos do total e ordena por data', () => {
+  const series = buildMonthlySeries([
+    record({ createdOn: '2026-10-02T08:00:00', canonicalStatus: 'Concluído' }),
+    record({ createdOn: '2026-09-10T08:00:00', canonicalStatus: 'Concluído' }),
+    record({ createdOn: '2026-09-11T08:00:00', canonicalStatus: 'Em aberto' }),
+    record({ createdOn: null, canonicalStatus: 'Concluído' }),
+  ])
+
+  assert.equal(series.length, 2)
+  assert.equal(series[0].key, '2026-09')
+  assert.equal(series[0].total, 2)
+  assert.equal(series[0].concluidos, 1)
+  assert.equal(series[1].key, '2026-10')
+  assert.equal(series[1].total, 1)
 })

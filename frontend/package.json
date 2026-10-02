@@ -9,10 +9,11 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:indicators": "node --test src/features/indicators/indicators.test.js",
+    "test:corrective": "node --test src/features/indicators/corrective/corrective.test.js",
     "test:assets": "node --test src/features/assets/assets.test.js",
     "test:bff": "node --test src/lib/apiClient.test.js",
     "test:users": "node --test src/features/users/users.test.js",
-    "test": "node --test src/lib/apiClient.test.js src/lib/conversations.test.js src/features/auth/authErrors.test.js src/features/audit/audit.test.js src/features/indicators/indicators.test.js src/features/assets/assets.test.js src/features/assets/filters.test.js"
+    "test": "node --test src/lib/apiClient.test.js src/lib/conversations.test.js src/features/auth/authErrors.test.js src/features/audit/audit.test.js src/features/indicators/indicators.test.js src/features/indicators/corrective/corrective.test.js src/features/assets/assets.test.js src/features/assets/filters.test.js"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

@@ -26,7 +26,8 @@ def clean():
 def inventory():
     db = TestSession()
     try:
-        natal = AssetStore(store_key="natal", store_name="Natal Shopping", praca="Natal", bpcs_number="111")
+        natal = AssetStore(store_key="natal", store_name="Natal Shopping", praca="Natal",
+                           bpcs_number="111", sap_number="999")
         mossoro = AssetStore(store_key="mossoro", store_name="Mossoró Centro", praca="Mossoró", bpcs_number="222")
         db.add_all([natal, mossoro])
         db.flush()
@@ -65,6 +66,15 @@ def test_count_filters_across_inventories(inventory):
     assert salon["total_count"] == 1
     assert salon["matched_locations"] == [{"location": "Salão", "total": 1}]
     assert query(asset_types=["fire_safety", "water"], due_before="2026-10-31").json()["total_count"] == 1
+
+
+def test_store_code_matches_bpcs_or_sap_number(inventory):
+    """Um código de loja falado pelo usuário pode ser o número BPCS ou o SAP;
+    a IA não sabe qual é qual sem consultar o cadastro, então o backend busca os dois."""
+    assert query(store_code="111").json()["total_count"] == 3  # bpcs da Natal Shopping
+    assert query(store_code="999").json()["total_count"] == 3  # sap da Natal Shopping
+    assert query(store_code="222").json()["total_count"] == 1  # bpcs da Mossoró Centro
+    assert query(store_code="nao-existe").json()["total_count"] == 0
 
 
 def test_list_and_group_are_bounded(inventory):

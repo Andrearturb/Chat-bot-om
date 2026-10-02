@@ -57,7 +57,7 @@ Os cadastros são climatização (ar-condicionado, ar condicionados, split, máq
 
 query_shape=count para total simples; list para equipamentos individuais ("quais aparelhos", "liste os extintores"); group para quantidade ou nomes distintos POR loja/praça/tipo/status/marca/localização; ranking para "top N", "qual loja tem mais". Em group/ranking, group_by é obrigatório e pode ser asset_type, store_name, praca, status, equipment_type, brand ou location. "Quais as localizações dos ativos?" é group_by=location, NÃO list. "Quantos são no salão?" é count com location="salão". Para list, limite máximo 50. Use null para campos não pedidos.
 
-Mapeie nome de loja em store_name e praça em praca; não invente nomes. Filtre equipment_type apenas quando o usuário disser um tipo específico como Split, Extintor ou Purificador. "Ar-condicionado" e "máquinas de ar condicionado" correspondem a asset_types=["climatization"] sem equipment_type. Mapeie capacidade como capacity_btu_min/max; "acima de 18000 BTU" significa min=18001, "até 18000" significa max=18000. Vencimento de extintores e próxima troca de filtros de água usam due_before (AAAA-MM-DD); "vencidos" significa até hoje. Outros ativos não têm esse campo.
+Mapeie nome de loja (por extenso, ex.: "ER Parnamirim", "Natal Shopping") em store_name e praça em praca; não invente nomes. Se o usuário citar um código numérico ou curto para identificar a loja (ex.: "loja 4006", "código 21232", "a 4032") SEM dizer se é BPCS ou SAP, use store_code (não store_name) — o sistema busca esse código nos dois cadastros. Só use bpcs_number ou sap_number quando o usuário disser explicitamente qual dos dois sistemas é ("código BPCS 21232", "SAP 4032"). Filtre equipment_type apenas quando o usuário disser um tipo específico como Split, Extintor ou Purificador. "Ar-condicionado" e "máquinas de ar condicionado" correspondem a asset_types=["climatization"] sem equipment_type. Mapeie capacidade como capacity_btu_min/max; "acima de 18000 BTU" significa min=18001, "até 18000" significa max=18000. Vencimento de extintores e próxima troca de filtros de água usam due_before (AAAA-MM-DD); "vencidos" significa até hoje. Outros ativos não têm esse campo.
 
 Se a mensagem depende da consulta anterior ("e em Mossoró?", "quantos são no salão de venda?", "quais as localizações dos ativos?"), use follow_up=true. Nesse caso, informe APENAS os filtros alterados na mensagem atual; deixe os demais null e asset_types=[]. O próximo nó preservará os filtros anteriores automaticamente. Use clear_fields para retirar filtros explicitamente ou ao enumerar aquela dimensão. Exemplo: após consultar 9 aparelhos de climatização na loja ER Parnamirim, "quantos são no salão de venda?" -> follow_up=true, query_shape=count, location="salão de venda", asset_types=[], store_name=null, clear_fields=[]. "Quais as localizações dos ativos?" -> follow_up=true, query_shape=group, group_by=location, clear_fields=["location"].
 
@@ -75,13 +75,13 @@ ASSET_SCHEMA = {
         "follow_up": {"type": "boolean"},
         "clear_fields": {"type": "array", "items": {"type": "string", "enum": [
             "asset_types", "store_name", "praca", "status", "equipment_type", "location", "brand",
-            "asset_code", "bpcs_number", "sap_number", "capacity_btu_min", "capacity_btu_max", "due_before",
+            "asset_code", "bpcs_number", "sap_number", "store_code", "capacity_btu_min", "capacity_btu_max", "due_before",
         ]}, "uniqueItems": True},
         "query_shape": {"type": "string", "enum": ["count", "list", "group", "ranking"]},
         "asset_types": {"type": "array", "items": {"type": "string", "enum": ["climatization", "fire_safety", "water"]}, "uniqueItems": True},
         **{key: nullable("string") for key in (
             "store_name", "praca", "status", "equipment_type", "location", "brand",
-            "asset_code", "bpcs_number", "sap_number", "due_before",
+            "asset_code", "bpcs_number", "sap_number", "store_code", "due_before",
         )},
         "capacity_btu_min": nullable("integer", minimum=0),
         "capacity_btu_max": nullable("integer", minimum=0),
@@ -97,7 +97,7 @@ const changes = typeof raw.output === 'string' ? JSON.parse(raw.output) : (raw.o
 const trigger = $('Roteamento da Consulta').first().json;
 const previous = trigger.assetQueryState && typeof trigger.assetQueryState === 'object' ? trigger.assetQueryState : null;
 const followUp = Boolean(previous) && (changes.follow_up === true || trigger.assetFollowUpHint === true);
-const fields = ['asset_types','store_name','praca','status','equipment_type','location','brand','asset_code','bpcs_number','sap_number','capacity_btu_min','capacity_btu_max','due_before'];
+const fields = ['asset_types','store_name','praca','status','equipment_type','location','brand','asset_code','bpcs_number','sap_number','store_code','capacity_btu_min','capacity_btu_max','due_before'];
 const clear = new Set(Array.isArray(changes.clear_fields) ? changes.clear_fields : []);
 const query = {query_shape: changes.query_shape};
 for (const field of fields) {
@@ -136,6 +136,9 @@ if (query.equipment_type) filters.push(`equipamento ${query.equipment_type}`);
 if (query.brand) filters.push(`marca ${query.brand}`);
 if (query.location) filters.push(`local ${query.location}`);
 if (query.asset_code) filters.push(`código ${query.asset_code}`);
+if (query.store_code) filters.push(`código de loja ${query.store_code}`);
+if (query.bpcs_number) filters.push(`BPCS ${query.bpcs_number}`);
+if (query.sap_number) filters.push(`SAP ${query.sap_number}`);
 if (query.capacity_btu_min != null) filters.push(`a partir de ${number(query.capacity_btu_min)} BTU`);
 if (query.capacity_btu_max != null) filters.push(`até ${number(query.capacity_btu_max)} BTU`);
 if (query.due_before) filters.push(`vencimento ou troca de filtro até ${query.due_before}`);

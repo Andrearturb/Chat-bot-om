@@ -3,6 +3,7 @@ import CorrectiveFilters from './components/CorrectiveFilters'
 import CorrectiveKpis from './components/CorrectiveKpis'
 import CorrectiveCharts from './components/CorrectiveCharts'
 import CorrectiveRankTables from './components/CorrectiveRankTables'
+import CorrectiveDetailModal from './components/CorrectiveDetailModal'
 import {
   applyCorrectiveFilters,
   buildAnalystSeries,
@@ -34,8 +35,9 @@ function saveFilters(filters) {
   }
 }
 
-export default function CorrectivePanel({ records, onOpenDetail }) {
+export default function CorrectivePanel({ records }) {
   const [filters, setFilters] = useState(loadFilters)
+  const [detail, setDetail] = useState(null)
 
   const options = useMemo(() => buildFilterOptions(records), [records])
   const filtered = useMemo(() => applyCorrectiveFilters(records, filters), [records, filters])
@@ -61,9 +63,10 @@ export default function CorrectivePanel({ records, onOpenDetail }) {
   return (
     <div className="corrective-panel">
       <CorrectiveFilters filters={filters} options={options} onChange={updateFilter} onClear={clearFilters} />
-      <CorrectiveKpis kpis={kpis} counters={counters} records={filtered} onOpenDetail={onOpenDetail} />
+      <CorrectiveKpis kpis={kpis} counters={counters} records={filtered} onOpenDetail={setDetail} />
       <CorrectiveCharts analystSeries={analystSeries} monthlySeries={monthlySeries} />
       <CorrectiveRankTables lojaRank={lojaRank} categoryRank={categoryRank} />
+      <CorrectiveDetailModal detail={detail} onClose={() => setDetail(null)} />
     </div>
   )
 }

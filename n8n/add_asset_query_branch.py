@@ -1,0 +1,289 @@
+"""Acrescenta a consulta de ativos ao workflow de chat exportado pelo n8n.
+
+Uso: python n8n/add_asset_query_branch.py workflow-original.json workflow-novo.json
+O JSON gerado não contém chaves; a credencial HTTP existente permanece por referência.
+"""
+
+from __future__ import annotations
+
+import copy
+import json
+import sys
+from pathlib import Path
+
+
+ROUTER_CODE = r"""
+const trigger = $input.first().json;
+const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const service = /\b(chamados?|tickets?|ordens? de servico|solicitacoes?|atendimentos?)\b/;
+const asset = /\b(ativos?|equipamentos?|inventario|climatizacao|climatizadores?|ar(?:es)?[ -]?condicionad[oa]s?|maquinas? de ar|splits?|extintores?|incendio|purificadores?|gelagua|bebedouros?|filtros? de agua|btus?)\b/;
+function domain(text) {
+  const value = normalize(text);
+  if (service.test(value)) return 'service';
+  if (asset.test(value)) return 'asset';
+  return null;
+}
+let selected = domain(trigger.chatInput);
+if (!selected && Array.isArray(trigger.history)) {
+  for (const item of [...trigger.history].reverse()) {
+    if (item.role !== 'user') continue;
+    selected = domain(item.content);
+    if (selected) break;
+  }
+}
+// O backend sabe, de forma confiável, se a conversa ainda está em contexto de
+// ativos (persistido entre turnos no banco) — diferente do scan do histórico
+// acima, isso não se perde depois de várias mensagens de acompanhamento sem
+// palavra-chave (ex.: "e quantos desses tem na loja 4006?").
+if (!selected && trigger.hadAssetContext) selected = 'asset';
+let route = selected || 'service';
+if (route === 'asset' && !trigger.assetAccessToken) route = 'asset_denied';
+const previousAssetState = trigger.assetQueryState && typeof trigger.assetQueryState === 'object';
+const message = normalize(trigger.chatInput);
+const assetFollowUpHint = route === 'asset' && previousAssetState && (
+  /^(e\b|(?:quantos?|quantas?) sao\b|quais? (sao|a|as)\b)/.test(message) ||
+  /\b(desses?|dessas?|dos ativos|das maquinas|mesma loja|nesse local)\b/.test(message)
+);
+return [{ json: { ...trigger, route, assetFollowUpHint } }];
+""".strip()
+
+ASSET_PROMPT = """=Você interpreta perguntas sobre a Central de Ativos do Grupo Gentil. Extraia parâmetros estruturados; não gere SQL nem responda ao usuário. Preencha TODAS as propriedades do JSON Schema.
+
+Mensagem atual: {{ $('When chat message received').first().json.chatInput }}
+Estado estruturado da última consulta de ativos: {{ JSON.stringify($('Roteamento da Consulta').first().json.assetQueryState || null) }}
+Data atual: {{ new Date().toISOString().slice(0, 10) }}
+
+Os cadastros são climatização (ar-condicionado, ar condicionados, split, máquinas de ar, BTU), incêndio (extintor) e água (purificador, gelágua, bebedouro). asset_types=[] significa todos os tipos. Nunca trate chamado ou ticket como ativo.
+
+query_shape=count para total simples; list para equipamentos individuais ("quais aparelhos", "liste os extintores"); group para quantidade ou nomes distintos POR loja/praça/tipo/status/marca/localização; ranking para "top N", "qual loja tem mais". Em group/ranking, group_by é obrigatório e pode ser asset_type, store_name, praca, status, equipment_type, brand ou location. "Quais as localizações dos ativos?" é group_by=location, NÃO list. "Quantos são no salão?" é count com location="salão". Para list, limite máximo 50. Use null para campos não pedidos.
+
+Mapeie nome de loja em store_name e praça em praca; não invente nomes. Filtre equipment_type apenas quando o usuário disser um tipo específico como Split, Extintor ou Purificador. "Ar-condicionado" e "máquinas de ar condicionado" correspondem a asset_types=["climatization"] sem equipment_type. Mapeie capacidade como capacity_btu_min/max; "acima de 18000 BTU" significa min=18001, "até 18000" significa max=18000. Vencimento de extintores e próxima troca de filtros de água usam due_before (AAAA-MM-DD); "vencidos" significa até hoje. Outros ativos não têm esse campo.
+
+Se a mensagem depende da consulta anterior ("e em Mossoró?", "quantos são no salão de venda?", "quais as localizações dos ativos?"), use follow_up=true. Nesse caso, informe APENAS os filtros alterados na mensagem atual; deixe os demais null e asset_types=[]. O próximo nó preservará os filtros anteriores automaticamente. Use clear_fields para retirar filtros explicitamente ou ao enumerar aquela dimensão. Exemplo: após consultar 9 aparelhos de climatização na loja ER Parnamirim, "quantos são no salão de venda?" -> follow_up=true, query_shape=count, location="salão de venda", asset_types=[], store_name=null, clear_fields=[]. "Quais as localizações dos ativos?" -> follow_up=true, query_shape=group, group_by=location, clear_fields=["location"].
+
+Uma pergunta completa e independente usa follow_up=false e substitui todos os filtros anteriores. "Quantos ativos existem?" é independente. Não use histórico de chamados para filtrar ativos. Copie nomes de loja do usuário; não invente sinônimos de lojas.
+"""
+
+def nullable(type_name: str, **extra):
+    return {"anyOf": [{"type": type_name, **extra}, {"type": "null"}]}
+
+
+ASSET_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "follow_up": {"type": "boolean"},
+        "clear_fields": {"type": "array", "items": {"type": "string", "enum": [
+            "asset_types", "store_name", "praca", "status", "equipment_type", "location", "brand",
+            "asset_code", "bpcs_number", "sap_number", "capacity_btu_min", "capacity_btu_max", "due_before",
+        ]}, "uniqueItems": True},
+        "query_shape": {"type": "string", "enum": ["count", "list", "group", "ranking"]},
+        "asset_types": {"type": "array", "items": {"type": "string", "enum": ["climatization", "fire_safety", "water"]}, "uniqueItems": True},
+        **{key: nullable("string") for key in (
+            "store_name", "praca", "status", "equipment_type", "location", "brand",
+            "asset_code", "bpcs_number", "sap_number", "due_before",
+        )},
+        "capacity_btu_min": nullable("integer", minimum=0),
+        "capacity_btu_max": nullable("integer", minimum=0),
+        "group_by": nullable("string", enum=["asset_type", "store_name", "praca", "status", "equipment_type", "brand", "location"]),
+        "limit": nullable("integer", minimum=1, maximum=100),
+    },
+}
+ASSET_SCHEMA["required"] = list(ASSET_SCHEMA["properties"])
+
+ASSET_MERGE_CODE = r"""
+const raw = $input.first().json;
+const changes = typeof raw.output === 'string' ? JSON.parse(raw.output) : (raw.output || raw);
+const trigger = $('Roteamento da Consulta').first().json;
+const previous = trigger.assetQueryState && typeof trigger.assetQueryState === 'object' ? trigger.assetQueryState : null;
+const followUp = Boolean(previous) && (changes.follow_up === true || trigger.assetFollowUpHint === true);
+const fields = ['asset_types','store_name','praca','status','equipment_type','location','brand','asset_code','bpcs_number','sap_number','capacity_btu_min','capacity_btu_max','due_before'];
+const clear = new Set(Array.isArray(changes.clear_fields) ? changes.clear_fields : []);
+const query = {query_shape: changes.query_shape};
+for (const field of fields) {
+  const incoming = changes[field];
+  const blank = incoming == null || (field === 'asset_types' && Array.isArray(incoming) && incoming.length === 0);
+  if (clear.has(field)) query[field] = field === 'asset_types' ? [] : null;
+  else if (followUp && blank) query[field] = previous[field] ?? (field === 'asset_types' ? [] : null);
+  else query[field] = incoming ?? (field === 'asset_types' ? [] : null);
+}
+query.group_by = ['group','ranking'].includes(query.query_shape)
+  ? (changes.group_by || (followUp ? previous.group_by : null)) : null;
+query.limit = ['list','group','ranking'].includes(query.query_shape)
+  ? (changes.limit ?? (followUp && previous.query_shape === query.query_shape ? previous.limit : null)) : null;
+// Ao enumerar uma dimensão, o filtro anterior da própria dimensão sai do escopo.
+if (query.group_by && Object.prototype.hasOwnProperty.call(query, query.group_by)) {
+  query[query.group_by] = null;
+}
+return [{json:{...query,session_id:trigger.sessionId,access_token:trigger.assetAccessToken}}];
+""".strip()
+
+ASSET_BODY = "={{ $('Mesclar Consulta de Ativos').first().json }}"
+
+ASSET_RESPONSE_CODE = r"""
+const result = $input.first().json;
+const query = $('Mesclar Consulta de Ativos').first().json;
+const types = {climatization:'climatização',fire_safety:'incêndio',water:'água'};
+const fields = {asset_type:'tipo de ativo',store_name:'loja',praca:'praça',status:'status',equipment_type:'tipo de equipamento',brand:'marca',location:'local'};
+const safe = value => String(value ?? 'Não informado').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+const number = value => Number(value || 0).toLocaleString('pt-BR');
+const filters = [];
+if (query.asset_types?.length) filters.push(query.asset_types.map(type => types[type] || type).join(', '));
+if (query.store_name) filters.push(`loja ${query.store_name}`);
+if (query.praca) filters.push(`praça ${query.praca}`);
+if (query.status) filters.push(`status ${query.status}`);
+if (query.equipment_type) filters.push(`equipamento ${query.equipment_type}`);
+if (query.brand) filters.push(`marca ${query.brand}`);
+if (query.location) filters.push(`local ${query.location}`);
+if (query.asset_code) filters.push(`código ${query.asset_code}`);
+if (query.capacity_btu_min != null) filters.push(`a partir de ${number(query.capacity_btu_min)} BTU`);
+if (query.capacity_btu_max != null) filters.push(`até ${number(query.capacity_btu_max)} BTU`);
+if (query.due_before) filters.push(`vencimento ou troca de filtro até ${query.due_before}`);
+const suffix = filters.length ? ` considerando ${filters.join('; ')}` : '';
+let output;
+if (result.query_shape === 'count') {
+  const total = Number(result.total_count || 0);
+  output = `Encontrei **${number(total)} ${total === 1 ? 'ativo' : 'ativos'}**${suffix} na Central de Ativos.`;
+  if (Array.isArray(result.matched_locations) && result.matched_locations.length) {
+    const matched = result.matched_locations.map(item => `**${safe(item.location)}** (${number(item.total)})`).join(', ');
+    output += ` ${result.matched_locations.length === 1 ? 'Local cadastrado encontrado' : 'Locais cadastrados encontrados'}: ${matched}.`;
+  }
+} else if (result.query_shape === 'list') {
+  const rows = Array.isArray(result.rows) ? result.rows : [];
+  output = rows.length ? `Encontrei **${number(result.total_count)} ativos**${suffix}.\n\n` : `Não encontrei ativos${suffix}.`;
+  if (rows.length) {
+    output += '| Código | Tipo | Loja | Equipamento | Local | Status | Detalhes |\n|---|---|---|---|---|---|---|\n';
+    for (const row of rows) {
+      const detail = [row.brand, row.model, row.capacity_btu ? `${number(row.capacity_btu)} BTU` : null,
+        row.expiration_date ? `Vence ${row.expiration_date}` : null,
+        row.next_filter_change ? `Troca de filtro ${row.next_filter_change}` : null].filter(Boolean).join(', ');
+      output += `| ${safe(row.asset_code)} | ${safe(types[row.asset_type] || row.asset_type)} | ${safe(row.store_name)} | ${safe(row.equipment_type)} | ${safe(row.location)} | ${safe(row.status)} | ${safe(detail || '—')} |\n`;
+    }
+    if (result.truncated) output += '\nA lista foi limitada. Informe loja, praça ou tipo para refinar a consulta.';
+  }
+} else {
+  const rows = Array.isArray(result.rows) ? result.rows : [];
+  const label = fields[result.group_by] || result.group_by || 'grupo';
+  output = rows.length ? `Distribuição de ativos por **${label}**${suffix}:\n\n| ${label} | Quantidade |\n|---|---:|\n` : `Não encontrei ativos${suffix}.`;
+  for (const row of rows) {
+    let name = row[result.group_by];
+    if (result.group_by === 'asset_type') name = types[name] || name;
+    output += `| ${safe(name)} | ${number(row.total)} |\n`;
+  }
+  if (result.truncated) output += '\nMostrei apenas os primeiros grupos. Refine os filtros para ver menos grupos.';
+}
+const {session_id,access_token,...asset_query_state} = query;
+return [{json:{output,asset_query_state}}];
+""".strip()
+
+
+def node(name: str, node_id: str, type_name: str, version: float, position: list[int], parameters: dict):
+    return {"id": node_id, "name": name, "type": type_name, "typeVersion": version,
+            "position": position, "parameters": parameters}
+
+
+def if_node(name: str, node_id: str, position: list[int], value: str):
+    return node(name, node_id, "n8n-nodes-base.if", 2.3, position, {
+        "conditions": {"options": {"caseSensitive": True, "leftValue": "", "typeValidation": "strict", "version": 2},
+                       "combinator": "and", "conditions": [{
+                           "id": node_id + "-condition", "leftValue": "={{ $json.route }}",
+                           "rightValue": value, "operator": {"type": "string", "operation": "equals"},
+                       }]}, "options": {},
+    })
+
+
+def connect(target: str, index: int = 0):
+    return {"node": target, "type": "main", "index": index}
+
+
+def patch_workflow(workflow: dict) -> dict:
+    result = copy.deepcopy(workflow)
+    by_name = {item["name"]: item for item in result["nodes"]}
+    required = {"When chat message received", "Buscar Estado da Conversa",
+                "Interpretar Estado da Consulta", "Google Gemini Chat Model1",
+                "Structured Output Parser", "Consultar Query Estruturada"}
+    if not required.issubset(by_name):
+        raise ValueError(f"Workflow de chat incompatível: faltam {sorted(required - set(by_name))}.")
+    if "Roteamento da Consulta" in by_name:
+        required_asset = {"Interpretar Consulta de Ativos", "Estrutura da Consulta de Ativos",
+                          "Consultar Ativos", "Montar Resposta de Ativos"}
+        if not required_asset.issubset(by_name):
+            raise ValueError("Ramificação de ativos incompleta; revise a exportação antes de atualizar.")
+        by_name["Roteamento da Consulta"]["parameters"]["jsCode"] = ROUTER_CODE
+        by_name["Interpretar Consulta de Ativos"]["parameters"]["text"] = ASSET_PROMPT
+        by_name["Interpretar Consulta de Ativos"]["parameters"]["needsFallback"] = False
+        by_name["Estrutura da Consulta de Ativos"]["parameters"]["inputSchema"] = json.dumps(ASSET_SCHEMA, ensure_ascii=False, indent=2)
+        by_name["Consultar Ativos"]["parameters"]["jsonBody"] = ASSET_BODY
+        by_name["Montar Resposta de Ativos"]["parameters"]["jsCode"] = ASSET_RESPONSE_CODE
+        if "Mesclar Consulta de Ativos" not in by_name:
+            position = by_name["Consultar Ativos"]["position"]
+            result["nodes"].append(node("Mesclar Consulta de Ativos", "asset-query-merge",
+                                        "n8n-nodes-base.code", 2, position.copy(), {"jsCode": ASSET_MERGE_CODE}))
+            for name in ("Consultar Ativos", "Montar Resposta de Ativos"):
+                by_name[name]["position"][0] += 300
+        else:
+            by_name["Mesclar Consulta de Ativos"]["parameters"]["jsCode"] = ASSET_MERGE_CODE
+        result["connections"]["Interpretar Consulta de Ativos"] = {"main": [[connect("Mesclar Consulta de Ativos")]]}
+        result["connections"]["Mesclar Consulta de Ativos"] = {"main": [[connect("Consultar Ativos")]]}
+        return result
+    existing_query = by_name["Consultar Query Estruturada"]
+    credential = copy.deepcopy(existing_query["credentials"])
+    model = copy.deepcopy(by_name["Google Gemini Chat Model1"])
+    model.update(id="asset-gemini-model", name="Google Gemini Ativos", position=[-1550, -900])
+    parser = copy.deepcopy(by_name["Structured Output Parser"])
+    parser.update(id="asset-output-parser", name="Estrutura da Consulta de Ativos", position=[-1320, -900])
+    parser["parameters"]["inputSchema"] = json.dumps(ASSET_SCHEMA, ensure_ascii=False, indent=2)
+    ai = copy.deepcopy(by_name["Interpretar Estado da Consulta"])
+    ai.update(id="asset-query-interpreter", name="Interpretar Consulta de Ativos", position=[-1600, -1180])
+    ai["parameters"]["text"] = ASSET_PROMPT
+    ai["parameters"]["needsFallback"] = False
+
+    new_nodes = [
+        node("Roteamento da Consulta", "asset-query-router", "n8n-nodes-base.code", 2, [-2100, -864], {"jsCode": ROUTER_CODE}),
+        if_node("Tem Acesso aos Ativos?", "asset-access-branch", [-1870, -864], "asset_denied"),
+        if_node("Consulta de Ativos?", "asset-domain-branch", [-1650, -700], "asset"),
+        node("Responder Sem Acesso a Ativos", "asset-access-denied", "n8n-nodes-base.code", 2,
+             [-1580, -1000], {"jsCode": "return [{json:{output:'Você não tem permissão para consultar a Central de Ativos.'}}];"}),
+        ai, model, parser,
+        node("Mesclar Consulta de Ativos", "asset-query-merge", "n8n-nodes-base.code", 2,
+             [-1300, -1180], {"jsCode": ASSET_MERGE_CODE}),
+        node("Consultar Ativos", "asset-query-http", "n8n-nodes-base.httpRequest", 4.5, [-1000, -1180], {
+            "method": "POST", "url": "http://backend:8000/chatbot/assets-query", "sendBody": True,
+            "specifyBody": "json", "jsonBody": ASSET_BODY, "options": {},
+            "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth",
+        }),
+        node("Montar Resposta de Ativos", "asset-query-response", "n8n-nodes-base.code", 2,
+             [-700, -1180], {"jsCode": ASSET_RESPONSE_CODE}),
+    ]
+    next(item for item in new_nodes if item["name"] == "Consultar Ativos")["credentials"] = credential
+    result["nodes"].extend(new_nodes)
+    # Abre espaço para os dois caminhos no canvas e preserva os nós antigos.
+    for old in result["nodes"]:
+        if old["name"] in by_name and old["name"] != "When chat message received":
+            old["position"] = [old["position"][0] + 800, old["position"][1] + 260]
+    c = result["connections"]
+    c["When chat message received"]["main"] = [[connect("Roteamento da Consulta")]]
+    c["Roteamento da Consulta"] = {"main": [[connect("Tem Acesso aos Ativos?")]]}
+    c["Tem Acesso aos Ativos?"] = {"main": [[connect("Responder Sem Acesso a Ativos")], [connect("Consulta de Ativos?")]]}
+    c["Consulta de Ativos?"] = {"main": [[connect("Interpretar Consulta de Ativos")], [connect("Buscar Estado da Conversa")]]}
+    c["Google Gemini Ativos"] = {"ai_languageModel": [[{"node": "Interpretar Consulta de Ativos", "type": "ai_languageModel", "index": 0}]]}
+    c["Estrutura da Consulta de Ativos"] = {"ai_outputParser": [[{"node": "Interpretar Consulta de Ativos", "type": "ai_outputParser", "index": 0}]]}
+    c["Interpretar Consulta de Ativos"] = {"main": [[connect("Mesclar Consulta de Ativos")]]}
+    c["Mesclar Consulta de Ativos"] = {"main": [[connect("Consultar Ativos")]]}
+    c["Consultar Ativos"] = {"main": [[connect("Montar Resposta de Ativos")]]}
+    return result
+
+
+def main() -> None:
+    if len(sys.argv) != 3:
+        raise SystemExit(__doc__)
+    source, destination = map(Path, sys.argv[1:])
+    workflows = json.loads(source.read_text(encoding="utf-8"))
+    if len(workflows) != 1:
+        raise ValueError("Forneça a exportação de um único workflow.")
+    destination.write_text(json.dumps([patch_workflow(workflows[0])], ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Workflow de ativos gravado em {destination}.")
+
+
+if __name__ == "__main__":
+    main()

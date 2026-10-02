@@ -96,6 +96,50 @@ def test_missing_field_supplier(structured_db):
     assert result["rows"] == [{"total": 2}]
 
 
+@pytest.fixture
+def fornecedor_db() -> Session:
+    """Fornecedor cadastrado como 'CNPJ - Nome', igual à base real — não como só o nome."""
+    engine = create_engine("sqlite:///:memory:")
+    from app.db.base import Base
+
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    upload = Upload(source_file_name="fornecedor-test", total_rows=2)
+    session.add(upload)
+    session.flush()
+    session.add_all([
+        Service(upload_id=upload.id, ticket="2001", status="Em Aberto", store_name="Loja A", praca="Natal",
+                category="Civil", supplier="54.311.132/0001-63 - ALESSANDRO DA SILVA SANTANA",
+                created_on=datetime(2026, 9, 1)),
+        Service(upload_id=upload.id, ticket="2002", status="Em Aberto", store_name="Loja A", praca="Natal",
+                category="Civil", supplier="11.222.333/0001-44 - BETA SERVIÇOS LTDA",
+                created_on=datetime(2026, 9, 2)),
+    ])
+    session.commit()
+    try:
+        yield session
+    finally:
+        session.close()
+        Base.metadata.drop_all(engine)
+
+
+def test_fornecedor_com_cnpj_encontra_pelo_nome(fornecedor_db):
+    """A IA extrai só o nome da mensagem do usuário; o cadastro guarda 'CNPJ - Nome'."""
+    result = execute_structured_query(
+        fornecedor_db, request("count", event="current_status", supplier="Alessandro da Silva Santana"))
+    assert result["rows"] == [{"total": 1}]
+
+
+def test_fornecedor_por_trecho_nao_casa_com_outro_fornecedor(fornecedor_db):
+    """Substring não pode virar correspondência cruzada entre fornecedores diferentes."""
+    result = execute_structured_query(
+        fornecedor_db, request("count", event="current_status", supplier="Beta"))
+    assert result["rows"] == [{"total": 1}]
+    result = execute_structured_query(
+        fornecedor_db, request("list", event="current_status", supplier="Beta"))
+    assert [row["ticket"] for row in result["rows"]] == ["2002"]
+
+
 @pytest.mark.parametrize(
     ("event", "date_field"),
     [("opened", "created_on"), ("completed", "completion_date"), ("visited", "visit_date")],

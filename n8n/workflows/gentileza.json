@@ -1,5 +1,214 @@
 {
+  "active": true,
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Roteamento da Consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Estado da Conversa": {
+      "main": [
+        [
+          {
+            "node": "Interpretar Estado da Consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interpretar Estado da Consulta": {
+      "main": [
+        [
+          {
+            "node": "Mesclar Estado da Consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Interpretar Estado da Consulta",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Interpretar Estado da Consulta",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar Estado da Conversa": {
+      "main": [
+        [
+          {
+            "node": "Consultar Query Estruturada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mesclar Estado da Consulta": {
+      "main": [
+        [
+          {
+            "node": "Salvar Estado da Conversa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Interpretar Estado da Consulta",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Consultar Query Estruturada": {
+      "main": [
+        [
+          {
+            "node": "Montar Resposta Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteamento da Consulta": {
+      "main": [
+        [
+          {
+            "node": "Tem Acesso aos Ativos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Acesso aos Ativos?": {
+      "main": [
+        [
+          {
+            "node": "Responder Sem Acesso a Ativos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Consulta de Ativos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta de Ativos?": {
+      "main": [
+        [
+          {
+            "node": "Interpretar Consulta de Ativos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar Estado da Conversa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Ativos": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Interpretar Consulta de Ativos",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estrutura da Consulta de Ativos": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Interpretar Consulta de Ativos",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interpretar Consulta de Ativos": {
+      "main": [
+        [
+          {
+            "node": "Mesclar Consulta de Ativos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Ativos": {
+      "main": [
+        [
+          {
+            "node": "Montar Resposta de Ativos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mesclar Consulta de Ativos": {
+      "main": [
+        [
+          {
+            "node": "Consultar Ativos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "id": "gLbok2Xvy09ciYIf",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
   "name": "My workflow",
+  "nodeGroups": [],
   "nodes": [
     {
       "parameters": {
@@ -12,10 +221,10 @@
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.5,
       "position": [
-        0,
-        0
+        -2320,
+        -864
       ],
-      "id": "98febf1a-a83c-4357-a3e7-ef3f07bd7a1e",
+      "id": "08ccfeeb-addb-48a9-aff3-d6b7b204e1d8",
       "name": "When chat message received",
       "webhookId": "9db5ead4-d4ca-4f5c-a1b4-3969e60cb8df",
       "retryOnFail": false
@@ -43,10 +252,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        224,
-        0
+        -1008,
+        -496
       ],
-      "id": "c2227e41-e322-448a-aae9-2902a50374f9",
+      "id": "27df0a13-5d16-460f-8b56-f566858e083f",
       "name": "Buscar Estado da Conversa",
       "alwaysOutputData": true
     },
@@ -61,10 +270,10 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.9,
       "position": [
-        448,
-        0
+        -784,
+        -496
       ],
-      "id": "4a4a4922-370f-423e-8b60-790f3e14e38e",
+      "id": "ae6a7b36-6cad-4b47-92b5-84125ab5dbc7",
       "name": "Interpretar Estado da Consulta",
       "retryOnFail": true,
       "maxTries": 3
@@ -77,10 +286,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.1,
       "position": [
-        288,
-        240
+        -944,
+        -256
       ],
-      "id": "549c75e0-825f-4ae8-93ea-db9d00a563bc",
+      "id": "6452abad-5c96-402e-89f1-e8262a63228b",
       "name": "Google Gemini Chat Model1",
       "credentials": {
         "googlePalmApi": {
@@ -97,10 +306,10 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        624,
-        240
+        -608,
+        -256
       ],
-      "id": "16fe5602-2e23-479f-931b-d1b7b63d2f80",
+      "id": "b28005fd-c094-4d46-8783-8aa5642a4f58",
       "name": "Structured Output Parser"
     },
     {
@@ -466,10 +675,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        912,
-        0
+        -320,
+        -496
       ],
-      "id": "474a939e-99bf-44c2-8477-967c1a5a9a56",
+      "id": "89d7bc7c-0162-457a-863a-4db73070b8d7",
       "name": "Salvar Estado da Conversa"
     },
     {
@@ -479,10 +688,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        752,
-        0
+        -480,
+        -496
       ],
-      "id": "6cbb94b8-7bb5-4e09-80e5-3beb28e8f6d1",
+      "id": "aacfcc8d-dd02-4cf7-8c69-e7eb4c57458a",
       "name": "Mesclar Estado da Consulta"
     },
     {
@@ -492,10 +701,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1296,
-        0
+        64,
+        -496
       ],
-      "id": "5514773c-f923-449a-a125-2029427a0bad",
+      "id": "dda22465-2833-4823-8f6c-a525ff8dc763",
       "name": "Montar Resposta Final"
     },
     {
@@ -505,10 +714,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.1,
       "position": [
-        464,
-        240
+        -768,
+        -256
       ],
-      "id": "050fb469-a544-4db0-adbd-5958e9fb9cf1",
+      "id": "5f9b89cf-99ca-4252-baf8-5d906ab5bdcf",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
@@ -521,6 +730,8 @@
       "parameters": {
         "method": "POST",
         "url": "http://backend:8000/chatbot/structured-query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{\n  (() => {\n    const s = $('Mesclar Estado da Consulta').first().json;\n\n    const {\n      session_id,\n      intent,\n      query_shape,\n      response_format,\n      comparison,\n      selection_context,\n      recent_periods,\n      display_fields,\n      ...state\n    } = s;\n\n    return {\n      query_shape,\n      comparison,\n      selection_context,\n      state\n    };\n  })()\n}}",
@@ -529,126 +740,221 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        1088,
-        0
+        -144,
+        -496
       ],
-      "id": "e03b8ac2-65c4-447d-bb35-20444d7a2c25",
-      "name": "Consultar Query Estruturada"
+      "id": "a5aa70ac-2882-4ce1-894d-a27b2a4a900b",
+      "name": "Consultar Query Estruturada",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "omInternalApiKeyV1",
+          "name": "Chatbot OM Backend interno"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const trigger = $input.first().json;\nconst normalize = value => String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();\nconst service = /\\b(chamados?|tickets?|ordens? de servico|solicitacoes?|atendimentos?)\\b/;\nconst asset = /\\b(ativos?|equipamentos?|inventario|climatizacao|climatizadores?|ar(?:es)?[ -]?condicionad[oa]s?|maquinas? de ar|splits?|extintores?|incendio|purificadores?|gelagua|bebedouros?|filtros? de agua|btus?)\\b/;\nfunction domain(text) {\n  const value = normalize(text);\n  if (service.test(value)) return 'service';\n  if (asset.test(value)) return 'asset';\n  return null;\n}\nlet selected = domain(trigger.chatInput);\nif (!selected && Array.isArray(trigger.history)) {\n  for (const item of [...trigger.history].reverse()) {\n    if (item.role !== 'user') continue;\n    selected = domain(item.content);\n    if (selected) break;\n  }\n}\n// O backend sabe, de forma confiável, se a conversa ainda está em contexto de\n// ativos (persistido entre turnos no banco) — diferente do scan do histórico\n// acima, isso não se perde depois de várias mensagens de acompanhamento sem\n// palavra-chave (ex.: \"e quantos desses tem na loja 4006?\").\nif (!selected && trigger.hadAssetContext) selected = 'asset';\nlet route = selected || 'service';\nif (route === 'asset' && !trigger.assetAccessToken) route = 'asset_denied';\nconst previousAssetState = trigger.assetQueryState && typeof trigger.assetQueryState === 'object';\nconst message = normalize(trigger.chatInput);\nconst assetFollowUpHint = route === 'asset' && previousAssetState && (\n  /^(e\\b|(?:quantos?|quantas?) sao\\b|quais? (sao|a|as)\\b)/.test(message) ||\n  /\\b(desses?|dessas?|dos ativos|das maquinas|mesma loja|nesse local)\\b/.test(message)\n);\nreturn [{ json: { ...trigger, route, assetFollowUpHint } }];"
+      },
+      "id": "asset-query-router",
+      "name": "Roteamento da Consulta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2096,
+        -864
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "asset-access-branch-condition",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "asset_denied",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "asset-access-branch",
+      "name": "Tem Acesso aos Ativos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1872,
+        -864
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "asset-domain-branch-condition",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "asset",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "asset-domain-branch",
+      "name": "Consulta de Ativos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1552,
+        -688
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{output:'Você não tem permissão para consultar a Central de Ativos.'}}];"
+      },
+      "id": "asset-access-denied",
+      "name": "Responder Sem Acesso a Ativos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        -976
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "=define",
+        "text": "=Você interpreta perguntas sobre a Central de Ativos do Grupo Gentil. Extraia parâmetros estruturados; não gere SQL nem responda ao usuário. Preencha TODAS as propriedades do JSON Schema.\n\nMensagem atual: {{ $('When chat message received').first().json.chatInput }}\nEstado estruturado da última consulta de ativos: {{ JSON.stringify($('Roteamento da Consulta').first().json.assetQueryState || null) }}\nData atual: {{ new Date().toISOString().slice(0, 10) }}\n\nOs cadastros são climatização (ar-condicionado, ar condicionados, split, máquinas de ar, BTU), incêndio (extintor) e água (purificador, gelágua, bebedouro). asset_types=[] significa todos os tipos. Nunca trate chamado ou ticket como ativo.\n\nquery_shape=count para total simples; list para equipamentos individuais (\"quais aparelhos\", \"liste os extintores\"); group para quantidade ou nomes distintos POR loja/praça/tipo/status/marca/localização; ranking para \"top N\", \"qual loja tem mais\". Em group/ranking, group_by é obrigatório e pode ser asset_type, store_name, praca, status, equipment_type, brand ou location. \"Quais as localizações dos ativos?\" é group_by=location, NÃO list. \"Quantos são no salão?\" é count com location=\"salão\". Para list, limite máximo 50. Use null para campos não pedidos.\n\nMapeie nome de loja em store_name e praça em praca; não invente nomes. Filtre equipment_type apenas quando o usuário disser um tipo específico como Split, Extintor ou Purificador. \"Ar-condicionado\" e \"máquinas de ar condicionado\" correspondem a asset_types=[\"climatization\"] sem equipment_type. Mapeie capacidade como capacity_btu_min/max; \"acima de 18000 BTU\" significa min=18001, \"até 18000\" significa max=18000. Vencimento de extintores e próxima troca de filtros de água usam due_before (AAAA-MM-DD); \"vencidos\" significa até hoje. Outros ativos não têm esse campo.\n\nSe a mensagem depende da consulta anterior (\"e em Mossoró?\", \"quantos são no salão de venda?\", \"quais as localizações dos ativos?\"), use follow_up=true. Nesse caso, informe APENAS os filtros alterados na mensagem atual; deixe os demais null e asset_types=[]. O próximo nó preservará os filtros anteriores automaticamente. Use clear_fields para retirar filtros explicitamente ou ao enumerar aquela dimensão. Exemplo: após consultar 9 aparelhos de climatização na loja ER Parnamirim, \"quantos são no salão de venda?\" -> follow_up=true, query_shape=count, location=\"salão de venda\", asset_types=[], store_name=null, clear_fields=[]. \"Quais as localizações dos ativos?\" -> follow_up=true, query_shape=group, group_by=location, clear_fields=[\"location\"].\n\nUma pergunta completa e independente usa follow_up=false e substitui todos os filtros anteriores. \"Quantos ativos existem?\" é independente. Não use histórico de chamados para filtrar ativos. Copie nomes de loja do usuário; não invente sinônimos de lojas.\n",
+        "hasOutputParser": true,
+        "batching": {},
+        "needsFallback": false
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1216,
+        -1040
+      ],
+      "id": "asset-query-interpreter",
+      "name": "Interpretar Consulta de Ativos",
+      "retryOnFail": true,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -1168,
+        -784
+      ],
+      "id": "asset-gemini-model",
+      "name": "Google Gemini Ativos",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YiYkB3PkC5SMIked",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"follow_up\": {\n      \"type\": \"boolean\"\n    },\n    \"clear_fields\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\",\n        \"enum\": [\n          \"asset_types\",\n          \"store_name\",\n          \"praca\",\n          \"status\",\n          \"equipment_type\",\n          \"location\",\n          \"brand\",\n          \"asset_code\",\n          \"bpcs_number\",\n          \"sap_number\",\n          \"capacity_btu_min\",\n          \"capacity_btu_max\",\n          \"due_before\"\n        ]\n      },\n      \"uniqueItems\": true\n    },\n    \"query_shape\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"count\",\n        \"list\",\n        \"group\",\n        \"ranking\"\n      ]\n    },\n    \"asset_types\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\",\n        \"enum\": [\n          \"climatization\",\n          \"fire_safety\",\n          \"water\"\n        ]\n      },\n      \"uniqueItems\": true\n    },\n    \"store_name\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\"\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"praca\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\"\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"status\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\"\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"equipment_type\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\"\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"location\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\"\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"brand\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\"\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"asset_code\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\"\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"bpcs_number\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\"\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"sap_number\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\"\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"due_before\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\"\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"capacity_btu_min\": {\n      \"anyOf\": [\n        {\n          \"type\": \"integer\",\n          \"minimum\": 0\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"capacity_btu_max\": {\n      \"anyOf\": [\n        {\n          \"type\": \"integer\",\n          \"minimum\": 0\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"group_by\": {\n      \"anyOf\": [\n        {\n          \"type\": \"string\",\n          \"enum\": [\n            \"asset_type\",\n            \"store_name\",\n            \"praca\",\n            \"status\",\n            \"equipment_type\",\n            \"brand\",\n            \"location\"\n          ]\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    },\n    \"limit\": {\n      \"anyOf\": [\n        {\n          \"type\": \"integer\",\n          \"minimum\": 1,\n          \"maximum\": 100\n        },\n        {\n          \"type\": \"null\"\n        }\n      ]\n    }\n  },\n  \"required\": [\n    \"follow_up\",\n    \"clear_fields\",\n    \"query_shape\",\n    \"asset_types\",\n    \"store_name\",\n    \"praca\",\n    \"status\",\n    \"equipment_type\",\n    \"location\",\n    \"brand\",\n    \"asset_code\",\n    \"bpcs_number\",\n    \"sap_number\",\n    \"due_before\",\n    \"capacity_btu_min\",\n    \"capacity_btu_max\",\n    \"group_by\",\n    \"limit\"\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -960,
+        -800
+      ],
+      "id": "asset-output-parser",
+      "name": "Estrutura da Consulta de Ativos"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8000/chatbot/assets-query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Mesclar Consulta de Ativos').first().json }}",
+        "options": {}
+      },
+      "id": "asset-query-http",
+      "name": "Consultar Ativos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -500,
+        -1040
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "omInternalApiKeyV1",
+          "name": "Chatbot OM Backend interno"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconst query = $('Mesclar Consulta de Ativos').first().json;\nconst types = {climatization:'climatização',fire_safety:'incêndio',water:'água'};\nconst fields = {asset_type:'tipo de ativo',store_name:'loja',praca:'praça',status:'status',equipment_type:'tipo de equipamento',brand:'marca',location:'local'};\nconst safe = value => String(value ?? 'Não informado').replace(/\\|/g, '\\\\|').replace(/\\r?\\n/g, ' ');\nconst number = value => Number(value || 0).toLocaleString('pt-BR');\nconst filters = [];\nif (query.asset_types?.length) filters.push(query.asset_types.map(type => types[type] || type).join(', '));\nif (query.store_name) filters.push(`loja ${query.store_name}`);\nif (query.praca) filters.push(`praça ${query.praca}`);\nif (query.status) filters.push(`status ${query.status}`);\nif (query.equipment_type) filters.push(`equipamento ${query.equipment_type}`);\nif (query.brand) filters.push(`marca ${query.brand}`);\nif (query.location) filters.push(`local ${query.location}`);\nif (query.asset_code) filters.push(`código ${query.asset_code}`);\nif (query.capacity_btu_min != null) filters.push(`a partir de ${number(query.capacity_btu_min)} BTU`);\nif (query.capacity_btu_max != null) filters.push(`até ${number(query.capacity_btu_max)} BTU`);\nif (query.due_before) filters.push(`vencimento ou troca de filtro até ${query.due_before}`);\nconst suffix = filters.length ? ` considerando ${filters.join('; ')}` : '';\nlet output;\nif (result.query_shape === 'count') {\n  const total = Number(result.total_count || 0);\n  output = `Encontrei **${number(total)} ${total === 1 ? 'ativo' : 'ativos'}**${suffix} na Central de Ativos.`;\n  if (Array.isArray(result.matched_locations) && result.matched_locations.length) {\n    const matched = result.matched_locations.map(item => `**${safe(item.location)}** (${number(item.total)})`).join(', ');\n    output += ` ${result.matched_locations.length === 1 ? 'Local cadastrado encontrado' : 'Locais cadastrados encontrados'}: ${matched}.`;\n  }\n} else if (result.query_shape === 'list') {\n  const rows = Array.isArray(result.rows) ? result.rows : [];\n  output = rows.length ? `Encontrei **${number(result.total_count)} ativos**${suffix}.\\n\\n` : `Não encontrei ativos${suffix}.`;\n  if (rows.length) {\n    output += '| Código | Tipo | Loja | Equipamento | Local | Status | Detalhes |\\n|---|---|---|---|---|---|---|\\n';\n    for (const row of rows) {\n      const detail = [row.brand, row.model, row.capacity_btu ? `${number(row.capacity_btu)} BTU` : null,\n        row.expiration_date ? `Vence ${row.expiration_date}` : null,\n        row.next_filter_change ? `Troca de filtro ${row.next_filter_change}` : null].filter(Boolean).join(', ');\n      output += `| ${safe(row.asset_code)} | ${safe(types[row.asset_type] || row.asset_type)} | ${safe(row.store_name)} | ${safe(row.equipment_type)} | ${safe(row.location)} | ${safe(row.status)} | ${safe(detail || '—')} |\\n`;\n    }\n    if (result.truncated) output += '\\nA lista foi limitada. Informe loja, praça ou tipo para refinar a consulta.';\n  }\n} else {\n  const rows = Array.isArray(result.rows) ? result.rows : [];\n  const label = fields[result.group_by] || result.group_by || 'grupo';\n  output = rows.length ? `Distribuição de ativos por **${label}**${suffix}:\\n\\n| ${label} | Quantidade |\\n|---|---:|\\n` : `Não encontrei ativos${suffix}.`;\n  for (const row of rows) {\n    let name = row[result.group_by];\n    if (result.group_by === 'asset_type') name = types[name] || name;\n    output += `| ${safe(name)} | ${number(row.total)} |\\n`;\n  }\n  if (result.truncated) output += '\\nMostrei apenas os primeiros grupos. Refine os filtros para ver menos grupos.';\n}\nconst {session_id,access_token,...asset_query_state} = query;\nreturn [{json:{output,asset_query_state}}];"
+      },
+      "id": "asset-query-response",
+      "name": "Montar Resposta de Ativos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -212,
+        -1040
+      ]
+    },
+    {
+      "id": "asset-query-merge",
+      "name": "Mesclar Consulta de Ativos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        -1040
+      ],
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst changes = typeof raw.output === 'string' ? JSON.parse(raw.output) : (raw.output || raw);\nconst trigger = $('Roteamento da Consulta').first().json;\nconst previous = trigger.assetQueryState && typeof trigger.assetQueryState === 'object' ? trigger.assetQueryState : null;\nconst followUp = Boolean(previous) && (changes.follow_up === true || trigger.assetFollowUpHint === true);\nconst fields = ['asset_types','store_name','praca','status','equipment_type','location','brand','asset_code','bpcs_number','sap_number','capacity_btu_min','capacity_btu_max','due_before'];\nconst clear = new Set(Array.isArray(changes.clear_fields) ? changes.clear_fields : []);\nconst query = {query_shape: changes.query_shape};\nfor (const field of fields) {\n  const incoming = changes[field];\n  const blank = incoming == null || (field === 'asset_types' && Array.isArray(incoming) && incoming.length === 0);\n  if (clear.has(field)) query[field] = field === 'asset_types' ? [] : null;\n  else if (followUp && blank) query[field] = previous[field] ?? (field === 'asset_types' ? [] : null);\n  else query[field] = incoming ?? (field === 'asset_types' ? [] : null);\n}\nquery.group_by = ['group','ranking'].includes(query.query_shape)\n  ? (changes.group_by || (followUp ? previous.group_by : null)) : null;\nquery.limit = ['list','group','ranking'].includes(query.query_shape)\n  ? (changes.limit ?? (followUp && previous.query_shape === query.query_shape ? previous.limit : null)) : null;\n// Ao enumerar uma dimensão, o filtro anterior da própria dimensão sai do escopo.\nif (query.group_by && Object.prototype.hasOwnProperty.call(query, query.group_by)) {\n  query[query.group_by] = null;\n}\nreturn [{json:{...query,session_id:trigger.sessionId,access_token:trigger.assetAccessToken}}];"
+      }
     }
   ],
   "pinData": {},
-  "connections": {
-    "When chat message received": {
-      "main": [
-        [
-          {
-            "node": "Buscar Estado da Conversa",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Buscar Estado da Conversa": {
-      "main": [
-        [
-          {
-            "node": "Interpretar Estado da Consulta",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Interpretar Estado da Consulta": {
-      "main": [
-        [
-          {
-            "node": "Mesclar Estado da Consulta",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Gemini Chat Model1": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Interpretar Estado da Consulta",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Structured Output Parser": {
-      "ai_outputParser": [
-        [
-          {
-            "node": "Interpretar Estado da Consulta",
-            "type": "ai_outputParser",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Salvar Estado da Conversa": {
-      "main": [
-        [
-          {
-            "node": "Consultar Query Estruturada",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Mesclar Estado da Consulta": {
-      "main": [
-        [
-          {
-            "node": "Salvar Estado da Conversa",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Interpretar Estado da Consulta",
-            "type": "ai_languageModel",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Consultar Query Estruturada": {
-      "main": [
-        [
-          {
-            "node": "Montar Resposta Final",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "56d78757-821c-4d9c-8adf-82c1eb4d8d08",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "bd01b0b648c2c64eb1bddd9361d9972ea684b344fedc4d166654a85e8919e7ad"
-  },
-  "nodeGroups": [],
-  "id": "gLbok2Xvy09ciYIf",
-  "tags": []
+  "tags": [],
+  "versionId": "c8049a77-6c0e-4fa9-ac0a-dd0455a6b5c2"
 }

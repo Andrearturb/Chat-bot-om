@@ -99,7 +99,28 @@ def _exact_text(column: Any, value: str) -> Any:
     return func.lower(func.trim(column)) == func.lower(func.trim(value))
 
 
-def _text_values_predicate(column: Any, values: list[str]) -> Any:
+def _like_term(value: str) -> str:
+    return value.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _substring_text(column: Any, value: str) -> Any:
+    return column.ilike(f"%{_like_term(value)}%", escape="\\")
+
+
+# O cadastro de fornecedor guarda "CNPJ - Razão Social" (ex.: "54.311.132/0001-63 -
+# ALESSANDRO DA SILVA SANTANA"), então a IA costuma extrair só o nome da mensagem do
+# usuário. Correspondência exata nunca bateria; os demais campos de texto continuam
+# exatos porque o usuário normalmente escolhe entre valores já cadastrados.
+SUBSTRING_TEXT_FIELDS = {"supplier"}
+
+
+def _text_match(field_name: str, column: Any, value: str) -> Any:
+    if field_name in SUBSTRING_TEXT_FIELDS:
+        return _substring_text(column, value)
+    return _exact_text(column, value)
+
+
+def _text_values_predicate(column: Any, values: list[str], *, substring: bool = False) -> Any:
     """Case-insensitive OR match for multiple text values.
 
     The synthetic label "Não informado" also matches NULL/blank values so
@@ -123,7 +144,8 @@ def _text_values_predicate(column: Any, values: list[str]) -> Any:
     predicates: list[Any] = []
 
     if regular_values:
-        predicates.append(or_(*[_exact_text(column, value) for value in regular_values]))
+        match = _substring_text if substring else _exact_text
+        predicates.append(or_(*[match(column, value) for value in regular_values]))
 
     if include_missing:
         predicates.append(or_(column.is_(None), func.trim(column) == ""))
@@ -360,7 +382,7 @@ def _build_predicates(state: StructuredQueryState) -> list[Any]:
     for field_name, column in TEXT_FIELDS.items():
         field_value = getattr(state, field_name)
         if field_value is not None:
-            predicates.append(_exact_text(column, field_value))
+            predicates.append(_text_match(field_name, column, field_value))
 
     if state.location_term is not None:
         predicates.append(
@@ -393,7 +415,8 @@ def _build_predicates(state: StructuredQueryState) -> list[Any]:
                     f"multi_filters contém dimensão inválida: {dimension}."
                 )
 
-            predicates.append(_text_values_predicate(column, values))
+            predicates.append(_text_values_predicate(
+                column, values, substring=dimension in SUBSTRING_TEXT_FIELDS))
 
     if state.missing_field is not None:
         column = TEXT_FIELDS[state.missing_field]

@@ -16,12 +16,13 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_permission
+from app.api.dependencies import get_current_session, get_current_user, require_permission
 from app.core.dates import utcnow, iso_utc
 from app.core.config import N8N_CHAT_WEBHOOK_URL, N8N_GATEWAY_TOKEN
 from app.db.session import get_db
-from app.models.auth import AiUsage, AppUser, AssistantConversation, AssistantMessage
+from app.models.auth import AiUsage, AppUser, AssistantConversation, AssistantMessage, UserSession
 from app.services.auth import check_ai_rate_limit, record_security_event
+from app.services.asset_query_access import issue_asset_query_token
 
 router = APIRouter(prefix="/assistant", tags=["Assistant"])
 logger = logging.getLogger(__name__)
@@ -54,7 +55,9 @@ class ConversationListItem(BaseModel):
     message_count: int
 
 
-def _call_n8n(session_id: str, message: str) -> str:
+def _call_n8n(session_id: str, message: str, *, history: list[dict],
+              asset_access_token: str | None, asset_query_state: dict | None,
+              had_asset_context: bool) -> tuple[str, dict | None]:
     if not N8N_CHAT_WEBHOOK_URL:
         raise HTTPException(status_code=503, detail="Assistente não configurado.")
     headers = {"Content-Type": "application/json"}
@@ -62,12 +65,16 @@ def _call_n8n(session_id: str, message: str) -> str:
         headers["Authorization"] = f"Bearer {N8N_GATEWAY_TOKEN}"
     with httpx.Client(timeout=120.0) as client:
         resp = client.post(N8N_CHAT_WEBHOOK_URL,
-                           json={"action": "sendMessage", "sessionId": session_id, "chatInput": message},
+                           json={"action": "sendMessage", "sessionId": session_id, "chatInput": message,
+                                 "history": history, "assetAccessToken": asset_access_token,
+                                 "assetQueryState": asset_query_state, "hadAssetContext": had_asset_context},
                            headers=headers)
         resp.raise_for_status()
     data = resp.json()
-    return (data.get("output") or data.get("text") or data.get("response") or
-            data.get("message") or str(data))
+    output = (data.get("output") or data.get("text") or data.get("response") or
+              data.get("message") or str(data))
+    state = data.get("asset_query_state")
+    return output, state if isinstance(state, dict) else None
 
 
 def _create_title(content: str) -> str:
@@ -78,6 +85,7 @@ def _create_title(content: str) -> str:
 @router.post("/chat", response_model=ChatResponse,
              dependencies=[Depends(require_permission("assistant.use"))])
 def chat(payload: ChatRequest, user: AppUser = Depends(get_current_user),
+         session: UserSession = Depends(get_current_session),
          db: Session = Depends(get_db)) -> ChatResponse:
     content = payload.message.strip()
     if not content:
@@ -126,7 +134,28 @@ def chat(payload: ChatRequest, user: AppUser = Depends(get_current_user),
     error_code = None
 
     try:
-        assistant_text = _call_n8n(conversation.n8n_session_id, content)
+        previous_messages = db.scalars(select(AssistantMessage).where(
+            AssistantMessage.conversation_id == conversation.id,
+            AssistantMessage.id != user_msg.id,
+        ).order_by(AssistantMessage.created_at.desc(), AssistantMessage.id.desc()).limit(6)).all()
+        history = [{"role": item.role, "content": item.content[:1000]}
+                   for item in reversed(previous_messages)]
+        asset_token = (issue_asset_query_token(conversation.n8n_session_id, user.id)
+                       if "assets.view" in (session.permissions or []) else None)
+        prior_asset_state = conversation.asset_query_state if asset_token else None
+        assistant_text, asset_state = _call_n8n(
+            conversation.n8n_session_id, content, history=history,
+            asset_access_token=asset_token,
+            asset_query_state=prior_asset_state,
+            had_asset_context=prior_asset_state is not None,
+        )
+        # Um turno roteado para chamados não devolve asset_query_state; preservamos o
+        # último estado de ativos conhecido em vez de apagá-lo, para que a conversa não
+        # perca o contexto só porque uma pergunta de acompanhamento foi roteada errado.
+        if not asset_token:
+            conversation.asset_query_state = None
+        elif asset_state is not None:
+            conversation.asset_query_state = asset_state
     except httpx.HTTPStatusError as exc:
         error_code = f"HTTP_{exc.response.status_code}"
         raise HTTPException(status_code=502, detail="O assistente encontrou um problema.") from exc

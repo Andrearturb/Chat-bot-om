@@ -9,7 +9,10 @@ import { defineConfig } from 'vite'
 // O browser continua chamando apenas localhost:5173; somente o proxy conhece o backend.
 const BACKEND_TARGET = process.env.BACKEND_TARGET || 'http://backend:8000'
 
-const proxyRoutes = ['/auth', '/assistant', '/assets', '/services', '/users', '/audit', '/chatbot', '/health', '/imports']
+const proxyRoutes = [
+  '/auth', '/assistant', '/assets', '/services', '/preventive-services',
+  '/users', '/audit', '/chatbot', '/health', '/imports',
+]
 
 // No Docker do Windows a pasta montada não avisa o Vite quando um arquivo muda; sem
 // polling o navegador continua recebendo a versão antiga até reiniciar o container.

@@ -46,10 +46,7 @@ BRASILIA_TZ = ZoneInfo("America/Sao_Paulo")
 # Qualquer alteração nesta lista afeta o critério de "registro mudou".
 CAMPOS_SINCRONIZADOS: tuple[str, ...] = (
     "status",
-    "store_name",
     "tape_center_record_id",
-    "bpcs_number",
-    "sap_number",
     "praca",
     "service_description",
     "supplier",
@@ -448,9 +445,6 @@ def extrair_campos_negocio(linha: dict[str, object]) -> dict[str, Any]:
     Retorna um dicionário com os valores prontos para comparação e persistência.
     Não inclui campos internos (id, upload_id, synced_at).
     """
-    location_data = tratar_local_atendimento(
-        obter_valor_campo(linha, "raw_location", obter_field_id_por_alias("raw_location"))
-    )
     signature_data = tratar_status_assinatura(
         obter_valor_campo(linha, "raw_signature", obter_field_id_por_alias("raw_signature"))
     )
@@ -474,10 +468,7 @@ def extrair_campos_negocio(linha: dict[str, object]) -> dict[str, Any]:
 
     return {
         "status": status,
-        "store_name": location_data["store_name"],
         "tape_center_record_id": obter_dcentro_record_id(linha, "raw_location", 580441),
-        "bpcs_number": location_data["bpcs_number"],
-        "sap_number": location_data["sap_number"],
         "praca": normalizar_praca(
             obter_valor_campo(linha, "praca", obter_field_id_por_alias("praca"))
         ),

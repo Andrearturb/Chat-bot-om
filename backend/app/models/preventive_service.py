@@ -15,8 +15,9 @@ class PreventiveService(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ticket: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     status: Mapped[str | None] = mapped_column(String, nullable=True)
-    store_name: Mapped[str | None] = mapped_column(String, nullable=True)
-    tape_center_record_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    tape_center_record_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("tape_centers.record_id"), nullable=True, index=True,
+    )
     praca: Mapped[str | None] = mapped_column(String, nullable=True)
     category: Mapped[str | None] = mapped_column(String, nullable=True)
     subcategory: Mapped[str | None] = mapped_column(String, nullable=True)

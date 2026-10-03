@@ -26,14 +26,13 @@ from app.services.importer import (
     normalizar_texto,
     obter_dcentro_record_id,
     obter_valor_campo,
-    tratar_local_atendimento,
     tratar_status_assinatura,
 )
 
 
 logger = logging.getLogger(__name__)
 SYNC_FIELDS = (
-    "status", "store_name", "tape_center_record_id", "praca", "category", "subcategory",
+    "status", "tape_center_record_id", "praca", "category", "subcategory",
     "service_description", "supplier", "visit_date", "solution_text",
     "analyst_responsible", "non_approval_reason", "signature_status",
     "signed_pdf_url", "created_on", "completion_date", "approved_value",
@@ -93,8 +92,6 @@ def extrair_campos_preventivos(linha: dict[str, Any]) -> tuple[str, dict[str, An
     if ticket is None:
         return None
 
-    location = tratar_local_atendimento(field(linha, "raw_location"))["store_name"]
-    store = normalizar_texto(field(linha, "store_custom")) or location
     signature = tratar_status_assinatura(field(linha, "raw_signature"))
     signature_status = signature["signature_status"]
     order_status = field(linha, "order_status")
@@ -113,7 +110,6 @@ def extrair_campos_preventivos(linha: dict[str, Any]) -> tuple[str, dict[str, An
 
     campos = {
         "status": normalizar_texto(field(linha, "status")),
-        "store_name": store,
         "tape_center_record_id": obter_dcentro_record_id(linha, "raw_location", 580460),
         "praca": normalizar_praca(field(linha, "praca")),
         "category": normalizar_texto(field(linha, "category")),

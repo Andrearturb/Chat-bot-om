@@ -14,6 +14,7 @@ from app.services.structured_query import (
     build_structured_query,
     execute_structured_query,
 )
+from tests.store_factory import add_center
 
 
 @pytest.fixture
@@ -34,8 +35,13 @@ def structured_db() -> Session:
         dict(ticket="1004", status="Em atendimento", store_name="Trairi Central", praca="Fortaleza", category="Elétrica", subcategory="Luz", analyst_responsible="Bia", supplier=None, requester="Rui", created_on=datetime(2026, 7, 31), completion_date=None, visit_date=datetime(2026, 8, 5)),
         dict(ticket="1005", status="Pendente de aprovação", store_name="Loja C", praca="Natal", category=None, subcategory=None, analyst_responsible=None, supplier="Acme", requester="Lia", created_on=datetime(2026, 9, 1), completion_date=None, visit_date=None),
     ]
+    center_ids = {}
     for row in rows:
-        session.add(Service(upload_id=upload.id, **row))
+        name = row.pop("store_name")
+        if name not in center_ids:
+            center_ids[name] = len(center_ids) + 1
+            add_center(session, center_ids[name], name, praca=row["praca"])
+        session.add(Service(upload_id=upload.id, tape_center_record_id=center_ids[name], **row))
     session.commit()
 
     try:
@@ -107,11 +113,12 @@ def fornecedor_db() -> Session:
     upload = Upload(source_file_name="fornecedor-test", total_rows=2)
     session.add(upload)
     session.flush()
+    add_center(session, 1, "Loja A", praca="Natal")
     session.add_all([
-        Service(upload_id=upload.id, ticket="2001", status="Em Aberto", store_name="Loja A", praca="Natal",
+        Service(upload_id=upload.id, ticket="2001", status="Em Aberto", tape_center_record_id=1, praca="Natal",
                 category="Civil", supplier="54.311.132/0001-63 - ALESSANDRO DA SILVA SANTANA",
                 created_on=datetime(2026, 9, 1)),
-        Service(upload_id=upload.id, ticket="2002", status="Em Aberto", store_name="Loja A", praca="Natal",
+        Service(upload_id=upload.id, ticket="2002", status="Em Aberto", tape_center_record_id=1, praca="Natal",
                 category="Civil", supplier="11.222.333/0001-44 - BETA SERVIÇOS LTDA",
                 created_on=datetime(2026, 9, 2)),
     ])

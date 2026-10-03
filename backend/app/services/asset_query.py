@@ -8,6 +8,7 @@ from sqlalchemy import Date, Integer, String, and_, func, literal, or_, select, 
 from sqlalchemy.orm import Session
 
 from app.models.asset_store import AssetStore
+from app.models.tape_center import TapeCenter
 from app.models.climate_asset import ClimateAsset
 from app.models.fire_asset import FireAsset
 from app.models.water_asset import WaterAsset
@@ -18,10 +19,10 @@ def _asset_rows(model, asset_type: str):
     return select(
         literal(asset_type).label("asset_type"),
         model.asset_code.label("asset_code"),
-        AssetStore.store_name.label("store_name"),
-        AssetStore.praca.label("praca"),
-        AssetStore.bpcs_number.label("bpcs_number"),
-        AssetStore.sap_number.label("sap_number"),
+        TapeCenter.name.label("store_name"),
+        TapeCenter.praca.label("praca"),
+        TapeCenter.bcps_number.label("bpcs_number"),
+        TapeCenter.sap_number.label("sap_number"),
         model.equipment_type.label("equipment_type"),
         model.location.label("location"),
         model.status.label("status"),
@@ -30,7 +31,9 @@ def _asset_rows(model, asset_type: str):
         (model.capacity_btu if hasattr(model, "capacity_btu") else literal(None).cast(Integer)).label("capacity_btu"),
         (model.expiration_date if hasattr(model, "expiration_date") else literal(None).cast(Date)).label("expiration_date"),
         (model.next_filter_change if hasattr(model, "next_filter_change") else literal(None).cast(Date)).label("next_filter_change"),
-    ).join(AssetStore, AssetStore.id == model.store_id)
+    ).join(AssetStore, AssetStore.id == model.store_id).join(
+        TapeCenter, TapeCenter.record_id == AssetStore.tape_center_record_id,
+    ).where(TapeCenter.status == "Aberta")
 
 
 def _like_term(value: str) -> str:

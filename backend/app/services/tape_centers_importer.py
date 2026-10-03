@@ -141,6 +141,8 @@ def importar_centros_tape(db: Session, limit: int = 100) -> dict[str, object]:
         upload.rejected_count = counts["rejected"]
         db.commit()
         db.refresh(upload)
+        from app.services.assets import sync_asset_stores
+        sync_asset_stores(db)
     except Exception:
         db.rollback()
         raise

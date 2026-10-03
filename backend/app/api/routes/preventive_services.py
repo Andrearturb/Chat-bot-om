@@ -20,7 +20,7 @@ router = APIRouter(prefix="/preventive-services", tags=["Preventive Services"])
             dependencies=[Depends(require_permission("indicators.view"))])
 def listar_preventivas(db: Session = Depends(get_db)) -> PreventiveListResponse:
     services = db.query(PreventiveService).order_by(PreventiveService.ticket).all()
-    center_numbers = {item.record_id: item.unique_number for item in db.query(TapeCenter).all()}
+    centers = {item.record_id: item for item in db.query(TapeCenter).all()}
     upload = db.query(Upload).filter(
         Upload.source_file_name == PREVENTIVE_SOURCE_NAME
     ).order_by(Upload.uploaded_at.desc()).first()
@@ -29,9 +29,9 @@ def listar_preventivas(db: Session = Depends(get_db)) -> PreventiveListResponse:
             ticket=item.ticket,
             status=normalizar_status_preventivo(item.status),
             raw_status=item.status,
-            store_name=item.store_name,
+            store_name=centers[item.tape_center_record_id].name if item.tape_center_record_id in centers else None,
             tape_center_record_id=item.tape_center_record_id,
-            center_unique_number=center_numbers.get(item.tape_center_record_id),
+            center_unique_number=centers[item.tape_center_record_id].unique_number if item.tape_center_record_id in centers else None,
             praca=item.praca,
             category=item.category,
             subcategory=item.subcategory,

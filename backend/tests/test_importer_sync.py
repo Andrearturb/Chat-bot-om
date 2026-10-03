@@ -43,9 +43,6 @@ def criar_service_existente(
     upload_id: int,
     ticket: str = "1001",
     status: str = "Em Aberto",
-    store_name: str = "Loja A",
-    bpcs_number: str = "100",
-    sap_number: str = "200",
     praca: str = "Nordeste",
     service_description: str = "Descrição padrão",
     supplier: str | None = None,
@@ -59,9 +56,6 @@ def criar_service_existente(
     svc = Service(
         ticket=ticket,
         status=status,
-        store_name=store_name,
-        bpcs_number=bpcs_number,
-        sap_number=sap_number,
         praca=praca,
         service_description=service_description,
         supplier=supplier,
@@ -98,9 +92,6 @@ class TestCamposMudaram:
     def test_status_mudou(self, db, upload):
         svc = criar_service_existente(db, upload.id, ticket="1", status="Em Aberto")
         campos = {"status": "Em atendimento", **{c: None for c in CAMPOS_SINCRONIZADOS if c != "status"}}
-        campos["store_name"] = svc.store_name
-        campos["bpcs_number"] = svc.bpcs_number
-        campos["sap_number"] = svc.sap_number
         campos["praca"] = svc.praca
         campos["service_description"] = svc.service_description
         assert campos_mudaram(svc, campos) is True
@@ -190,9 +181,6 @@ class TestSincronizarServicos:
             db, upload.id, ticket="5000",
             status="Em Aberto", praca="Nordeste",
             service_description="Descrição padrão",
-            store_name="Loja A",
-            bpcs_number="100",
-            sap_number="200",
         )
         id_antes = svc_antes.id
         created_on_antes = svc_antes.created_on
@@ -325,9 +313,6 @@ class TestCriterioAceitacao:
                 ticket=str(i),
                 status="Em Aberto",
                 praca="Nordeste",
-                store_name=f"Loja {i}",
-                bpcs_number=str(i),
-                sap_number=str(i),
                 service_description=f"Descrição {i}",
                 raw_status="Em aberto",  # igual ao default do make_linha
                 upload_id=upload_id,
@@ -354,14 +339,12 @@ class TestCriterioAceitacao:
                     ticket=str(i),
                     status="Em Atendimento",
                     praca="Nordeste",
-                    store_name=f"Loja {i} | BCPS: {i} | SAP: {i}",
                     service_description=f"Descrição {i}",
                 ))
             else:
                 linhas.append(make_linha(
                     ticket=str(i),
                     praca="Nordeste",
-                    store_name=f"Loja {i} | BCPS: {i} | SAP: {i}",
                     service_description=f"Descrição {i}",
                 ))
 
@@ -370,7 +353,6 @@ class TestCriterioAceitacao:
             linhas.append(make_linha(
                 ticket=str(i),
                 praca="Nordeste",
-                store_name=f"Loja {i} | BCPS: {i} | SAP: {i}",
                 service_description=f"Descrição {i}",
             ))
 
@@ -398,7 +380,6 @@ class TestCriterioAceitacao:
             linhas.append(make_linha(
                 ticket=str(i),
                 praca="Nordeste",
-                store_name=f"Loja {i} | BCPS: {i} | SAP: {i}",
                 service_description=f"Descrição {i}",
             ))
 

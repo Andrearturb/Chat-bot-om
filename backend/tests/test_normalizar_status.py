@@ -254,9 +254,6 @@ class TestMudancaStatusDetectada:
             ticket="M1",
             status="Agendado",  # valor legado que não deve mais existir
             praca="Nordeste",
-            store_name="Loja A",
-            bpcs_number="100",
-            sap_number="200",
             service_description="Desc",
             upload_id=upload.id,
         )
@@ -277,9 +274,6 @@ class TestMudancaStatusDetectada:
             ticket="M2",
             status="BackLog",
             praca="Nordeste",
-            store_name="Loja A",
-            bpcs_number="100",
-            sap_number="200",
             service_description="Desc",
             upload_id=upload.id,
         )
@@ -300,9 +294,6 @@ class TestMudancaStatusDetectada:
             ticket="M3",
             status="Completa",
             praca="Nordeste",
-            store_name="Loja A",
-            bpcs_number="100",
-            sap_number="200",
             service_description="Desc",
             upload_id=upload.id,
         )
@@ -323,9 +314,6 @@ class TestMudancaStatusDetectada:
             ticket="M4",
             status="Em Aberto",
             praca="Nordeste",
-            store_name="Loja A",
-            bpcs_number="100",
-            sap_number="200",
             service_description="Descrição padrão",  # igual ao default do make_linha
             raw_status="Em Aberto",  # igual ao status passado ao make_linha abaixo
             upload_id=upload.id,

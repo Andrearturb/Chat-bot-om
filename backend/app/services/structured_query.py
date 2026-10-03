@@ -7,6 +7,7 @@ from sqlalchemy import Select, and_, asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.service import Service
+from app.models.tape_center import TapeCenter
 from app.schemas.structured_query import (
     BREAKDOWN_DIMENSIONS,
     BREAKDOWN_ORDERS,
@@ -32,7 +33,7 @@ CANONICAL_STATUSES = {
 
 TEXT_FIELDS = {
     "praca": Service.praca,
-    "store_name": Service.store_name,
+    "store_name": TapeCenter.name,
     "analyst_responsible": Service.analyst_responsible,
     "supplier": Service.supplier,
     "requester": Service.requester,
@@ -58,7 +59,7 @@ LIST_FIELDS = (
     Service.ticket,
     Service.status,
     Service.created_on,
-    Service.store_name,
+    TapeCenter.name.label("store_name"),
     Service.praca,
     Service.category,
     Service.subcategory,
@@ -89,6 +90,12 @@ PORTUGUESE_MONTHS = {
     11: "Novembro",
     12: "Dezembro",
 }
+
+
+def _with_center(statement: Select[Any]) -> Select[Any]:
+    return statement.select_from(Service).outerjoin(
+        TapeCenter, TapeCenter.record_id == Service.tape_center_record_id,
+    )
 
 
 class StructuredQueryError(ValueError):
@@ -160,7 +167,7 @@ def _text_values_predicate(column: Any, values: list[str], *, substring: bool = 
 
 def _location_values_predicate(values: list[str]) -> Any:
     return or_(
-        _text_values_predicate(Service.store_name, values),
+        _text_values_predicate(TapeCenter.name, values),
         _text_values_predicate(Service.praca, values),
     )
 
@@ -387,7 +394,7 @@ def _build_predicates(state: StructuredQueryState) -> list[Any]:
     if state.location_term is not None:
         predicates.append(
             or_(
-                _exact_text(Service.store_name, state.location_term),
+                _exact_text(TapeCenter.name, state.location_term),
                 _exact_text(Service.praca, state.location_term),
             )
         )
@@ -497,7 +504,7 @@ def _state_for_comparison_item(
 
 def _count_for_state(db: Session, state: StructuredQueryState) -> int:
     predicates = _build_predicates(state)
-    statement = select(func.count().label("total")).select_from(Service)
+    statement = _with_center(select(func.count().label("total")))
 
     if predicates:
         statement = statement.where(and_(*predicates))
@@ -523,6 +530,7 @@ def _group_counts_for_state(
     statement = (
         select(column.label("group_value"), func.count().label("total"))
         .select_from(Service)
+        .outerjoin(TapeCenter, TapeCenter.record_id == Service.tape_center_record_id)
         .group_by(column)
     )
 
@@ -1033,7 +1041,7 @@ def _count_list_matches(
     if additional_predicate is not None:
         predicates.append(additional_predicate)
 
-    statement = select(func.count().label("total")).select_from(Service)
+    statement = _with_center(select(func.count().label("total")))
     if predicates:
         statement = statement.where(and_(*predicates))
 
@@ -1060,13 +1068,15 @@ def build_structured_query(
     where_clause = and_(*predicates) if predicates else None
 
     if request.query_shape == "count":
-        statement = select(func.count().label("total")).select_from(Service)
+        statement = select(func.count().label("total"))
     elif request.query_shape == "list":
         statement = select(*LIST_FIELDS).order_by(*_list_ordering(state))
     else:
         group_column = GROUP_FIELDS[state.group_by]
         statement = select(group_column.label(state.group_by), func.count().label("total"))
         statement = statement.group_by(group_column).order_by(desc("total"), asc(group_column))
+
+    statement = _with_center(statement)
 
     if where_clause is not None:
         statement = statement.where(where_clause)

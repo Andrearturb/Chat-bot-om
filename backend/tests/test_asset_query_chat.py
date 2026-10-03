@@ -13,6 +13,7 @@ from app.models.fire_asset import FireAsset
 from app.models.water_asset import WaterAsset
 from app.services.asset_query_access import issue_asset_query_token
 from tests.api_harness import INTERNAL_KEY, SESSION_COOKIE, TestSession, fastapi_app, reset_database, seed_session
+from tests.store_factory import add_asset_store
 
 
 @pytest.fixture(autouse=True)
@@ -26,11 +27,8 @@ def clean():
 def inventory():
     db = TestSession()
     try:
-        natal = AssetStore(store_key="natal", store_name="Natal Shopping", praca="Natal",
-                           bpcs_number="111", sap_number="999")
-        mossoro = AssetStore(store_key="mossoro", store_name="Mossoró Centro", praca="Mossoró", bpcs_number="222")
-        db.add_all([natal, mossoro])
-        db.flush()
+        natal = add_asset_store(db, 1, "Natal Shopping", praca="Natal", bcps="111", sap="999")
+        mossoro = add_asset_store(db, 2, "Mossoró Centro", praca="Mossoró", bcps="222")
         db.add_all([
             ClimateAsset(store_id=natal.id, asset_code="CLI-001", equipment_type="Split",
                          capacity_btu=18000, location="Salão", brand="Springer", status="Operacional"),

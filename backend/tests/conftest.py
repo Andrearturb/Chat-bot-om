@@ -61,18 +61,23 @@ def agora() -> datetime:
 
 def make_linha(
     ticket="1001", status="Em aberto",
-    store_name="Loja A | BCPS: 100 | SAP: 200", praca="Nordeste",
+    tape_center_record_id=None, praca="Nordeste",
     supplier=None, visit_date=None, in_attendance_date=None,
     service_description="Descrição padrão", solution_text=None,
     signature_status=None, signed_pdf_url=None, created_on=None,
     requester=None, analyst_responsible=None, non_approval_reason=None,
     sla_late=None, approved_value=None,
 ) -> dict:
+    raw_location = {"field_id": 580441, "label": "Local de Atendimento", "value": None}
+    if tape_center_record_id is not None:
+        raw_location["relation_record_id"] = tape_center_record_id
+        raw_location["relation_app_id"] = 30902
+
     return {
         "field_values": {
             "ticket":               {"field_id": 623225, "label": "Ticket",                     "value": ticket},
             "status":               {"field_id": 580453, "label": "Status",                     "value": status},
-            "raw_location":         {"field_id": 580441, "label": "Local de Atendimento",       "value": store_name},
+            "raw_location":         raw_location,
             "praca":                {"field_id": 580450, "label": "Praça",                      "value": praca},
             "service_description":  {"field_id": 638539, "label": "Descrição do Serviço",       "value": service_description},
             "supplier":             {"field_id": 603575, "label": "Fornecedor",                 "value": supplier},

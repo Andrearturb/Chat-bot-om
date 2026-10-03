@@ -151,7 +151,6 @@ def test_services_api_expoe_campos_da_corretiva(db, upload):
         status="Concluído",
         raw_status="Chamado Concluído",
         praca="Natal",
-        store_name="Loja Teste",
         sla_late="Atrasado",
         approved_value=Decimal("350.00"),
         upload_id=upload.id,

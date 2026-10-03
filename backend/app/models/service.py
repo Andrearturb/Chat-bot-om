@@ -38,10 +38,9 @@ class Service(Base):
     )
     status: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    store_name: Mapped[str | None] = mapped_column(String, nullable=True)
-    tape_center_record_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
-    bpcs_number: Mapped[str | None] = mapped_column(String, nullable=True)
-    sap_number: Mapped[str | None] = mapped_column(String, nullable=True)
+    tape_center_record_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("tape_centers.record_id"), nullable=True, index=True,
+    )
     praca: Mapped[str | None] = mapped_column(String, nullable=True)
 
     service_description: Mapped[str | None] = mapped_column(Text, nullable=True)

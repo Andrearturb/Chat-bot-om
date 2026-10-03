@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.models.asset_store import AssetStore
 from tests.api_harness import SESSION_COOKIE, TestSession, fastapi_app, reset_database, seed_session
+from tests.store_factory import add_asset_store
 
 
 @pytest.fixture(autouse=True)
@@ -20,14 +21,12 @@ def clean():
 def lojas() -> dict[str, int]:
     db = TestSession()
     ids = {}
-    for nome, praca, bpcs, sap in [
+    for center_id, (nome, praca, bpcs, sap) in enumerate([
         ("Natal Shopping", "Natal", "111", "A1"), ("Midway", " Natal ", "112", "A2"),
         ("Mossoró Centro", "Mossoró", "113", "A3"), ("Fortaleza Sul", "Fortaleza", "114", "A4"),
         ("Loja Sem Praça", None, "115", "A5"),
-    ]:
-        loja = AssetStore(store_key=nome.lower(), store_name=nome, praca=praca, bpcs_number=bpcs, sap_number=sap)
-        db.add(loja)
-        db.flush()
+    ], start=1):
+        loja = add_asset_store(db, center_id, nome, praca=praca, bcps=bpcs, sap=sap)
         ids[nome] = loja.id
     db.commit()
     db.close()
@@ -105,8 +104,8 @@ def test_opcoes_e_filtros_exigem_sessao_e_permissao(lojas):
 
 def test_variantes_de_grafia_da_praca_valem_como_a_mesma(lojas):
     db = TestSession()
-    db.add(AssetStore(store_key="b1", store_name="Ribeira", praca="Sao  Luis", bpcs_number="201", sap_number="B1"))
-    db.add(AssetStore(store_key="b2", store_name="Cohama", praca="São Luís", bpcs_number="202", sap_number="B2"))
+    add_asset_store(db, 6, "Ribeira", praca="Sao  Luis", bcps="201", sap="B1")
+    add_asset_store(db, 7, "Cohama", praca="São Luís", bcps="202", sap="B2")
     db.commit()
     db.close()
     assert nomes(cliente().get("/assets/stores", params=[("praca", "São Luís")])) == ["Cohama", "Ribeira"]

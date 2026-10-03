@@ -17,6 +17,7 @@ from app.models.climate_asset import ClimateAsset
 from app.models.fire_asset import FireAsset
 from app.models.water_asset import WaterAsset
 from tests.api_harness import SESSION_COOKIE, TestSession, fastapi_app, reset_database, seed_session
+from tests.store_factory import add_asset_store
 
 CLIMATIZACAO = ["Loja", "BPCS", "SAP", "Praça", "Código", "Tipo", "Local", "Capacidade (BTU)", "Marca", "Modelo",
                 "Nº de série", "Ano de fabricação", "Ano de instalação", "Tensão", "Gás refrigerante", "Status", "Observações"]
@@ -40,11 +41,11 @@ def lojas() -> dict[str, int]:
     """Natal Shopping (4 equipamentos), Midway (1), Mossoró Centro (2) e Fortaleza Sul (nenhum)."""
     db = TestSession()
     ids = {}
-    for nome, praca, bpcs, sap in [("Natal Shopping", "Natal", "111", "A1"), ("Midway", "Natal", "112", "A2"),
-                                   ("Mossoró Centro", "Mossoró", "113", "A3"), ("Fortaleza Sul", "Fortaleza", "114", "A4")]:
-        loja = AssetStore(store_key=nome.lower(), store_name=nome, praca=praca, bpcs_number=bpcs, sap_number=sap)
-        db.add(loja)
-        db.flush()
+    for center_id, (nome, praca, bpcs, sap) in enumerate([
+        ("Natal Shopping", "Natal", "111", "A1"), ("Midway", "Natal", "112", "A2"),
+        ("Mossoró Centro", "Mossoró", "113", "A3"), ("Fortaleza Sul", "Fortaleza", "114", "A4"),
+    ], start=1):
+        loja = add_asset_store(db, center_id, nome, praca=praca, bcps=bpcs, sap=sap)
         ids[nome] = loja.id
 
     def clima(loja, codigo, local, **extra):

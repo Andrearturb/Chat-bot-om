@@ -10,9 +10,8 @@ from app.db.base import Base
 from app.models.asset_store import AssetStore
 from app.models.climate_asset import ClimateAsset
 from app.models.fire_asset import FireAsset
-from app.models.service import Service
+from app.models.tape_center import TapeCenter
 from app.models.store_document import StoreDocument
-from app.models.upload import Upload
 from app.models.water_asset import WaterAsset
 from app.schemas.assets import ClimateAssetCreate, FireAssetCreate, WaterAssetCreate
 from app.services import assets as assets_service
@@ -23,6 +22,7 @@ from app.services.assets import (
     list_stores,
     sync_asset_stores,
 )
+from tests.store_factory import add_center
 
 
 @pytest.fixture
@@ -32,14 +32,8 @@ def asset_db() -> Session:
         model
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()
-    upload = Upload(source_file_name="asset-test", total_rows=3)
-    session.add(upload)
-    session.flush()
-    session.add_all([
-        Service(ticket="A-1", status="Em Aberto", store_name="Loja Centro", bpcs_number="B1", sap_number="S1", praca="Natal", upload_id=upload.id),
-        Service(ticket="A-2", status="Concluído", store_name="Loja Centro", bpcs_number="B1", sap_number="S1", praca="Natal", upload_id=upload.id),
-        Service(ticket="A-3", status="Em atendimento", store_name="Loja Norte", bpcs_number="B2", sap_number=None, praca="Mossoró", upload_id=upload.id),
-    ])
+    add_center(session, 1, "Loja Centro", bcps="B1", sap="S1", praca="Natal")
+    add_center(session, 2, "Loja Norte", bcps="B2", praca="Mossoró")
     session.commit()
     try:
         yield session
@@ -48,13 +42,13 @@ def asset_db() -> Session:
         Base.metadata.drop_all(engine)
 
 
-def test_sync_asset_stores_deduplicates_services(asset_db):
+def test_sync_asset_stores_uses_dcentros_without_duplicates(asset_db):
     sync_asset_stores(asset_db)
     sync_asset_stores(asset_db)
-    stores = asset_db.scalars(select(AssetStore).order_by(AssetStore.store_name)).all()
+    stores = asset_db.scalars(select(AssetStore).order_by(AssetStore.tape_center_record_id)).all()
     assert len(stores) == 2
-    assert stores[0].store_key == "sap:s1"
-    assert stores[1].store_key == "bpcs:b2"
+    assert [store.tape_center_record_id for store in stores] == [1, 2]
+    assert stores[0].store_key == "tape:1"
 
 
 def test_list_stores_search_and_counts(asset_db):
@@ -148,9 +142,9 @@ def test_asset_code_does_not_reuse_sequence_after_delete(asset_db):
     assert third.asset_code.endswith("-003")
 
 
-def test_sync_promotes_bpcs_to_sap_and_merges_legacy_duplicates(asset_db):
+def test_sync_preserves_store_id_and_hides_closed_store_without_deleting_assets(asset_db):
     sync_asset_stores(asset_db)
-    original = asset_db.scalar(select(AssetStore).where(AssetStore.bpcs_number == "B2"))
+    original = asset_db.scalar(select(AssetStore).where(AssetStore.tape_center_record_id == 2))
     assert original is not None
     original_id = original.id
 
@@ -162,50 +156,18 @@ def test_sync_promotes_bpcs_to_sap_and_merges_legacy_duplicates(asset_db):
         "CLI",
     )
 
-    # Simula a duplicata que a versão anterior poderia criar quando o SAP
-    # aparecia depois do BPCS.
-    duplicate = AssetStore(
-        store_key="sap:s2",
-        store_name="Loja Norte",
-        bpcs_number="B2",
-        sap_number="S2",
-        praca="Mossoró",
-    )
-    asset_db.add(duplicate)
-    asset_db.flush()
-    fire = FireAsset(
-        store_id=duplicate.id,
-        asset_code="INC-s2-001",
-        equipment_type="Extintor",
-        location="Salão",
-        status="Operacional",
-    )
-    asset_db.add(fire)
-
-    upload = asset_db.scalar(select(Upload).limit(1))
-    asset_db.add(
-        Service(
-            ticket="A-4",
-            status="Em Aberto",
-            store_name="Loja Norte",
-            bpcs_number="B2",
-            sap_number="S2",
-            praca="Mossoró",
-            upload_id=upload.id,
-        )
-    )
+    center = asset_db.get(TapeCenter, 2)
+    center.sap_number = "S2"
     asset_db.commit()
-
     sync_asset_stores(asset_db)
+    assert asset_db.scalar(select(AssetStore).where(AssetStore.tape_center_record_id == 2)).id == original_id
+    assert original.sap_number == "S2"
+    assert asset_db.get(ClimateAsset, climate.id).store_id == original_id
 
-    stores = asset_db.scalars(select(AssetStore).where(AssetStore.bpcs_number == "B2")).all()
-    assert len(stores) == 1
-    merged = stores[0]
-    assert merged.id == original_id
-    assert merged.store_key == "sap:s2"
-    assert merged.sap_number == "S2"
-    assert asset_db.get(ClimateAsset, climate.id).store_id == merged.id
-    assert asset_db.get(FireAsset, fire.id).store_id == merged.id
+    center.status = "Fechada"
+    asset_db.commit()
+    assert all(item["id"] != original_id for item in list_stores(asset_db))
+    assert asset_db.get(ClimateAsset, climate.id) is not None
 
 
 def test_optional_asset_fields_can_be_cleared(asset_db):

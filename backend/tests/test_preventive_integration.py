@@ -16,12 +16,11 @@ from app.services.preventive_importer import (
 )
 
 
-def raw_record(status="Serviço Finalizado", value=2500):
+def raw_record(status="Serviço Finalizado", value=2500, tape_center_record_id=32220203):
     signature = '[{"status":"completo","url_pdf_assinado":"https://api.autentique.com.br/pdf/1"}]'
     fields = {
         677154: 2728,
         676273: {"text": status},
-        580460: {"title": "Loja Norte | BCPS: 21417 | SAP: 4071"},
         580462: {"text": "São Luís"},
         580461: {"text": "Climatização"},
         676274: {"text": "Limpeza"},
@@ -31,13 +30,20 @@ def raw_record(status="Serviço Finalizado", value=2500):
         681369: signature,
         676271: '<div>100% do progresso</div>',
     }
+    raw_fields = [
+        {"field_id": field_id, "label": "", "values": [{"value": item}]}
+        for field_id, item in fields.items()
+    ]
+    raw_fields.append({
+        "field_id": 580460, "label": "Local de Atendimento", "type": "app",
+        "values": [{"value": {
+            "app_id": 30902, "record_id": tape_center_record_id, "title": "Loja Norte",
+        }}],
+    })
     return {
         "app_record_id": "2728",
         "created_on": "2026-09-25T08:00:00Z",
-        "fields": [
-            {"field_id": field_id, "label": "", "values": [{"value": item}]}
-            for field_id, item in fields.items()
-        ],
+        "fields": raw_fields,
     }
 
 
@@ -54,7 +60,7 @@ def test_transformer_usa_ids_preventivos_e_campos_necessarios():
 
     assert ticket == "2728"
     assert fields["status"] == "Serviço Finalizado"
-    assert fields["store_name"] == "Loja Norte"
+    assert fields["tape_center_record_id"] == 32220203
     assert fields["praca"] == "São Luís"
     assert fields["category"] == "Climatização"
     assert fields["subcategory"] == "Limpeza"
@@ -130,7 +136,7 @@ def test_importer_existente_despacha_57532_sem_outro_token(db, monkeypatch):
 def test_api_preventiva_expoe_status_cru_e_pdf(db, upload):
     upload.source_file_name = "Tape API - 57532"
     db.add(PreventiveService(
-        ticket="2728", status="Serviço Finalizado", store_name="Loja Norte",
+        ticket="2728", status="Serviço Finalizado",
         praca="São Luís", category="Climatização", subcategory="Limpeza",
         signature_status="completo", signed_pdf_url="https://api.autentique.com.br/pdf/1",
         approved_value=Decimal("2500.00"), periodicity="Mensal", upload_id=upload.id,

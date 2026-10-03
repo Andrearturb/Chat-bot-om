@@ -59,9 +59,6 @@ def criar_service(
         ticket=ticket,
         status="Em Aberto",          # alinhado com o que make_linha("Em aberto") normaliza
         praca=praca,
-        store_name="Loja A",
-        bpcs_number="100",
-        sap_number="200",
         service_description="Descrição padrão",  # alinhado com o default de make_linha
         requester=requester,
         analyst_responsible=analyst_responsible,

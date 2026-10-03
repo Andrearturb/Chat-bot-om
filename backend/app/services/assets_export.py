@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.asset_store import AssetStore
+from app.models.tape_center import TapeCenter
 from app.models.climate_asset import ClimateAsset
 from app.models.fire_asset import FireAsset
 from app.models.water_asset import WaterAsset
@@ -80,7 +81,7 @@ def parse_types(values: list[str] | None) -> list[str]:
 
 
 def select_stores(db: Session, *, pracas: list[str] | None, store_ids: list[int] | None) -> list[AssetStore]:
-    query = apply_store_filters(select(AssetStore).order_by(AssetStore.store_name), db, pracas=pracas, store_ids=store_ids)
+    query = apply_store_filters(select(AssetStore).order_by(TapeCenter.name), db, pracas=pracas, store_ids=store_ids)
     return list(db.scalars(query).all())
 
 

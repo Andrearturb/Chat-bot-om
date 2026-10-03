@@ -74,7 +74,6 @@ def test_services_api_expoe_in_attendance_date(db, upload):
         ticket="5004",
         status="Concluído",
         praca="Natal",
-        store_name="Loja Teste",
         in_attendance_date=datetime(2026, 9, 25, 9, 10),
         upload_id=upload.id,
     )

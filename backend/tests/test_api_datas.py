@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from app.core.dates import iso_utc, parse_api_datetime
 from app.models.asset_store import AssetStore
+from tests.store_factory import add_asset_store
 from app.models.auth import AppUser, AssistantConversation, AssistantMessage, AuditLog
 from tests.api_harness import SESSION_COOKIE, TestSession, fastapi_app, reset_database, seed_session
 
@@ -103,9 +104,7 @@ def test_auditoria_filtra_pelo_dia_local_enviado_em_utc():
 def test_auditoria_envia_o_nome_da_loja():
     client = cliente(["audit.view"])
     db = TestSession()
-    loja = AssetStore(store_key="acarau", store_name="Acaraú")
-    db.add(loja)
-    db.flush()
+    loja = add_asset_store(db, 1001, "Acaraú")
     db.add(AuditLog(action="ASSET_CREATE", entity_type="climate_asset", entity_id="12", store_id=loja.id,
                     new_values={"asset_code": "CLI-0001"}, created_at=MOMENTO))
     db.add(AuditLog(action="LOGIN_SUCCESS", entity_type="app_user", created_at=MOMENTO))

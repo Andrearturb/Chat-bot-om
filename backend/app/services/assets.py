@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from fastapi import UploadFile
-from sqlalchemy import and_, case, func, or_, select, update
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -16,7 +16,7 @@ from app.core.config import ASSET_DOCUMENTS_DIR
 from app.models.asset_store import AssetStore
 from app.models.climate_asset import ClimateAsset
 from app.models.fire_asset import FireAsset
-from app.models.service import Service
+from app.models.tape_center import TapeCenter
 from app.models.store_document import StoreDocument
 from app.models.water_asset import WaterAsset
 from app.schemas.assets import (
@@ -43,176 +43,12 @@ def normalize_key(value: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", "-", normalized.casefold()).strip("-")
 
 
-def store_key_for(store_name: str, bpcs: str | None, sap: str | None, praca: str | None) -> str:
-    if sap:
-        return f"sap:{normalize_key(sap)}"
-    if bpcs:
-        return f"bpcs:{normalize_key(bpcs)}"
-    return f"name:{normalize_key(store_name)}:{normalize_key(praca)}"
-
-
-def _name_alias(store_name: str | None, praca: str | None) -> str | None:
-    if not store_name or not normalize_key(store_name):
-        return None
-    return f"name:{normalize_key(store_name)}:{normalize_key(praca)}"
-
-
-def _store_aliases(store_name: str | None, bpcs: str | None, sap: str | None, praca: str | None) -> set[str]:
-    """Retorna identidades fortes; nome+praça é usado somente como fallback.
-
-    Isso evita fundir duas lojas distintas que por acaso compartilham o mesmo
-    nome, mas possuem SAP/BPCS diferentes.
-    """
-    aliases: set[str] = set()
-    if sap and normalize_key(sap):
-        aliases.add(f"sap:{normalize_key(sap)}")
-    if bpcs and normalize_key(bpcs):
-        aliases.add(f"bpcs:{normalize_key(bpcs)}")
-    if not aliases:
-        name_alias = _name_alias(store_name, praca)
-        if name_alias:
-            aliases.add(name_alias)
-    return aliases
-
-
-def _source_store_groups(rows: list[tuple[Any, ...]]) -> list[dict[str, Any]]:
-    """Agrupa a mesma loja sem fundir lojas fortes apenas pelo nome.
-
-    SAP/BPCS são identidades fortes. Nome+praça só conecta um registro legado
-    sem identificadores a um registro mais completo da mesma loja.
-    """
-    groups: list[dict[str, Any]] = []
-    for store_name, bpcs, sap, praca in rows:
-        if not store_name:
-            continue
-        aliases = _store_aliases(store_name, bpcs, sap, praca)
-        has_strong = bool(sap or bpcs)
-        name_alias = _name_alias(store_name, praca)
-
-        matching = [group for group in groups if group["aliases"] & aliases]
-        if not matching and name_alias:
-            matching = [
-                group
-                for group in groups
-                if group["name_alias"] == name_alias
-                and (not has_strong or not group["has_strong"])
-            ]
-
-        if not matching:
-            groups.append({
-                "aliases": set(aliases),
-                "rows": [(store_name, bpcs, sap, praca)],
-                "name_alias": name_alias,
-                "has_strong": has_strong,
-            })
-            continue
-
-        base = matching[0]
-        base["aliases"].update(aliases)
-        base["rows"].append((store_name, bpcs, sap, praca))
-        base["has_strong"] = base["has_strong"] or has_strong
-        for extra in matching[1:]:
-            base["aliases"].update(extra["aliases"])
-            base["rows"].extend(extra["rows"])
-            base["has_strong"] = base["has_strong"] or extra["has_strong"]
-            groups.remove(extra)
-    return groups
-
-
-def _best_source_values(rows: list[tuple[Any, ...]]) -> tuple[str, str | None, str | None, str | None]:
-    # Prefere a linha mais completa, especialmente a que já possui SAP.
-    preferred = max(
-        rows,
-        key=lambda row: (
-            bool(row[2]),  # SAP
-            bool(row[1]),  # BPCS
-            bool(row[3]),  # praça
-            len(str(row[0] or "")),
-        ),
-    )
-    store_name = preferred[0]
-    bpcs = preferred[1] or next((row[1] for row in rows if row[1]), None)
-    sap = preferred[2] or next((row[2] for row in rows if row[2]), None)
-    praca = preferred[3] or next((row[3] for row in rows if row[3]), None)
-    return store_name, bpcs, sap, praca
-
-
-def _merge_store_records(db: Session, canonical: AssetStore, duplicate: AssetStore) -> None:
-    """Move ativos/documentos para a loja canônica antes de remover duplicata."""
-    if canonical.id == duplicate.id:
-        return
-    for model in (ClimateAsset, FireAsset, WaterAsset, StoreDocument):
-        db.execute(
-            update(model)
-            .where(model.store_id == duplicate.id)
-            .values(store_id=canonical.id)
-        )
-    db.delete(duplicate)
-
-
 def sync_asset_stores(db: Session) -> None:
-    """Sincroniza lojas de ``services`` preservando a identidade do inventário.
-
-    A sincronização trata a evolução natural dos dados de loja: uma loja que
-    antes possuía somente BPCS e posteriormente recebe SAP continua com o mesmo
-    ``asset_stores.id`` e, portanto, mantém todos os ativos já cadastrados.
-    Duplicatas antigas também são consolidadas sem apagar seus ativos.
-    """
-    source_rows = db.execute(
-        select(Service.store_name, Service.bpcs_number, Service.sap_number, Service.praca)
-        .where(Service.store_name.is_not(None))
-        .distinct()
-    ).all()
-
-    groups = _source_store_groups(list(source_rows))
-    existing_stores = list(db.scalars(select(AssetStore).order_by(AssetStore.id)).all())
-
-    for group in groups:
-        store_name, bpcs, sap, praca = _best_source_values(group["rows"])
-        aliases = set(group["aliases"])
-        desired_key = store_key_for(store_name, bpcs, sap, praca)
-        aliases.add(desired_key)
-
-        matches = [
-            store
-            for store in existing_stores
-            if store.store_key in aliases
-            or bool(_store_aliases(store.store_name, store.bpcs_number, store.sap_number, store.praca) & aliases)
-        ]
-        # Se ainda não há correspondência por SAP/BPCS, permite promover um
-        # registro legado identificado apenas por nome+praça.
-        if not matches:
-            source_name_alias = _name_alias(store_name, praca)
-            if source_name_alias:
-                matches = [
-                    store
-                    for store in existing_stores
-                    if _name_alias(store.store_name, store.praca) == source_name_alias
-                ]
-
-        if matches:
-            # Preserva o registro mais antigo para manter IDs/relações estáveis.
-            canonical = min(matches, key=lambda store: store.id)
-            duplicates = [store for store in matches if store.id != canonical.id]
-            for duplicate in duplicates:
-                _merge_store_records(db, canonical, duplicate)
-                if duplicate in existing_stores:
-                    existing_stores.remove(duplicate)
-            # Libera eventuais store_key conflitantes antes de promover a chave.
-            if duplicates:
-                db.flush()
-        else:
-            canonical = AssetStore(store_key=desired_key, store_name=store_name)
-            db.add(canonical)
-            db.flush()
-            existing_stores.append(canonical)
-
-        canonical.store_key = desired_key
-        canonical.store_name = store_name
-        canonical.bpcs_number = bpcs
-        canonical.sap_number = sap
-        canonical.praca = praca
-
+    """Garante um ID local para cada loja do dCentros sem copiar metadados."""
+    existing = set(db.scalars(select(AssetStore.tape_center_record_id)).all())
+    for center_id in db.scalars(select(TapeCenter.record_id)):
+        if center_id not in existing:
+            db.add(AssetStore(tape_center_record_id=center_id))
     db.commit()
 
 
@@ -326,11 +162,12 @@ def store_response(store: AssetStore, counts: dict[str, dict[int, int]]) -> dict
 def get_asset_summary(db: Session, *, sync: bool = True) -> dict[str, int]:
     if sync:
         sync_asset_stores(db)
-    stores_count = db.scalar(select(func.count(AssetStore.id))) or 0
-    climate_count = db.scalar(select(func.count(ClimateAsset.id))) or 0
-    fire_count = db.scalar(select(func.count(FireAsset.id))) or 0
-    water_count = db.scalar(select(func.count(WaterAsset.id))) or 0
-    documents_count = db.scalar(select(func.count(StoreDocument.id))) or 0
+    active_ids = select(AssetStore.id).join(TapeCenter).where(TapeCenter.status == "Aberta")
+    stores_count = db.scalar(select(func.count()).select_from(active_ids.subquery())) or 0
+    climate_count = db.scalar(select(func.count(ClimateAsset.id)).where(ClimateAsset.store_id.in_(active_ids))) or 0
+    fire_count = db.scalar(select(func.count(FireAsset.id)).where(FireAsset.store_id.in_(active_ids))) or 0
+    water_count = db.scalar(select(func.count(WaterAsset.id)).where(WaterAsset.store_id.in_(active_ids))) or 0
+    documents_count = db.scalar(select(func.count(StoreDocument.id)).where(StoreDocument.store_id.in_(active_ids))) or 0
     return {
         "stores_count": int(stores_count),
         "equipment_count": int(climate_count + fire_count + water_count),
@@ -342,10 +179,11 @@ def get_store_filters(db: Session) -> dict[str, list[str]]:
     if (db.scalar(select(func.count(AssetStore.id))) or 0) == 0:
         sync_asset_stores(db)
     values = db.scalars(
-        select(AssetStore.praca)
-        .where(AssetStore.praca.is_not(None), func.trim(AssetStore.praca) != "")
+        select(TapeCenter.praca)
+        .join(AssetStore, AssetStore.tape_center_record_id == TapeCenter.record_id)
+        .where(TapeCenter.status == "Aberta", TapeCenter.praca.is_not(None), func.trim(TapeCenter.praca) != "")
         .distinct()
-        .order_by(AssetStore.praca)
+        .order_by(TapeCenter.praca)
     ).all()
     # A consulta é case-sensitive em alguns bancos; deduplica novamente em Python.
     unique: dict[str, str] = {}
@@ -369,6 +207,8 @@ def apply_store_filters(
     Dentro de cada filtro os valores se somam (praça A ou B). Entre filtros, estreita:
     praça marcada E loja marcada E texto da busca.
     """
+    query = query.join(TapeCenter, AssetStore.tape_center_record_id == TapeCenter.record_id)
+    query = query.where(TapeCenter.status == "Aberta")
     if q:
         term = q.strip()
         pattern = f"%{term}%"
@@ -376,23 +216,23 @@ def apply_store_filters(
         is_postgres = db.bind.dialect.name == "postgresql" if db.bind else False
         if is_postgres:
             query = query.where(or_(
-                func.unaccent(AssetStore.store_name).ilike(func.unaccent(pattern)),
-                func.unaccent(AssetStore.bpcs_number).ilike(func.unaccent(pattern)),
-                func.unaccent(AssetStore.sap_number).ilike(func.unaccent(pattern)),
-                func.unaccent(AssetStore.praca).ilike(func.unaccent(pattern)),
+                func.unaccent(TapeCenter.name).ilike(func.unaccent(pattern)),
+                func.unaccent(TapeCenter.bcps_number).ilike(func.unaccent(pattern)),
+                func.unaccent(TapeCenter.sap_number).ilike(func.unaccent(pattern)),
+                func.unaccent(TapeCenter.praca).ilike(func.unaccent(pattern)),
             ))
         else:
             query = query.where(or_(
-                AssetStore.store_name.ilike(pattern),
-                AssetStore.bpcs_number.ilike(pattern),
-                AssetStore.sap_number.ilike(pattern),
-                AssetStore.praca.ilike(pattern),
+                TapeCenter.name.ilike(pattern),
+                TapeCenter.bcps_number.ilike(pattern),
+                TapeCenter.sap_number.ilike(pattern),
+                TapeCenter.praca.ilike(pattern),
             ))
     wanted = {normalize_key(value) for value in [*(pracas or []), *([praca] if praca else [])] if value and value.strip()}
     if wanted:
         # Mesma regra de get_store_filters: grafias da praça que normalizam igual valem como uma só.
-        stored = db.scalars(select(AssetStore.praca).where(AssetStore.praca.is_not(None)).distinct()).all()
-        query = query.where(AssetStore.praca.in_([value for value in stored if normalize_key(value) in wanted]))
+        stored = db.scalars(select(TapeCenter.praca).where(TapeCenter.praca.is_not(None)).distinct()).all()
+        query = query.where(TapeCenter.praca.in_([value for value in stored if normalize_key(value) in wanted]))
     if store_ids:
         query = query.where(AssetStore.id.in_(store_ids))
     return query
@@ -412,7 +252,7 @@ def list_stores(
     if sync or (db.scalar(select(func.count(AssetStore.id))) or 0) == 0:
         sync_asset_stores(db)
     query = apply_store_filters(
-        select(AssetStore).order_by(AssetStore.store_name), db,
+        select(AssetStore).order_by(TapeCenter.name), db,
         q=q, praca=praca, pracas=pracas, store_ids=store_ids,
     )
     stores = db.scalars(query.offset((page - 1) * page_size).limit(page_size)).all()
@@ -424,7 +264,9 @@ def list_store_options(db: Session) -> list[dict[str, Any]]:
     """Lista leve de lojas (sem contagens) para o seletor de Lojas."""
     if (db.scalar(select(func.count(AssetStore.id))) or 0) == 0:
         sync_asset_stores(db)
-    stores = db.scalars(select(AssetStore).order_by(AssetStore.store_name)).all()
+    stores = db.scalars(
+        select(AssetStore).join(TapeCenter).where(TapeCenter.status == "Aberta").order_by(TapeCenter.name)
+    ).all()
     return [
         {"id": store.id, "name": store.store_name, "praca": (store.praca or "").strip() or None,
          "bpcs": store.bpcs_number, "sap": store.sap_number}

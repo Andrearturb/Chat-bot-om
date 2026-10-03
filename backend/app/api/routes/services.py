@@ -31,17 +31,20 @@ def converter_para_brasilia(valor):
             dependencies=[Depends(require_permission("indicators.view"))])
 def listar_servicos(db: Session = Depends(get_db)) -> ServiceListResponse:
     services = db.query(Service).order_by(Service.ticket).all()
-    center_numbers = {item.record_id: item.unique_number for item in db.query(TapeCenter).all()}
+    centers = {item.record_id: item for item in db.query(TapeCenter).all()}
     ultimo_upload = db.query(Upload).filter(
         Upload.source_file_name == CORRECTIVE_SOURCE_NAME
     ).order_by(Upload.uploaded_at.desc()).first()
 
     dados = [
         ServiceItemResponse(
-            ticket=s.ticket, status=s.status, store_name=s.store_name,
+            ticket=s.ticket, status=s.status,
+            store_name=centers[s.tape_center_record_id].name if s.tape_center_record_id in centers else None,
             tape_center_record_id=s.tape_center_record_id,
-            center_unique_number=center_numbers.get(s.tape_center_record_id),
-            bpcs_number=s.bpcs_number, sap_number=s.sap_number, praca=s.praca,
+            center_unique_number=centers[s.tape_center_record_id].unique_number if s.tape_center_record_id in centers else None,
+            bpcs_number=centers[s.tape_center_record_id].bcps_number if s.tape_center_record_id in centers else None,
+            sap_number=centers[s.tape_center_record_id].sap_number if s.tape_center_record_id in centers else None,
+            praca=s.praca,
             service_description=s.service_description, supplier=s.supplier,
             visit_date=s.visit_date, in_attendance_date=s.in_attendance_date,
             solution_text=s.solution_text, signature_status=s.signature_status,

@@ -37,8 +37,8 @@ Colunas consumidas:
 | Conta do Razão | Tipo de manutenção: `41140014` corretiva, `41140026` preventiva |
 | **Centro custo** (col. K) | **Atribuição da loja** — quem arca com o custo |
 | Divisão (col. B) | Loja onde a nota foi lançada. Rastro do lançamento, **não** atribuição |
-| Data do documento | Competência exibida no painel |
-| Data de lançamento | Chave de substituição na reimportação |
+| Data de lançamento | **Competência**: agrupamento do painel e chave de substituição |
+| Data do documento | Data da nota do fornecedor. Detalhe da linha no drill-down |
 | Montante em moeda interna | Valor. Estornos já vêm negativos |
 | Chave de lançamento | `81` débito, `91` estorno |
 | Tipo de documento | `RE` (1.187 linhas) / `WE` (73) |
@@ -79,8 +79,8 @@ Tabela nova, `maintenance_costs`, uma linha por partida do SAP.
 id                      PK
 upload_id               FK → uploads.id
 conta_razao             text         NOT NULL, índice
-document_date           date         NOT NULL   -- competência exibida
-posting_date            date         NOT NULL   -- chave de substituição
+posting_date            date         NOT NULL   -- competência: agrupa e substitui
+document_date           date         NULL       -- detalhe do drill-down
 document_number         text
 posting_key             text                    -- 81 | 91
 document_type           text                    -- RE | WE
@@ -102,7 +102,7 @@ vinculado, como `AssetStore` já faz (`backend/app/models/asset_store.py`). Não
 existem como coluna: o dCentros é a fonte única de identidade de loja, e
 duplicar o nome aqui o faria divergir.
 
-Não existe coluna `competencia` denormalizada. O mês vem de `document_date` no
+Não existe coluna `competencia` denormalizada. O mês vem de `posting_date` no
 cálculo do frontend, igual aos outros dois painéis. Campo derivado armazenado é
 campo que deriva errado algum dia.
 
@@ -202,16 +202,20 @@ Dependências: `pandas`, `openpyxl` e `python-multipart` já estão em
 
 ### Reimportação
 
-O serviço coleta os pares **(conta razão, mês da data de lançamento)** presentes
-no arquivo, apaga `maintenance_costs` desses pares e insere o lote.
+O serviço coleta os pares **(conta razão, competência)** presentes no arquivo,
+apaga `maintenance_costs` desses pares e insere o lote.
 
-**Por que a chave é o mês de lançamento e não a competência exibida:** a
-extração do SAP é fatiada por data de lançamento, mas o painel agrupa por data
-do documento, e as duas dimensões não coincidem — há documentos de dez/2025
-lançados em jan/2026. Se a chave fosse a competência, subir a extração do
-exercício 2025 apagaria o balde dez/2025 e reinseriria só as linhas dela,
-perdendo os documentos de dezembro lançados em janeiro que vieram no outro
-arquivo. A chave tem que ser a dimensão pela qual o arquivo é produzido.
+A competência é o mês da data de lançamento, que é também a dimensão pela qual a
+extração do SAP é fatiada. Chave de substituição e agrupamento do painel são a
+mesma coisa, de propósito: enquanto coincidem, dois arquivos nunca se sobrepõem
+parcialmente num mês.
+
+**Se a competência algum dia mudar para a data do documento, esta chave não pode
+acompanhar.** As duas dimensões não coincidem — há documentos de dez/2025
+lançados em jan/2026 — e uma chave pela data do documento faria a extração do
+exercício 2025 apagar o balde dez/2025 e reinserir só as linhas dela, perdendo
+os documentos de dezembro lançados em janeiro que vieram no outro arquivo. A
+chave tem que seguir a dimensão pela qual o arquivo é produzido, sempre.
 
 Consequências, todas desejadas:
 
@@ -222,9 +226,11 @@ Consequências, todas desejadas:
 
 ### Linhas rejeitadas
 
-Rejeitada é a linha sem conta razão, sem centro de custo, sem data de
-lançamento, sem data do documento ou com valor ilegível. Contadas em
-`rejected_count` e devolvidas na resposta.
+Rejeitada é a linha sem conta razão, sem centro de custo, sem data de lançamento
+ou com valor ilegível. Contadas em `rejected_count` e devolvidas na resposta.
+
+Data do documento ausente **não** rejeita: ela é detalhe do drill-down, não
+estrutura. A linha entra e o campo aparece vazio.
 
 **Valor zero é valor, não ausência** — entra. Lição do `converter_decimal` da
 corretiva, onde 338 registros com valor zero teriam virado nulos.
@@ -261,7 +267,7 @@ cálculo, no padrão de `correctiveData.js` e `preventiveData.js`. Registrado em
 `IndicatorsHome.jsx` como o terceiro painel da Central.
 
 **Filtros:** tipo de manutenção (pela conta razão), fornecedor, loja, praça,
-mês, ano. Mês e ano saem da data do documento.
+mês, ano. Mês e ano saem da data de lançamento.
 
 **KPIs:**
 
@@ -327,7 +333,7 @@ Frontend, `vitest` via `docker exec chatbot-frontend npm test`:
 - KPI por conta razão.
 - Filtro combinado (loja + mês + fornecedor).
 - Card "Não atribuído" aparece só com valor.
-- Mês e ano saem da data do documento.
+- Mês e ano saem da data de lançamento, não da data do documento.
 - Ranking ordena por valor e corta em 20.
 - Predicados servem contador e drill-down com o mesmo resultado.
 
@@ -341,8 +347,8 @@ Frontend, `vitest` via `docker exec chatbot-frontend npm test`:
 | Chave 81 (débito) | 1.250 linhas |
 | Chave 91 (estorno) | 10 linhas, já negativas |
 | Tipo RE / WE | 1.187 / 73 — as 73 WE são exatamente as sem Nome 1 |
-| Lançamentos | jan a set/2026, sem nulos |
-| Documentos | dez/2025 a set/2026 — 7 linhas, R$ 795,60, em dez/2025 |
+| Lançamentos — a competência | jan a set/2026, sem nulos. Nove meses, um só exercício |
+| Documentos — detalhe da linha | dez/2025 a set/2026, sem nulos. As 7 linhas de dez/2025 (R$ 795,60) foram lançadas em jan/2026 e é lá que o painel as mostra |
 | Divisão → `sap_number` | 126 de 126 valores distintos casam |
 | Centro custo → `cost_center` | 127 de 131 valores distintos casam |
 | Divergência Divisão × Centro custo | 7 linhas, R$ 14.477,35 — o centro de custo vence |

@@ -16,6 +16,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
 from app.api.routes.imports import router as imports_router
+from app.api.routes.maintenance_costs import router as maintenance_costs_router
 from app.api.routes.services import router as services_router
 from app.api.routes.preventive_services import router as preventive_services_router
 from app.api.routes.chatbot import router as chatbot_router
@@ -110,6 +111,7 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
 app.include_router(auth_router)
 app.include_router(health_router)
 app.include_router(imports_router)
+app.include_router(maintenance_costs_router)
 app.include_router(services_router)
 app.include_router(preventive_services_router)
 app.include_router(chatbot_router)

@@ -33,6 +33,7 @@ class Upload(Base):
         String,
         nullable=True,
     )
+    source_type: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
     # Total de registros válidos recebidos e processados
     total_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 

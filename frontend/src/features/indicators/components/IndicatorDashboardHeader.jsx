@@ -28,7 +28,7 @@ export default function IndicatorDashboardHeader({ activeIndicator, onChange, on
               onClick={() => onChange(indicator.id)}
               aria-pressed={indicator.id === activeIndicator}
             >
-              {indicator.id === 'performance' ? 'Desempenho' : indicator.id === 'corrective' ? 'Corretivos' : indicator.id === 'preventive' ? 'Preventivos' : 'Financeiro'}
+              {indicator.id === 'performance' ? 'Desempenho' : indicator.id === 'corrective' ? 'Corretivos' : indicator.id === 'preventive' ? 'Preventivos' : 'Custos'}
             </button>
           ))}
         </nav>

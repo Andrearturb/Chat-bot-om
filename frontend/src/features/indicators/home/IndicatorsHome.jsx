@@ -25,8 +25,8 @@ const INDICATORS = [
   },
   {
     id: 'financial',
-    title: 'Indicadores Financeiros',
-    description: 'Monitore custos, CAPEX, savings, rateios e desempenho financeiro.',
+    title: 'Custos de Manutenção',
+    description: 'Acompanhe lançamentos SAP, custos por loja e fornecedor.',
     tone: 'violet',
     icon: 'financial',
     visual: 'financial',

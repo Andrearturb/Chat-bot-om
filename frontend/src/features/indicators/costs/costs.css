@@ -1,0 +1,35 @@
+.costs-panel { display: grid; gap: 1.5rem; color: #17213d; }
+.costs-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; color: #60708c; font-size: .9rem; }
+.costs-toolbar button, .costs-filters > button { border: 1px solid #d9dff0; background: white; color: #24305a; border-radius: 10px; padding: .7rem 1rem; cursor: pointer; }
+.costs-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .75rem; align-items: end; padding: 1rem; border: 1px solid #e5e9f3; border-radius: 16px; background: #f8f9fe; }
+.costs-filter { display: grid; gap: .35rem; font-size: .82rem; font-weight: 600; color: #586784; min-width: 0; }
+.costs-filter select { width: 100%; min-width: 0; padding: .65rem; border: 1px solid #d9dff0; border-radius: 9px; background: white; color: #17213d; }
+.costs-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: .85rem; }
+.costs-kpi { display: grid; gap: .55rem; text-align: left; border: 1px solid #e0e5f0; background: white; border-radius: 16px; padding: 1.2rem; cursor: pointer; box-shadow: 0 4px 18px rgba(19, 33, 76, .05); color: #17213d; }
+.costs-kpi:hover, .costs-ranking button:hover { border-color: #8d78d4; background: #fbf9ff; }
+.costs-kpi span { font-size: .88rem; color: #5d6c85; }
+.costs-kpi strong { font-size: clamp(1.35rem, 2vw, 1.9rem); line-height: 1.1; overflow-wrap: anywhere; }
+.costs-kpi small { color: #715ac1; }
+.costs-rankings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.costs-ranking { background: white; border: 1px solid #e0e5f0; border-radius: 16px; padding: 1.2rem; min-width: 0; }
+.costs-ranking h3 { margin: 0 0 1rem; font-size: 1.05rem; }
+.costs-ranking__list { display: grid; gap: .4rem; }
+.costs-ranking button { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; gap: .2rem .6rem; text-align: left; border: 1px solid transparent; border-radius: 9px; background: transparent; padding: .55rem; color: inherit; cursor: pointer; }
+.costs-ranking__number { color: #8994ac; }
+.costs-ranking__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.costs-ranking button strong { font-size: .9rem; }
+.costs-ranking button small { grid-column: 2 / 4; color: #71809a; }
+.costs-ranking__bar { grid-column: 2 / 4; height: 5px; border-radius: 5px; background: #eff0f8; }
+.costs-ranking__bar i { display: block; height: 100%; border-radius: inherit; background: #8c78cf; }
+.costs-modal { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 1.5rem; }
+.costs-modal__backdrop { position: absolute; inset: 0; border: 0; background: rgba(13, 22, 47, .62); cursor: pointer; }
+.costs-modal__content { position: relative; width: min(1200px, 100%); max-height: 88vh; display: flex; flex-direction: column; background: white; border-radius: 17px; overflow: hidden; box-shadow: 0 30px 90px rgba(0, 0, 0, .25); }
+.costs-modal__content header { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 1.4rem; border-bottom: 1px solid #e4e7f0; }
+.costs-modal__content h3 { margin: 0; }.costs-modal__content p { margin: .35rem 0 0; color: #687792; }
+.costs-modal__content header button { border: 0; background: transparent; font-size: 1.7rem; cursor: pointer; }
+.costs-modal__scroll { overflow: auto; }
+.costs-modal table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.costs-modal th, .costs-modal td { padding: .65rem .8rem; border-bottom: 1px solid #edf0f6; text-align: left; vertical-align: top; white-space: nowrap; }
+.costs-modal th { position: sticky; top: 0; background: #f4f6fb; }
+.costs-modal td small { display: block; color: #7a87a0; }.costs-modal td:nth-child(6) { white-space: normal; min-width: 220px; }
+@media (max-width: 760px) { .costs-rankings { grid-template-columns: 1fr; }.costs-modal { padding: .4rem; }.costs-modal__content { max-height: 96vh; } }

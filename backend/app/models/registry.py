@@ -11,6 +11,7 @@ from app.models.auth import (                            # noqa: F401
     OidcIdentity, OidcLoginRequest, SecurityEvent, UserSession,
 )
 from app.models.climate_asset import ClimateAsset        # noqa: F401
+from app.models.maintenance_cost import MaintenanceCost  # noqa: F401
 from app.models.fire_asset import FireAsset              # noqa: F401
 from app.models.service import Service                   # noqa: F401
 from app.models.preventive_service import PreventiveService  # noqa: F401

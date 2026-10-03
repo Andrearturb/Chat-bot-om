@@ -11,7 +11,7 @@ const BACKEND_TARGET = process.env.BACKEND_TARGET || 'http://backend:8000'
 
 const proxyRoutes = [
   '/auth', '/assistant', '/assets', '/services', '/preventive-services',
-  '/users', '/audit', '/chatbot', '/health', '/imports',
+  '/users', '/audit', '/chatbot', '/health', '/imports', '/maintenance-costs',
 ]
 
 // No Docker do Windows a pasta montada não avisa o Vite quando um arquivo muda; sem

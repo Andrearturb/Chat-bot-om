@@ -20,9 +20,9 @@ function Select({ label, value, options, onChange, mapLabel }) {
   )
 }
 
-export default function CorrectiveFilters({ filters, options, onChange, onClear }) {
+export default function CorrectiveFilters({ filters, options, onChange, onClear, ariaLabel = 'Filtros dos chamados corretivos' }) {
   return (
-    <section className="corrective-filters" aria-label="Filtros dos chamados corretivos">
+    <section className="corrective-filters" aria-label={ariaLabel}>
       <Select label="Status do Chamado" value={filters.status} options={options.status}
               onChange={(value) => onChange('status', value)} />
       <Select label="Loja" value={filters.loja} options={options.loja}
@@ -36,6 +36,10 @@ export default function CorrectiveFilters({ filters, options, onChange, onClear 
               mapLabel={(value) => MES_LABEL[value] ?? value} />
       <Select label="Ano" value={filters.ano} options={options.ano}
               onChange={(value) => onChange('ano', value)} />
+      {options.periodicidade && (
+        <Select label="Periodicidade" value={filters.periodicidade} options={options.periodicidade}
+                onChange={(value) => onChange('periodicidade', value)} />
+      )}
       <button type="button" className="corrective-filters__clear" onClick={onClear}>
         Limpar filtros
       </button>

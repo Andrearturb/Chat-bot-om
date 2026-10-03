@@ -17,6 +17,7 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
 from app.api.routes.imports import router as imports_router
 from app.api.routes.services import router as services_router
+from app.api.routes.preventive_services import router as preventive_services_router
 from app.api.routes.chatbot import router as chatbot_router
 from app.api.routes.assets import router as assets_router
 from app.api.routes.assets_export import router as assets_export_router
@@ -110,6 +111,7 @@ app.include_router(auth_router)
 app.include_router(health_router)
 app.include_router(imports_router)
 app.include_router(services_router)
+app.include_router(preventive_services_router)
 app.include_router(chatbot_router)
 app.include_router(assets_router)
 app.include_router(assets_export_router)

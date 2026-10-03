@@ -15,6 +15,7 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 
 from app.models.service import Service          # noqa: F401
+from app.models.preventive_service import PreventiveService  # noqa: F401
 from app.models.upload import Upload            # noqa: F401
 from app.models.asset_store import AssetStore   # noqa: F401
 from app.models.climate_asset import ClimateAsset  # noqa: F401

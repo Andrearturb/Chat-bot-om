@@ -11,7 +11,7 @@ function dataBr(value) {
   return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleDateString('pt-BR')
 }
 
-export default function CorrectiveDetailModal({ detail, onClose }) {
+export default function CorrectiveDetailModal({ detail, onClose, showPeriodicity = false }) {
   useEffect(() => {
     if (!detail) return undefined
     function onKeyDown(event) {
@@ -46,7 +46,9 @@ export default function CorrectiveDetailModal({ detail, onClose }) {
               <thead>
                 <tr>
                   <th>Ticket</th><th>Status</th><th>Loja</th><th>Praça</th>
-                  <th>Categoria</th><th>Subcategoria</th><th aria-sort="descending">Criado em ↓</th><th>SLA</th>
+                  <th>Categoria</th><th>Subcategoria</th>
+                  {showPeriodicity && <th>Periodicidade</th>}
+                  <th aria-sort="descending">Criado em ↓</th><th>SLA</th>
                   <th style={{ textAlign: 'right' }}>Valor</th>
                   <th>Status da O.S</th><th>URL da O.S</th>
                 </tr>
@@ -60,8 +62,9 @@ export default function CorrectiveDetailModal({ detail, onClose }) {
                     <td>{record.region}</td>
                     <td>{record.category}</td>
                     <td>{record.subcategory}</td>
+                    {showPeriodicity && <td>{record.periodicity}</td>}
                     <td>{dataBr(record.createdOn)}</td>
-                    <td>{!isConcluded(record) ? '—' : record.slaLate ? 'Atrasado' : 'No prazo'}</td>
+                    <td>{!isConcluded(record) || record.slaKnown === false ? '—' : record.slaLate ? 'Atrasado' : 'No prazo'}</td>
                     <td style={{ textAlign: 'right' }}>
                       {typeof record.approvedValue === 'number' ? MOEDA.format(record.approvedValue) : '—'}
                     </td>

@@ -11,7 +11,7 @@ import os
 import threading
 
 from app.db.session import SessionLocal
-from app.integrations.tape_raw import APP_MANUTENCOES_CORRETIVAS
+from app.integrations.tape_raw import APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS
 from app.services.importer import importar_servicos_tape
 
 
@@ -30,21 +30,20 @@ def _obter_intervalo_segundos() -> float:
 
 
 def executar_sincronizacao_tape() -> None:
-    """Executa uma sincronização única da Tape usando uma sessão própria."""
-    db = SessionLocal()
-
-    try:
-        resultado = importar_servicos_tape(db=db, app_id=APP_MANUTENCOES_CORRETIVAS)
-        logger.info(
-            "Sincronização Tape concluída: %s registros, upload %s",
-            resultado["total_rows"],
-            resultado["upload_data"],
-        )
-    except Exception:
-        db.rollback()
-        logger.exception("Falha na sincronização agendada da Tape")
-    finally:
-        db.close()
+    """Um agendador sincroniza os dois apps com sessões e falhas isoladas."""
+    for app_id in (APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS):
+        db = SessionLocal()
+        try:
+            resultado = importar_servicos_tape(db=db, app_id=app_id)
+            logger.info(
+                "Sincronização Tape app %s concluída: %s registros, upload %s",
+                app_id, resultado["total_rows"], resultado["upload_data"],
+            )
+        except Exception:
+            db.rollback()
+            logger.exception("Falha na sincronização agendada da Tape app %s", app_id)
+        finally:
+            db.close()
 
 
 class TapeSyncScheduler:

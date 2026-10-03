@@ -170,10 +170,10 @@ def normalizar_chave(valor: str | None) -> str | None:
     return chave or None
 
 
-def construir_indice_aliases() -> dict[int, str]:
+def construir_indice_aliases(aliases: dict[str, dict[str, Any]] | None = None) -> dict[int | str, str]:
     indice: dict[int, str] = {}
 
-    for alias, definicao in FIELD_ALIASES.items():
+    for alias, definicao in (aliases or FIELD_ALIASES).items():
         for field_id in definicao.get("field_ids", []):
             indice[field_id] = alias
 
@@ -192,9 +192,12 @@ FIELD_ALIAS_INDEX = construir_indice_aliases()
 class TapeTransformer:
     """Normaliza registros da Tape em uma estrutura previsível para BI/integrações."""
 
-    def __init__(self, reference_fields: list[int] | None = None):
+    def __init__(self, reference_fields: list[int] | None = None,
+                 field_aliases: dict[str, dict[str, Any]] | None = None):
         """Define lista de campos esperados para completar chaves ausentes."""
         self.reference_fields = reference_fields or FIELDS_REFERENCE.copy()
+        self.field_aliases = field_aliases or FIELD_ALIASES
+        self.alias_index = construir_indice_aliases(self.field_aliases)
 
     def extrair_registros(self, dados: Any) -> JsonList:
         """Aceita múltiplos formatos de entrada e retorna apenas registros válidos."""
@@ -302,10 +305,10 @@ class TapeTransformer:
 
             objeto[str(field_id)] = entrada
 
-            alias = FIELD_ALIAS_INDEX.get(field_id)
+            alias = self.alias_index.get(field_id)
 
             if alias is None:
-                alias = FIELD_ALIAS_INDEX.get(normalizar_chave(label))
+                alias = self.alias_index.get(normalizar_chave(label))
 
             if alias is not None:
                 objeto["field_values"][alias] = entrada
@@ -328,7 +331,7 @@ class TapeTransformer:
 
         field_values = objeto.setdefault("field_values", {})
 
-        for alias, definicao in FIELD_ALIASES.items():
+        for alias, definicao in self.field_aliases.items():
             if alias in field_values:
                 continue
 

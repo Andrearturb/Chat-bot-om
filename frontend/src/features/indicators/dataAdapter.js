@@ -94,3 +94,26 @@ export function adaptServicesPayload(payload) {
     pracas: Array.isArray(payload.pracas) ? payload.pracas : [],
   }
 }
+
+export function adaptPreventiveService(service = {}) {
+  const record = adaptService(service)
+  const slaStatus = normalizeText(service.sla_status).toLowerCase()
+  return {
+    ...record,
+    periodicity: normalizeText(service.periodicity) || FALLBACK_TEXT,
+    dueDate: normalizeApiDate(service.due_date),
+    slaKnown: slaStatus === 'atrasado' || slaStatus === 'no prazo',
+    slaLate: slaStatus === 'atrasado',
+  }
+}
+
+export function adaptPreventivePayload(payload) {
+  if (!payload || !Array.isArray(payload.dados)) {
+    throw new TypeError('Resposta de /preventive-services inválida: campo dados ausente ou não é uma lista.')
+  }
+  return {
+    records: payload.dados.map(adaptPreventiveService),
+    uploadData: normalizeApiDate(payload.upload_data),
+    pracas: Array.isArray(payload.pracas) ? payload.pracas : [],
+  }
+}

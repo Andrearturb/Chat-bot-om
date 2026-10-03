@@ -18,6 +18,7 @@ from sqlalchemy.engine import Engine
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 BASELINE_REVISION = "0001"
 ASSET_QUERY_REVISION = "0002"
+CORRECTIVE_REVISION = "0003"
 
 
 def _alembic_config() -> Config:
@@ -41,11 +42,16 @@ def run_migrations(engine: Engine) -> str:
             }
             has_asset_state = "asset_query_state" in conversation_columns
             has_corrective_fields = {"sla_late", "approved_value", "raw_status"} <= service_columns
+            has_preventive_table = "preventive_services" in tables
 
-            if has_asset_state and has_corrective_fields:
+            if has_asset_state and has_corrective_fields and has_preventive_table:
                 command.stamp(config, "head")
             else:
-                command.stamp(config, ASSET_QUERY_REVISION if has_asset_state else BASELINE_REVISION)
+                revision = (
+                    CORRECTIVE_REVISION if has_asset_state and has_corrective_fields else
+                    ASSET_QUERY_REVISION if has_asset_state else BASELINE_REVISION
+                )
+                command.stamp(config, revision)
                 command.upgrade(config, "head")
             return "adotado"
         command.upgrade(config, "head")

@@ -58,7 +58,7 @@ def test_banco_criado_antes_do_alembic_e_adotado_sem_perder_dados(tmp_path):
 
     assert run_migrations(engine) == "adotado"
 
-    assert versao(engine) == "0003"
+    assert versao(engine) == "0004"
     with engine.connect() as conn:
         assert conn.execute(text("select email from app_users")).scalar() == "ana@gentil.test"
     assert run_migrations(engine) == "migrado"   # a partir daí é um banco comum do Alembic

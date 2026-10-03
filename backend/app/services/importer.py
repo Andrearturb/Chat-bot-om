@@ -29,7 +29,7 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.integrations.tape_raw import APP_MANUTENCOES_CORRETIVAS, TapeClient, carregar_token
+from app.integrations.tape_raw import APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS, TapeClient, carregar_token
 from app.integrations.transformar_chamados import FIELD_ALIASES
 from app.models.service import Service
 from app.models.upload import Upload
@@ -735,6 +735,12 @@ def importar_servicos_tape(
         RuntimeError: se o token não estiver configurado.
         httpx.HTTPError: se a coleta falhar.
     """
+    if app_id == APP_MANUTENCOES_PREVENTIVAS:
+        from app.services.preventive_importer import importar_preventivas_tape
+        return importar_preventivas_tape(db=db, limit=limit)
+    if app_id != APP_MANUTENCOES_CORRETIVAS:
+        raise ValueError(f"App Tape não suportado: {app_id}")
+
     import time
 
     t0 = time.monotonic()

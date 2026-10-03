@@ -167,6 +167,7 @@ const RANK_FALLBACK = {
   location: 'Sem loja',
   category: 'Sem categoria',
   subcategory: 'Sem subcategoria',
+  periodicity: 'Sem periodicidade',
   region: 'Sem praça',
   analyst: 'Sem analista',
 }

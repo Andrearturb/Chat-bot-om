@@ -98,6 +98,7 @@ function CategoryRankTable({ rows, subcategoriesByCategory, onOpenSubcategory })
 
 export default function CorrectiveRankTables({
   lojaRank, categoryRank, subcategoriesByCategory, onOpenStore, onOpenSubcategory,
+  periodicityRank, onOpenPeriodicity,
 }) {
   return (
     <section className="corrective-ranks">
@@ -107,6 +108,10 @@ export default function CorrectiveRankTables({
         subcategoriesByCategory={subcategoriesByCategory}
         onOpenSubcategory={onOpenSubcategory}
       />
+      {periodicityRank && (
+        <RankTable title="Periodicidade" columnLabel="Periodicidade" rows={periodicityRank}
+                   onOpenRow={onOpenPeriodicity} />
+      )}
     </section>
   )
 }

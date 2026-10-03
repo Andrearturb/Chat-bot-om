@@ -19,6 +19,7 @@ BASE_URL: Final[str] = "https://api.tapeapp.com/v1"
 
 # ID do app de Manutenções Corretivas na Tape
 APP_MANUTENCOES_CORRETIVAS: Final[int] = 57531
+APP_MANUTENCOES_PREVENTIVAS: Final[int] = 57532
 
 T = TypeVar("T")
 
@@ -118,12 +119,14 @@ class TapeClient:
         app_id: int,
         limit: int = 100,
         reference_fields: list[int] | None = None,
+        field_aliases: dict[str, dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
         """Busca todos os registros de um app e normaliza o payload para consumo local."""
         dados_brutos = self.get_records_by_app(app_id=app_id, limit=limit)
 
         transformer = TapeTransformer(
             reference_fields=reference_fields or FIELDS_REFERENCE,
+            field_aliases=field_aliases,
         )
 
         return transformer.transformar_dados(dados_brutos)

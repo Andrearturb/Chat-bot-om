@@ -9,6 +9,7 @@ import IndicatorDashboardHeader from './components/IndicatorDashboardHeader'
 import IndicatorPlaceholder from './components/IndicatorPlaceholder'
 import IndicatorsHome from './home/IndicatorsHome'
 import CorrectivePanel from './corrective/CorrectivePanel'
+import PreventivePanel from './preventive/PreventivePanel'
 import {
   applyFilters,
   buildAnalystProductivity,
@@ -374,11 +375,13 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
   }
 
   const dashboardBody = (() => {
-    const panelIndicators = ['performance', 'corrective']
+    const panelIndicators = ['performance', 'corrective', 'preventive']
 
     if (!panelIndicators.includes(activeIndicator)) {
       return <IndicatorPlaceholder type={activeIndicator} />
     }
+
+    if (activeIndicator === 'preventive') return <PreventivePanel />
 
     if (loading) {
       return (

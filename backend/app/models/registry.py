@@ -13,6 +13,7 @@ from app.models.auth import (                            # noqa: F401
 from app.models.climate_asset import ClimateAsset        # noqa: F401
 from app.models.fire_asset import FireAsset              # noqa: F401
 from app.models.service import Service                   # noqa: F401
+from app.models.preventive_service import PreventiveService  # noqa: F401
 from app.models.store_document import StoreDocument      # noqa: F401
 from app.models.upload import Upload                     # noqa: F401
 from app.models.water_asset import WaterAsset            # noqa: F401

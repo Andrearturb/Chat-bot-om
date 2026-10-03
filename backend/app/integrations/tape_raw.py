@@ -20,12 +20,14 @@ BASE_URL: Final[str] = "https://api.tapeapp.com/v1"
 # ID do app de Manutenções Corretivas na Tape
 APP_MANUTENCOES_CORRETIVAS: Final[int] = 57531
 APP_MANUTENCOES_PREVENTIVAS: Final[int] = 57532
+APP_DCENTROS: Final[int] = 30902
 
 # Nome de origem gravado em Upload.source_file_name por cada importador —
 # usado para filtrar qual sync mais recente pertence a qual painel, já que
 # os dois apps agora compartilham a mesma tabela de uploads.
 CORRECTIVE_SOURCE_NAME: Final[str] = f"Tape API - {APP_MANUTENCOES_CORRETIVAS}"
 PREVENTIVE_SOURCE_NAME: Final[str] = f"Tape API - {APP_MANUTENCOES_PREVENTIVAS}"
+DCENTROS_SOURCE_NAME: Final[str] = f"Tape API - {APP_DCENTROS}"
 
 T = TypeVar("T")
 

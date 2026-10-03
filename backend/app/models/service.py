@@ -15,7 +15,7 @@ id, upload_id, synced_at.
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -39,6 +39,7 @@ class Service(Base):
     status: Mapped[str | None] = mapped_column(String, nullable=True)
 
     store_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    tape_center_record_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     bpcs_number: Mapped[str | None] = mapped_column(String, nullable=True)
     sap_number: Mapped[str | None] = mapped_column(String, nullable=True)
     praca: Mapped[str | None] = mapped_column(String, nullable=True)

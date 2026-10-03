@@ -18,6 +18,8 @@ class ServiceItemResponse(BaseModel):
     ticket: str
     status: str | None
     store_name: str | None
+    tape_center_record_id: int | None = None
+    center_unique_number: int | None = None
     bpcs_number: str | None
     sap_number: str | None
     praca: str | None

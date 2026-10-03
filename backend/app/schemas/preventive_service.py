@@ -10,6 +10,8 @@ class PreventiveItemResponse(BaseModel):
     status: str | None
     raw_status: str | None
     store_name: str | None
+    tape_center_record_id: int | None = None
+    center_unique_number: int | None = None
     praca: str | None
     category: str | None
     subcategory: str | None

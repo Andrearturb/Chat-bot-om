@@ -201,7 +201,7 @@ def test_um_agendador_tenta_os_dois_apps_mesmo_se_um_falhar(monkeypatch):
 
     tape_scheduler.executar_sincronizacao_tape()
 
-    assert [item for item in calls if isinstance(item, int)] == [57531, 57532]
-    assert len(sessions) == 2
-    assert calls.count("close") == 2
+    assert [item for item in calls if isinstance(item, int)] == [30902, 57531, 57532]
+    assert len(sessions) == 3
+    assert calls.count("close") == 3
     assert calls.count("rollback") == 1

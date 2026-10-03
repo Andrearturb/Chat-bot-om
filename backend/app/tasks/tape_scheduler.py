@@ -11,7 +11,7 @@ import os
 import threading
 
 from app.db.session import SessionLocal
-from app.integrations.tape_raw import APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS
+from app.integrations.tape_raw import APP_DCENTROS, APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS
 from app.services.importer import importar_servicos_tape
 
 
@@ -31,7 +31,7 @@ def _obter_intervalo_segundos() -> float:
 
 def executar_sincronizacao_tape() -> None:
     """Um agendador sincroniza os dois apps com sessões e falhas isoladas."""
-    for app_id in (APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS):
+    for app_id in (APP_DCENTROS, APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS):
         db = SessionLocal()
         try:
             resultado = importar_servicos_tape(db=db, app_id=app_id)

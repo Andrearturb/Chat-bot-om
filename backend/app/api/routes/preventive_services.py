@@ -7,6 +7,7 @@ from app.api.dependencies import get_db, require_permission
 from app.api.routes.services import converter_para_brasilia
 from app.integrations.tape_raw import PREVENTIVE_SOURCE_NAME
 from app.models.preventive_service import PreventiveService
+from app.models.tape_center import TapeCenter
 from app.models.upload import Upload
 from app.schemas.preventive_service import PreventiveItemResponse, PreventiveListResponse
 from app.services.preventive_importer import normalizar_status_preventivo
@@ -19,6 +20,7 @@ router = APIRouter(prefix="/preventive-services", tags=["Preventive Services"])
             dependencies=[Depends(require_permission("indicators.view"))])
 def listar_preventivas(db: Session = Depends(get_db)) -> PreventiveListResponse:
     services = db.query(PreventiveService).order_by(PreventiveService.ticket).all()
+    center_numbers = {item.record_id: item.unique_number for item in db.query(TapeCenter).all()}
     upload = db.query(Upload).filter(
         Upload.source_file_name == PREVENTIVE_SOURCE_NAME
     ).order_by(Upload.uploaded_at.desc()).first()
@@ -28,6 +30,8 @@ def listar_preventivas(db: Session = Depends(get_db)) -> PreventiveListResponse:
             status=normalizar_status_preventivo(item.status),
             raw_status=item.status,
             store_name=item.store_name,
+            tape_center_record_id=item.tape_center_record_id,
+            center_unique_number=center_numbers.get(item.tape_center_record_id),
             praca=item.praca,
             category=item.category,
             subcategory=item.subcategory,

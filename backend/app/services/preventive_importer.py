@@ -24,6 +24,7 @@ from app.services.importer import (
     converter_decimal,
     normalizar_praca,
     normalizar_texto,
+    obter_dcentro_record_id,
     obter_valor_campo,
     tratar_local_atendimento,
     tratar_status_assinatura,
@@ -32,7 +33,7 @@ from app.services.importer import (
 
 logger = logging.getLogger(__name__)
 SYNC_FIELDS = (
-    "status", "store_name", "praca", "category", "subcategory",
+    "status", "store_name", "tape_center_record_id", "praca", "category", "subcategory",
     "service_description", "supplier", "visit_date", "solution_text",
     "analyst_responsible", "non_approval_reason", "signature_status",
     "signed_pdf_url", "created_on", "completion_date", "approved_value",
@@ -113,6 +114,7 @@ def extrair_campos_preventivos(linha: dict[str, Any]) -> tuple[str, dict[str, An
     campos = {
         "status": normalizar_texto(field(linha, "status")),
         "store_name": store,
+        "tape_center_record_id": obter_dcentro_record_id(linha, "raw_location", 580460),
         "praca": normalizar_praca(field(linha, "praca")),
         "category": normalizar_texto(field(linha, "category")),
         "subcategory": normalizar_texto(field(linha, "subcategory")),

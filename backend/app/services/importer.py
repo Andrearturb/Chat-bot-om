@@ -30,7 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.integrations.tape_raw import (
-    APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS, CORRECTIVE_SOURCE_NAME,
+    APP_DCENTROS, APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS, CORRECTIVE_SOURCE_NAME,
     TapeClient, carregar_token,
 )
 from app.integrations.transformar_chamados import FIELD_ALIASES
@@ -47,6 +47,7 @@ BRASILIA_TZ = ZoneInfo("America/Sao_Paulo")
 CAMPOS_SINCRONIZADOS: tuple[str, ...] = (
     "status",
     "store_name",
+    "tape_center_record_id",
     "bpcs_number",
     "sap_number",
     "praca",
@@ -404,6 +405,27 @@ def obter_field_id_por_alias(alias: str) -> int | None:
     return int(primeiro) if primeiro is not None else None
 
 
+def obter_dcentro_record_id(linha: dict[str, object], alias: str, field_id: int) -> int | None:
+    """Lê a referência técnica do campo app apontando ao dCentros."""
+    field_values = linha.get("field_values")
+    entrada = field_values.get(alias) if isinstance(field_values, dict) else None
+    if not isinstance(entrada, dict):
+        entrada = linha.get(str(field_id))
+    if not isinstance(entrada, dict):
+        return None
+    app_id = entrada.get("relation_app_id")
+    if app_id is not None and str(app_id) != str(APP_DCENTROS):
+        return None
+    record_id = entrada.get("relation_record_id")
+    if record_id is None:
+        return None
+    try:
+        parsed = int(record_id)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
 def converter_para_brasilia(valor: datetime | None) -> datetime | None:
     """Converte um datetime UTC ou naive para o fuso horário de Brasília."""
     if valor is None:
@@ -453,6 +475,7 @@ def extrair_campos_negocio(linha: dict[str, object]) -> dict[str, Any]:
     return {
         "status": status,
         "store_name": location_data["store_name"],
+        "tape_center_record_id": obter_dcentro_record_id(linha, "raw_location", 580441),
         "bpcs_number": location_data["bpcs_number"],
         "sap_number": location_data["sap_number"],
         "praca": normalizar_praca(
@@ -741,6 +764,9 @@ def importar_servicos_tape(
     if app_id == APP_MANUTENCOES_PREVENTIVAS:
         from app.services.preventive_importer import importar_preventivas_tape
         return importar_preventivas_tape(db=db, limit=limit)
+    if app_id == APP_DCENTROS:
+        from app.services.tape_centers_importer import importar_centros_tape
+        return importar_centros_tape(db=db, limit=limit)
     if app_id != APP_MANUTENCOES_CORRETIVAS:
         raise ValueError(f"App Tape não suportado: {app_id}")
 

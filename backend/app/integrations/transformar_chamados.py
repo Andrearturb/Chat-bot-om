@@ -303,6 +303,16 @@ class TapeTransformer:
                 "value": valor,
             }
 
+            # Campos do tipo app chegam como uma referência a outro registro.
+            # O valor exibido continua sendo o título, mas o ID precisa ser
+            # preservado para relacionar chamados ao dCentros sem usar nomes.
+            if campo.get("type") == "app":
+                valores = campo.get("values") or []
+                referencia = valores[0].get("value") if valores and isinstance(valores[0], dict) else None
+                if isinstance(referencia, dict):
+                    entrada["relation_record_id"] = referencia.get("record_id")
+                    entrada["relation_app_id"] = referencia.get("app_id")
+
             objeto[str(field_id)] = entrada
 
             alias = self.alias_index.get(field_id)

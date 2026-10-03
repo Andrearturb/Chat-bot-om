@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_db, require_permission
 from app.integrations.tape_raw import CORRECTIVE_SOURCE_NAME
 from app.models.service import Service
+from app.models.tape_center import TapeCenter
 from app.models.upload import Upload
 from app.schemas.service import ServiceItemResponse, ServiceListResponse
 
@@ -30,6 +31,7 @@ def converter_para_brasilia(valor):
             dependencies=[Depends(require_permission("indicators.view"))])
 def listar_servicos(db: Session = Depends(get_db)) -> ServiceListResponse:
     services = db.query(Service).order_by(Service.ticket).all()
+    center_numbers = {item.record_id: item.unique_number for item in db.query(TapeCenter).all()}
     ultimo_upload = db.query(Upload).filter(
         Upload.source_file_name == CORRECTIVE_SOURCE_NAME
     ).order_by(Upload.uploaded_at.desc()).first()
@@ -37,6 +39,8 @@ def listar_servicos(db: Session = Depends(get_db)) -> ServiceListResponse:
     dados = [
         ServiceItemResponse(
             ticket=s.ticket, status=s.status, store_name=s.store_name,
+            tape_center_record_id=s.tape_center_record_id,
+            center_unique_number=center_numbers.get(s.tape_center_record_id),
             bpcs_number=s.bpcs_number, sap_number=s.sap_number, praca=s.praca,
             service_description=s.service_description, supplier=s.supplier,
             visit_date=s.visit_date, in_attendance_date=s.in_attendance_date,

@@ -119,6 +119,11 @@ function signatureBucket(value) {
   return ''
 }
 
+export function isOrderService(record) {
+  const bucket = signatureBucket(record.signatureStatus)
+  return bucket === 'pendente' || bucket === 'concluido'
+}
+
 export function buildCorrectiveKpis(records) {
   const concluidos = records.filter(isConcluded)
 
@@ -137,10 +142,7 @@ export function buildCorrectiveKpis(records) {
   )
   const custoMedio = concluidos.length === 0 ? 0 : Math.round(soma / concluidos.length)
 
-  const totalOs = records.filter((record) => {
-    const bucket = signatureBucket(record.signatureStatus)
-    return bucket === 'pendente' || bucket === 'concluido'
-  }).length
+  const totalOs = records.filter(isOrderService).length
 
   return {
     totalChamados: records.length,

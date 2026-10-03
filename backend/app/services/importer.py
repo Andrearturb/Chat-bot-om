@@ -246,7 +246,8 @@ def converter_decimal(valor: object) -> Decimal | None:
         return None
 
     if isinstance(valor, (int, float, Decimal)):
-        return Decimal(str(valor))
+        convertido = Decimal(str(valor))
+        return convertido if convertido.is_finite() else None
 
     texto = normalizar_texto(valor)
 
@@ -258,7 +259,8 @@ def converter_decimal(valor: object) -> Decimal | None:
         texto = texto.replace(".", "").replace(",", ".")
 
     try:
-        return Decimal(texto)
+        convertido = Decimal(texto)
+        return convertido if convertido.is_finite() else None
     except InvalidOperation:
         return None
 

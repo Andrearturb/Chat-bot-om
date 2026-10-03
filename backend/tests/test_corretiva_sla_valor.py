@@ -49,6 +49,9 @@ def test_valor_aprovado_ilegivel_e_nulo():
     assert converter_decimal(None) is None
     assert converter_decimal("") is None
     assert converter_decimal("sem valor") is None
+    assert converter_decimal("NaN") is None
+    assert converter_decimal("Infinity") is None
+    assert converter_decimal(float("nan")) is None
 
 
 from datetime import datetime

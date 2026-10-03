@@ -10,6 +10,8 @@ import {
   buildRank,
   buildStatusCounters,
   defaultCorrectiveFilters,
+  isConcluded,
+  isOrderService,
 } from './correctiveData.js'
 
 function record(overrides = {}) {
@@ -147,16 +149,32 @@ test('custo médio divide pelos concluídos, com os sem valor entrando como zero
 })
 
 test('total de O.S conta apenas assinatura pendente ou concluída', () => {
-  const { totalOs } = buildCorrectiveKpis([
+  const registros = [
     record({ signatureStatus: 'concluido' }),
     record({ signatureStatus: 'Concluída' }),
     record({ signatureStatus: 'pendente' }),
     record({ signatureStatus: 'Aguardando assinatura' }),
     record({ signatureStatus: '' }),
     record({ signatureStatus: 'cancelado' }),
-  ])
+  ]
+  const { totalOs } = buildCorrectiveKpis(registros)
 
   assert.equal(totalOs, 4)
+  assert.equal(registros.filter(isOrderService).length, totalOs)
+})
+
+test('listas dos KPIs de custo e SLA usam o mesmo conjunto de concluídos', () => {
+  const registros = [
+    record({ canonicalStatus: 'Concluído', approvedValue: null, slaLate: false }),
+    record({ canonicalStatus: 'Concluído', approvedValue: 100, slaLate: true }),
+    record({ canonicalStatus: 'Não Aprovado', approvedValue: 900, slaLate: true }),
+  ]
+  const concluidos = registros.filter(isConcluded)
+  const kpis = buildCorrectiveKpis(registros)
+
+  assert.equal(concluidos.length, kpis.sla.totalConsiderado)
+  assert.equal(kpis.custoMedio, 50)
+  assert.equal(kpis.sla.atrasado, 1)
 })
 
 test('base sem concluídos devolve zero em vez de dividir por zero', () => {

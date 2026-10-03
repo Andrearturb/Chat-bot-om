@@ -1,4 +1,4 @@
-import { statusPredicates } from '../correctiveData'
+import { isConcluded, isOrderService, statusPredicates } from '../correctiveData'
 
 const MOEDA = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const NUMERO = new Intl.NumberFormat('pt-BR')
@@ -36,12 +36,15 @@ export default function CorrectiveKpis({ kpis, counters, onOpenDetail, records }
       <section className="corrective-kpis" aria-label="Indicadores dos chamados corretivos">
         <BigKpi title="Total de Chamados" value={NUMERO.format(kpis.totalChamados)}
                 onClick={abrir('Total de chamados', () => true)} />
-        <BigKpi title="Total de O.S" value={NUMERO.format(kpis.totalOs)} />
-        <BigKpi title="Custo Médio Serviço" value={MOEDA.format(kpis.custoMedio)} />
+        <BigKpi title="Total de O.S" value={NUMERO.format(kpis.totalOs)}
+                onClick={abrir('Chamados com O.S', isOrderService)} />
+        <BigKpi title="Custo Médio Serviço" value={MOEDA.format(kpis.custoMedio)}
+                onClick={abrir('Chamados considerados no custo médio', isConcluded)} />
         <BigKpi
           title="SLA %"
           value={`${kpis.sla.percent}%`}
           subtitle={`No prazo ${NUMERO.format(kpis.sla.noPrazo)} / ${NUMERO.format(kpis.sla.totalConsiderado)} considerados`}
+          onClick={abrir('Chamados considerados no SLA', isConcluded)}
         />
       </section>
 

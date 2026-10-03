@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { isConcluded } from '../correctiveData'
 
 const NUMERO = new Intl.NumberFormat('pt-BR')
 const MOEDA = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -58,7 +59,7 @@ export default function CorrectiveDetailModal({ detail, onClose }) {
                     <td>{record.region}</td>
                     <td>{record.category}</td>
                     <td>{dataBr(record.createdOn)}</td>
-                    <td>{record.slaLate ? 'Atrasado' : 'No prazo'}</td>
+                    <td>{!isConcluded(record) ? '—' : record.slaLate ? 'Atrasado' : 'No prazo'}</td>
                     <td style={{ textAlign: 'right' }}>
                       {typeof record.approvedValue === 'number' ? MOEDA.format(record.approvedValue) : '—'}
                     </td>

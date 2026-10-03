@@ -17,7 +17,7 @@ from alembic.migration import MigrationContext
 import app.models.registry  # noqa: F401  (registra todos os modelos em Base.metadata)
 from app.core.dates import utcnow
 from app.db.base import Base
-from app.db.migrations import BASELINE_REVISION, run_migrations
+from app.db.migrations import run_migrations
 
 
 def motor(tmp_path, nome="banco.db"):
@@ -58,7 +58,7 @@ def test_banco_criado_antes_do_alembic_e_adotado_sem_perder_dados(tmp_path):
 
     assert run_migrations(engine) == "adotado"
 
-    assert versao(engine) == BASELINE_REVISION
+    assert versao(engine) == "0003"
     with engine.connect() as conn:
         assert conn.execute(text("select email from app_users")).scalar() == "ana@gentil.test"
     assert run_migrations(engine) == "migrado"   # a partir daí é um banco comum do Alembic

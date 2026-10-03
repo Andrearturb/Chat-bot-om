@@ -2,8 +2,8 @@
 Migrações do banco (Alembic) na subida do aplicativo.
 
 - Banco novo ou já gerenciado pelo Alembic: aplica as migrações pendentes.
-- Banco criado antes do Alembic (tabelas existem, sem ``alembic_version``): é adotado, ou
-  seja, marcado como estando na migração inicial, sem recriar nada.
+- Banco criado antes do Alembic (tabelas existem, sem ``alembic_version``): é adotado
+  na revisão correspondente ao esquema existente e recebe migrações posteriores.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from sqlalchemy.engine import Engine
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 BASELINE_REVISION = "0001"
+ASSET_QUERY_REVISION = "0002"
 
 
 def _alembic_config() -> Config:
@@ -32,7 +33,20 @@ def run_migrations(engine: Engine) -> str:
         config.attributes["connection"] = connection
         tables = set(inspect(connection).get_table_names())
         if "alembic_version" not in tables and "app_users" in tables:
-            command.stamp(config, BASELINE_REVISION)
+            conversation_columns = {
+                column["name"] for column in inspect(connection).get_columns("assistant_conversations")
+            }
+            service_columns = {
+                column["name"] for column in inspect(connection).get_columns("services")
+            }
+            has_asset_state = "asset_query_state" in conversation_columns
+            has_corrective_fields = {"sla_late", "approved_value", "raw_status"} <= service_columns
+
+            if has_asset_state and has_corrective_fields:
+                command.stamp(config, "head")
+            else:
+                command.stamp(config, ASSET_QUERY_REVISION if has_asset_state else BASELINE_REVISION)
+                command.upgrade(config, "head")
             return "adotado"
         command.upgrade(config, "head")
         return "migrado"

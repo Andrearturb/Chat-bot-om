@@ -42,17 +42,17 @@ def run_migrations(engine: Engine) -> str:
             }
             has_asset_state = "asset_query_state" in conversation_columns
             has_corrective_fields = {"sla_late", "approved_value", "raw_status"} <= service_columns
-            has_preventive_table = "preventive_services" in tables
 
-            if has_asset_state and has_corrective_fields and has_preventive_table:
-                command.stamp(config, "head")
-            else:
-                revision = (
-                    CORRECTIVE_REVISION if has_asset_state and has_corrective_fields else
-                    ASSET_QUERY_REVISION if has_asset_state else BASELINE_REVISION
-                )
-                command.stamp(config, revision)
-                command.upgrade(config, "head")
+            # Stampar a revisão mais alta que o esquema detectado comprova e then
+            # SEMPRE rodar upgrade até head — nunca pular para "head" direto. Uma
+            # migração futura sem marcador próprio nesta lista continua sendo
+            # aplicada, porque o upgrade (idempotente) corre de qualquer forma.
+            revision = (
+                CORRECTIVE_REVISION if has_asset_state and has_corrective_fields else
+                ASSET_QUERY_REVISION if has_asset_state else BASELINE_REVISION
+            )
+            command.stamp(config, revision)
+            command.upgrade(config, "head")
             return "adotado"
         command.upgrade(config, "head")
         return "migrado"

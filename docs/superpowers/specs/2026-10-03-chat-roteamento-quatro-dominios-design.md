@@ -140,20 +140,39 @@ palavra.
    vira **filtro** de conta razão (`corretivo` → 41140014, `preventivo` →
    41140026), nunca troca de domínio. É o que faz "custo de manutenção
    corretiva" ser uma pergunta de custo, não de chamado.
-2. **Entidade `ativo` presente E nenhum qualificador → domínio `ativos`.**
-3. **Entidade `chamado` presente OU qualquer qualificador → domínio `chamados`**,
-   com subtipo pelo qualificador: `preventivo` → preventiva; caso contrário
-   corretiva.
-4. **Nenhuma entidade e nenhum qualificador, mas existe `lastDomain` no estado →
-   domínio `lastDomain`.**
-5. **Senão → `desconhecido`.**
+2. **Entidade `chamado` presente → domínio `chamados`**, com subtipo pelo
+   qualificador: `preventivo` → preventiva; caso contrário corretiva.
+3. **Qualificador presente sem entidade de chamado → domínio `chamados`**, mesmo
+   subtipo.
+4. **Entidade `ativo` presente → domínio `ativos`.**
+5. **Nenhum marcador, mas existe `lastDomain` no estado → domínio `lastDomain`.**
+6. **Senão → `desconhecido`.**
 
-A regra 2 exigir ausência de qualificador é o que corrige o terceiro erro da
-tabela: "periodicidade das **preventivas** de climatização" tem marcador de
-ativo (`climatizacao`) e qualificador (`preventivas`); o qualificador indica
-chamado preventivo da categoria climatização, não inventário.
+**`chamado` vem antes de `ativo` deliberadamente.** "Quantos chamados de ar
+condicionado?" tem marcador de ativo (`ar condicionado`) e de chamado, e é
+pergunta de chamado filtrada por categoria. A ordem inversa a mandaria para o
+inventário.
 
-A regra 4 generaliza o `hadAssetContext` atual para `lastDomain`, fazendo
+A regra 3 vir antes da 4 é o que corrige o terceiro erro da tabela:
+"periodicidade das **preventivas** de climatização" tem marcador de ativo
+(`climatizacao`) e qualificador (`preventivas`), e o qualificador indica chamado
+preventivo da categoria climatização, não inventário.
+
+Verificação da ordem contra os casos conhecidos:
+
+| pergunta | regra que decide | domínio |
+|---|---|---|
+| "quanto gastamos com ar condicionado" | 1 (custo vence ativo) | custos |
+| "custo de manutenção corretiva" | 1, qualificador vira filtro | custos + 41140014 |
+| "quantos chamados de ar condicionado" | 2 (chamado vence ativo) | chamados_corretiva |
+| "quantos chamados preventivos" | 2 + qualificador | chamados_preventiva |
+| "liste as preventivas atrasadas" | 3 (qualificador sozinho) | chamados_preventiva |
+| "periodicidade das preventivas de climatização" | 3 antes de 4 | chamados_preventiva |
+| "quantos extintores na loja 4006" | 4 | ativos |
+| "e na praça Natal?" | 5 | o anterior |
+| "qual a capital da França?" | 6 | desconhecido |
+
+A regra 5 generaliza o `hadAssetContext` atual para `lastDomain`, fazendo
 continuidade de acompanhamento valer para os quatro domínios — hoje só ativos
 tem isso.
 
@@ -165,7 +184,7 @@ falta de número de nota do lado da Tape.
 
 ### 3. Rota `desconhecido`
 
-Quando a regra 5 decide, o chat responde que não identificou o assunto e oferece
+Quando a regra 6 decide, o chat responde que não identificou o assunto e oferece
 exemplos de cada domínio, **sem** consultar nada. Hoje essas perguntas consultam
 a corretiva em silêncio e devolvem resposta sem sentido. É o conserto do problema 1.
 
@@ -191,7 +210,7 @@ Consequências:
 **`Buscar Estado da Conversa` passa a ser o primeiro nó, antes do roteador.**
 Hoje o roteador é o primeiro nó e por isso não tem como ler o estado — é
 exatamente por isso que ele depende de `hadAssetContext` vindo do backend.
-Lendo a tabela antes de rotear, a regra 4 de precedência obtém `lastDomain`
+Lendo a tabela antes de rotear, a regra 5 de precedência obtém `lastDomain`
 diretamente de `domain`, e o backend deixa de participar do contexto de consulta.
 
 Consequências:

@@ -12,6 +12,17 @@ export function normalizeApiDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : text
 }
 
+export function normalizeExternalUrl(value) {
+  const text = normalizeText(value)
+  if (!text) return null
+  try {
+    const url = new URL(text)
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null
+  } catch {
+    return null
+  }
+}
+
 export function classifyStatus(value) {
   const status = normalizeText(value)
 
@@ -68,6 +79,7 @@ export function adaptService(service = {}) {
         ? null
         : approvedValue,
     signatureStatus: normalizeText(service.signature_status),
+    signedPdfUrl: normalizeExternalUrl(service.signed_pdf_url),
   }
 }
 

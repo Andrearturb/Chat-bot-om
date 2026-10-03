@@ -40,6 +40,21 @@ dois desaparecer. Ele é derivado do mesmo alias `status`, antes da normalizaç�
   Solicitação Finalizada, e `Pendente de Aprovação` não tem card — o painel de
   origem também não mostra esse status.
 
+## Detalhamento dos chamados
+
+O modal de qualquer KPI ou card de status mostra a subcategoria, o status da O.S
+e o link **PDF** da O.S, além dos campos básicos do chamado. O status da O.S
+vem de `signature_status` e a URL vem de `signed_pdf_url`, ambos já entregues
+por `GET /services`. O PDF aparece apenas quando a assinatura está concluída
+e a URL é HTTP(S) válida; O.S pendente aparece sem link, como no
+`bi-manutencao`.
+
+O ranking de Categoria exibe as oito categorias principais. Cada categoria
+expande todas as suas subcategorias, com contagem calculada sobre os filtros
+ativos. Clicar na subcategoria abre o mesmo modal com os chamados daquele
+recorte. O ranking de Loja também abre a lista da loja, como no aplicativo de
+origem. Subcategoria ausente aparece como **Sem subcategoria**.
+
 ## O bug de SLA do BI Manutenção
 
 O `ChamadoTransformer` do `bi-manutencao` chama o campo de `coluna_d_raw`

@@ -2294,6 +2294,16 @@
   padding: 7px 6px; border-bottom: 1px solid rgba(5, 56, 98, 0.08);
 }
 .corrective-rank th { color: #5b6b7a; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.corrective-rank__link {
+  border: 0; padding: 2px 0; background: transparent; color: #2f6fb3;
+  cursor: pointer; font: inherit; text-align: left; text-decoration: underline;
+}
+.corrective-rank__link:hover, .corrective-os-link:hover { color: #053862; }
+.corrective-rank__link:focus-visible, .corrective-os-link:focus-visible { outline: 2px solid #2f6fb3; outline-offset: 2px; }
+.corrective-rank__category { display: inline-flex; align-items: center; gap: 7px; }
+.corrective-rank__subcategory { background: #f4f7fb; }
+.corrective-rank__subcategory td:first-child { padding-left: 25px; }
+.corrective-os-link { color: #2f6fb3; font-weight: 600; text-decoration: underline; }
 .corrective-empty { margin: 0; color: #5b6b7a; font-size: 13px; }
 
 @media (max-width: 640px) {

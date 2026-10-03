@@ -124,6 +124,17 @@ export function isOrderService(record) {
   return bucket === 'pendente' || bucket === 'concluido'
 }
 
+export function isCompletedOrderService(record) {
+  return signatureBucket(record.signatureStatus) === 'concluido'
+}
+
+export function orderServiceStatusLabel(record) {
+  const bucket = signatureBucket(record.signatureStatus)
+  if (bucket === 'concluido') return 'Concluída'
+  if (bucket === 'pendente') return 'Pendente'
+  return record.signatureStatus || '—'
+}
+
 export function buildCorrectiveKpis(records) {
   const concluidos = records.filter(isConcluded)
 
@@ -155,8 +166,18 @@ export function buildCorrectiveKpis(records) {
 const RANK_FALLBACK = {
   location: 'Sem loja',
   category: 'Sem categoria',
+  subcategory: 'Sem subcategoria',
   region: 'Sem praça',
   analyst: 'Sem analista',
+}
+
+export function rankLabel(record, field) {
+  const value = String(record[field] ?? '').trim()
+  return value && value !== 'Não informado' ? value : (RANK_FALLBACK[field] ?? 'Não informado')
+}
+
+export function filterByRank(records, field, label) {
+  return records.filter((record) => rankLabel(record, field) === label)
 }
 
 const MESES_PT = [
@@ -168,14 +189,31 @@ function contarPor(records, campo) {
   const contagem = new Map()
 
   for (const record of records) {
-    const bruto = String(record[campo] ?? '').trim()
-    const label = bruto && bruto !== 'Não informado' ? bruto : (RANK_FALLBACK[campo] ?? 'Não informado')
+    const label = rankLabel(record, campo)
     contagem.set(label, (contagem.get(label) ?? 0) + 1)
   }
 
   return [...contagem.entries()]
     .map(([label, total]) => ({ label, total }))
     .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'pt-BR'))
+}
+
+export function buildSubcategoryRanks(records) {
+  const byCategory = new Map()
+
+  for (const record of records) {
+    const category = rankLabel(record, 'category')
+    const subcategory = rankLabel(record, 'subcategory')
+    const counts = byCategory.get(category) ?? new Map()
+    counts.set(subcategory, (counts.get(subcategory) ?? 0) + 1)
+    byCategory.set(category, counts)
+  }
+
+  return new Map([...byCategory].map(([category, counts]) => [
+    category,
+    [...counts].map(([label, total]) => ({ label, total }))
+      .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'pt-BR')),
+  ]))
 }
 
 export function buildRank(records, campo, limit = 8) {

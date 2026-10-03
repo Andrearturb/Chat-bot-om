@@ -11,8 +11,10 @@ import {
   buildFilterOptions,
   buildMonthlySeries,
   buildRank,
+  buildSubcategoryRanks,
   buildStatusCounters,
   defaultCorrectiveFilters,
+  filterByRank,
 } from './correctiveData'
 
 export const CORRECTIVE_STATE_KEY = 'gentileza-indicators-corrective-v1'
@@ -48,6 +50,19 @@ export default function CorrectivePanel({ records }) {
   const monthlySeries = useMemo(() => buildMonthlySeries(filtered), [filtered])
   const lojaRank = useMemo(() => buildRank(filtered, 'location'), [filtered])
   const categoryRank = useMemo(() => buildRank(filtered, 'category'), [filtered])
+  const subcategoriesByCategory = useMemo(() => buildSubcategoryRanks(filtered), [filtered])
+
+  function openStore(loja) {
+    setDetail({ titulo: `Loja: ${loja}`, registros: filterByRank(filtered, 'location', loja) })
+  }
+
+  function openSubcategory(category, subcategory) {
+    const categoryRecords = filterByRank(filtered, 'category', category)
+    setDetail({
+      titulo: `Categoria: ${category} • ${subcategory}`,
+      registros: filterByRank(categoryRecords, 'subcategory', subcategory),
+    })
+  }
 
   function updateFilter(key, value) {
     const proximos = { ...filters, [key]: value }
@@ -65,7 +80,13 @@ export default function CorrectivePanel({ records }) {
       <CorrectiveFilters filters={filters} options={options} onChange={updateFilter} onClear={clearFilters} />
       <CorrectiveKpis kpis={kpis} counters={counters} records={filtered} onOpenDetail={setDetail} />
       <CorrectiveCharts analystSeries={analystSeries} monthlySeries={monthlySeries} />
-      <CorrectiveRankTables lojaRank={lojaRank} categoryRank={categoryRank} />
+      <CorrectiveRankTables
+        lojaRank={lojaRank}
+        categoryRank={categoryRank}
+        subcategoriesByCategory={subcategoriesByCategory}
+        onOpenStore={openStore}
+        onOpenSubcategory={openSubcategory}
+      />
       <CorrectiveDetailModal detail={detail} onClose={() => setDetail(null)} />
     </div>
   )

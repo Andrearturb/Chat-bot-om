@@ -191,6 +191,14 @@ test('adaptService expõe o status de assinatura para o Total de O.S', () => {
   assert.equal(record.signatureStatus, 'Concluída')
 })
 
+test('adapter expõe apenas links HTTP(S) válidos do PDF assinado', () => {
+  const pdf = 'https://api.autentique.com.br/documento/123?token=abc'
+  assert.equal(adaptService(service({ signed_pdf_url: pdf })).signedPdfUrl, pdf)
+  assert.equal(adaptService(service({ signed_pdf_url: 'javascript:alert(1)' })).signedPdfUrl, null)
+  assert.equal(adaptService(service({ signed_pdf_url: '/pdf/123' })).signedPdfUrl, null)
+  assert.equal(adaptService(service({ signed_pdf_url: null })).signedPdfUrl, null)
+})
+
 test('adaptService trata ausência dos campos da corretiva', () => {
   const record = adaptService(service({ raw_status: null, sla_late: null, approved_value: null }))
 

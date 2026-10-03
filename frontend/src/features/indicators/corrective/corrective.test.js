@@ -8,10 +8,14 @@ import {
   buildFilterOptions,
   buildMonthlySeries,
   buildRank,
+  buildSubcategoryRanks,
   buildStatusCounters,
   defaultCorrectiveFilters,
+  filterByRank,
+  isCompletedOrderService,
   isConcluded,
   isOrderService,
+  orderServiceStatusLabel,
 } from './correctiveData.js'
 
 function record(overrides = {}) {
@@ -22,6 +26,7 @@ function record(overrides = {}) {
     location: 'ER Centro',
     region: 'Natal',
     category: 'Elétrica',
+    subcategory: 'Iluminação',
     createdOn: '2026-09-10T08:00:00',
     slaLate: false,
     approvedValue: 100,
@@ -163,6 +168,15 @@ test('total de O.S conta apenas assinatura pendente ou concluída', () => {
   assert.equal(registros.filter(isOrderService).length, totalOs)
 })
 
+test('status e PDF da O.S seguem a conclusão da assinatura', () => {
+  const concluida = record({ signatureStatus: 'completo', signedPdfUrl: 'https://api.autentique.com.br/pdf' })
+  const pendente = record({ signatureStatus: 'pendente', signedPdfUrl: null })
+  assert.equal(orderServiceStatusLabel(concluida), 'Concluída')
+  assert.equal(orderServiceStatusLabel(pendente), 'Pendente')
+  assert.equal(isCompletedOrderService(concluida), true)
+  assert.equal(isCompletedOrderService(pendente), false)
+})
+
 test('listas dos KPIs de custo e SLA usam o mesmo conjunto de concluídos', () => {
   const registros = [
     record({ canonicalStatus: 'Concluído', approvedValue: null, slaLate: false }),
@@ -218,6 +232,29 @@ test('ranking respeita o limite', () => {
 
   assert.equal(buildRank(registros, 'category').length, 8)
   assert.equal(buildRank(registros, 'category', 3).length, 3)
+})
+
+test('categoria expande subcategorias e a lista usa o mesmo recorte do contador', () => {
+  const registros = [
+    record({ ticketId: 'A', category: 'Elétrica', subcategory: 'Iluminação' }),
+    record({ ticketId: 'B', category: 'Elétrica', subcategory: 'Iluminação' }),
+    record({ ticketId: 'C', category: 'Elétrica', subcategory: 'Tomadas' }),
+    record({ ticketId: 'D', category: 'Elétrica', subcategory: 'Não informado' }),
+    record({ ticketId: 'E', category: 'Hidráulica', subcategory: 'Iluminação' }),
+  ]
+  const filtrados = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, categoria: 'Elétrica' })
+  const categorias = buildRank(filtrados, 'category')
+  const subcategorias = buildSubcategoryRanks(filtrados).get('Elétrica')
+
+  assert.equal(categorias[0].total, 4)
+  assert.deepEqual(subcategorias, [
+    { label: 'Iluminação', total: 2 },
+    { label: 'Sem subcategoria', total: 1 },
+    { label: 'Tomadas', total: 1 },
+  ])
+  const detalhe = filterByRank(filterByRank(filtrados, 'category', 'Elétrica'), 'subcategory', 'Iluminação')
+  assert.deepEqual(detalhe.map((item) => item.ticketId), ['A', 'B'])
+  assert.equal(detalhe.length, subcategorias[0].total)
 })
 
 test('série de analistas ordena do maior para o menor', () => {

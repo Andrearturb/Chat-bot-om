@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { isConcluded } from '../correctiveData'
+import { isCompletedOrderService, isConcluded, orderServiceStatusLabel } from '../correctiveData'
 
 const NUMERO = new Intl.NumberFormat('pt-BR')
 const MOEDA = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -46,8 +46,9 @@ export default function CorrectiveDetailModal({ detail, onClose }) {
               <thead>
                 <tr>
                   <th>Ticket</th><th>Status</th><th>Loja</th><th>Praça</th>
-                  <th>Categoria</th><th>Criado em</th><th>SLA</th>
+                  <th>Categoria</th><th>Subcategoria</th><th>Criado em</th><th>SLA</th>
                   <th style={{ textAlign: 'right' }}>Valor</th>
+                  <th>Status da O.S</th><th>URL da O.S</th>
                 </tr>
               </thead>
               <tbody>
@@ -58,10 +59,19 @@ export default function CorrectiveDetailModal({ detail, onClose }) {
                     <td>{record.location}</td>
                     <td>{record.region}</td>
                     <td>{record.category}</td>
+                    <td>{record.subcategory}</td>
                     <td>{dataBr(record.createdOn)}</td>
                     <td>{!isConcluded(record) ? '—' : record.slaLate ? 'Atrasado' : 'No prazo'}</td>
                     <td style={{ textAlign: 'right' }}>
                       {typeof record.approvedValue === 'number' ? MOEDA.format(record.approvedValue) : '—'}
+                    </td>
+                    <td>{orderServiceStatusLabel(record)}</td>
+                    <td>
+                      {isCompletedOrderService(record) && record.signedPdfUrl ? (
+                        <a href={record.signedPdfUrl} target="_blank" rel="noopener noreferrer" className="corrective-os-link">
+                          PDF
+                        </a>
+                      ) : '—'}
                     </td>
                   </tr>
                 ))}

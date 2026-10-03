@@ -180,6 +180,19 @@ export function filterByRank(records, field, label) {
   return records.filter((record) => rankLabel(record, field) === label)
 }
 
+const TICKET_ORDER = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' })
+
+export function sortDetailRecords(records) {
+  const timestamp = (record) => {
+    const parsed = Date.parse(record.createdOn ?? '')
+    return Number.isNaN(parsed) ? -Infinity : parsed
+  }
+
+  return [...records].sort((a, b) =>
+    timestamp(b) - timestamp(a) || TICKET_ORDER.compare(String(b.ticketId ?? ''), String(a.ticketId ?? '')),
+  )
+}
+
 const MESES_PT = [
   'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
   'jul', 'ago', 'set', 'out', 'nov', 'dez',

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { isCompletedOrderService, isConcluded, orderServiceStatusLabel } from '../correctiveData'
+import { isCompletedOrderService, isConcluded, orderServiceStatusLabel, sortDetailRecords } from '../correctiveData'
 
 const NUMERO = new Intl.NumberFormat('pt-BR')
 const MOEDA = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -24,7 +24,7 @@ export default function CorrectiveDetailModal({ detail, onClose }) {
   if (!detail) return null
 
   const { titulo, registros } = detail
-  const visiveis = registros.slice(0, LIMITE)
+  const visiveis = sortDetailRecords(registros).slice(0, LIMITE)
 
   return (
     <div className="corrective-modal" role="dialog" aria-modal="true" aria-label={titulo}>
@@ -46,7 +46,7 @@ export default function CorrectiveDetailModal({ detail, onClose }) {
               <thead>
                 <tr>
                   <th>Ticket</th><th>Status</th><th>Loja</th><th>Praça</th>
-                  <th>Categoria</th><th>Subcategoria</th><th>Criado em</th><th>SLA</th>
+                  <th>Categoria</th><th>Subcategoria</th><th aria-sort="descending">Criado em ↓</th><th>SLA</th>
                   <th style={{ textAlign: 'right' }}>Valor</th>
                   <th>Status da O.S</th><th>URL da O.S</th>
                 </tr>

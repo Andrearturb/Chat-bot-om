@@ -16,6 +16,7 @@ import {
   isConcluded,
   isOrderService,
   orderServiceStatusLabel,
+  sortDetailRecords,
 } from './correctiveData.js'
 
 function record(overrides = {}) {
@@ -255,6 +256,19 @@ test('categoria expande subcategorias e a lista usa o mesmo recorte do contador'
   const detalhe = filterByRank(filterByRank(filtrados, 'category', 'Elétrica'), 'subcategory', 'Iluminação')
   assert.deepEqual(detalhe.map((item) => item.ticketId), ['A', 'B'])
   assert.equal(detalhe.length, subcategorias[0].total)
+})
+
+test('modal ordena da criação mais recente para a mais antiga, sem alterar a base', () => {
+  const registros = [
+    record({ ticketId: '3', createdOn: null }),
+    record({ ticketId: '9', createdOn: '2026-09-10T08:00:00' }),
+    record({ ticketId: '11', createdOn: '2026-10-02T08:00:00' }),
+    record({ ticketId: '10', createdOn: '2026-10-02T08:00:00' }),
+    record({ ticketId: '2', createdOn: 'data inválida' }),
+  ]
+
+  assert.deepEqual(sortDetailRecords(registros).map((item) => item.ticketId), ['11', '10', '9', '3', '2'])
+  assert.deepEqual(registros.map((item) => item.ticketId), ['3', '9', '11', '10', '2'])
 })
 
 test('série de analistas ordena do maior para o menor', () => {

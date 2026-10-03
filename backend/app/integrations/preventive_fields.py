@@ -7,7 +7,6 @@ PREVENTIVE_FIELD_ALIASES: dict[str, dict[str, Any]] = {
     "ticket": {"field_ids": [677154], "labels": ["Ticket"]},
     "status": {"field_ids": [676273], "labels": ["Status"]},
     "raw_location": {"field_ids": [580460], "labels": ["Local de Atendimento"]},
-    "store_custom": {"field_ids": [681363], "labels": ["Loja_custom"]},
     "praca": {"field_ids": [580462], "labels": ["Praça"]},
     "category": {"field_ids": [580461], "labels": ["Serviço (Categoria)"]},
     "subcategory": {"field_ids": [676274], "labels": ["Subcategoria"]},

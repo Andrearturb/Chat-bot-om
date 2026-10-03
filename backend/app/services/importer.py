@@ -266,29 +266,6 @@ def converter_decimal(valor: object) -> Decimal | None:
         return None
 
 
-def tratar_local_atendimento(valor: object) -> dict[str, str | None]:
-    """
-    Extrai store_name, bpcs_number e sap_number do campo de local de atendimento.
-
-    Formato esperado: 'NomeLoja | BCPS: 12345 | SAP: 6789'
-    """
-    texto = normalizar_texto(valor)
-
-    if texto is None:
-        return {"store_name": None, "bpcs_number": None, "sap_number": None}
-
-    partes = [parte.strip() for parte in texto.split("|")]
-
-    if len(partes) != 3:
-        return {"store_name": texto, "bpcs_number": None, "sap_number": None}
-
-    return {
-        "store_name": partes[0] or None,
-        "bpcs_number": partes[1].replace("BCPS:", "").strip() or None,
-        "sap_number": partes[2].replace("SAP:", "").strip() or None,
-    }
-
-
 def tratar_status_assinatura(valor: object) -> dict[str, str | None]:
     """
     Extrai o status e a URL do PDF assinado do campo de assinatura.

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db, require_permission
 from app.api.routes.services import converter_para_brasilia
+from app.integrations.tape_raw import PREVENTIVE_SOURCE_NAME
 from app.models.preventive_service import PreventiveService
 from app.models.upload import Upload
 from app.schemas.preventive_service import PreventiveItemResponse, PreventiveListResponse
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/preventive-services", tags=["Preventive Services"])
 def listar_preventivas(db: Session = Depends(get_db)) -> PreventiveListResponse:
     services = db.query(PreventiveService).order_by(PreventiveService.ticket).all()
     upload = db.query(Upload).filter(
-        Upload.source_file_name == "Tape API - 57532"
+        Upload.source_file_name == PREVENTIVE_SOURCE_NAME
     ).order_by(Upload.uploaded_at.desc()).first()
     dados = [
         PreventiveItemResponse(

@@ -29,7 +29,10 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.integrations.tape_raw import APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS, TapeClient, carregar_token
+from app.integrations.tape_raw import (
+    APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS, CORRECTIVE_SOURCE_NAME,
+    TapeClient, carregar_token,
+)
 from app.integrations.transformar_chamados import FIELD_ALIASES
 from app.models.service import Service
 from app.models.upload import Upload
@@ -775,14 +778,14 @@ def importar_servicos_tape(
             "unchanged": 0,
             "rejected": 0,
             "upload_data": None,
-            "source_file_name": source_name or f"Tape API - {app_id}",
+            "source_file_name": source_name or CORRECTIVE_SOURCE_NAME,
         }
 
     # --- Fase de escrita (dentro da transação) ---
     agora = datetime.now(timezone.utc)
 
     upload = Upload(
-        source_file_name=source_name or f"Tape API - {app_id}",
+        source_file_name=source_name or CORRECTIVE_SOURCE_NAME,
         total_rows=0,  # atualizado após sync
         inserted_count=0,
         updated_count=0,

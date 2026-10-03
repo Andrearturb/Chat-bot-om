@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db, require_permission
+from app.integrations.tape_raw import CORRECTIVE_SOURCE_NAME
 from app.models.service import Service
 from app.models.upload import Upload
 from app.schemas.service import ServiceItemResponse, ServiceListResponse
@@ -29,7 +30,9 @@ def converter_para_brasilia(valor):
             dependencies=[Depends(require_permission("indicators.view"))])
 def listar_servicos(db: Session = Depends(get_db)) -> ServiceListResponse:
     services = db.query(Service).order_by(Service.ticket).all()
-    ultimo_upload = db.query(Upload).order_by(Upload.uploaded_at.desc()).first()
+    ultimo_upload = db.query(Upload).filter(
+        Upload.source_file_name == CORRECTIVE_SOURCE_NAME
+    ).order_by(Upload.uploaded_at.desc()).first()
 
     dados = [
         ServiceItemResponse(

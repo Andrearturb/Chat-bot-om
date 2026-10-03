@@ -1,11 +1,13 @@
 """Integração do app Tape 57532 sem misturar chamados corretivos."""
 
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.integrations.preventive_fields import PREVENTIVE_FIELD_ALIASES, PREVENTIVE_REFERENCE_FIELDS
 from app.integrations.transformar_chamados import TapeTransformer
 from app.models.preventive_service import PreventiveService
 from app.models.service import Service
+from app.models.upload import Upload
 from app.services.importer import importar_servicos_tape
 from app.services.preventive_importer import (
     classificar_sla,
@@ -65,10 +67,30 @@ def test_transformer_usa_ids_preventivos_e_campos_necessarios():
     assert "580453" not in row  # ID de status da corretiva não entra neste mapeamento.
 
 
+def test_praca_segue_a_mesma_regra_da_corretiva():
+    """"Brasil" vira "Escritório" igual na corretiva — mesma loja não pode
+    aparecer com nomes de praça diferentes entre os dois painéis."""
+    record = raw_record()
+    for item in record["fields"]:
+        if item["field_id"] == 580462:
+            item["values"] = [{"value": "Brasil"}]
+    ticket, fields = extrair_campos_preventivos(transform(record))
+
+    assert ticket == "2728"
+    assert fields["praca"] == "Escritório"
+
+
 def test_sla_progress_sem_marca_nao_vira_100_por_cento():
     assert classificar_sla('<div style="width:100%">100%</div>') is None
     assert classificar_sla('<div>Atrasado</div>') == "Atrasado"
     assert classificar_sla('<div>No prazo</div>') == "No prazo"
+
+
+def test_sla_progress_nao_classifica_texto_negado():
+    """"Não atrasado" contém a palavra "atrasado", mas significa o oposto —
+    uma busca por substring/palavra inverteria o veredito."""
+    assert classificar_sla('<div>Não atrasado</div>') is None
+    assert classificar_sla('<span>Não concluído no prazo</span>') is None
 
 
 def test_sync_preventivo_nao_altera_corretivo_com_mesmo_ticket(db, upload, agora):
@@ -124,6 +146,30 @@ def test_api_preventiva_expoe_status_cru_e_pdf(db, upload):
     assert item.signed_pdf_url == "https://api.autentique.com.br/pdf/1"
     assert item.periodicity == "Mensal"
     assert response.upload_data is not None
+
+
+def test_services_ignora_sync_mais_novo_da_preventiva_no_ultima_atualizacao(db, upload, agora):
+    """Um sync da preventiva depois do sync da corretiva não pode fazer o painel
+    de corretivos mostrar "atualizado agora" — isso esconderia justamente uma
+    falha de sync da própria corretiva."""
+    from app.api.routes.services import listar_servicos
+
+    upload.source_file_name = "Tape API - 57531"
+    upload.uploaded_at = agora
+    db.add(Service(ticket="9001", status="Concluído", upload_id=upload.id))
+
+    upload_preventiva = Upload(
+        source_file_name="Tape API - 57532",
+        total_rows=1,
+        uploaded_at=agora + timedelta(hours=1),  # sync da preventiva, mais recente
+    )
+    db.add(upload_preventiva)
+    db.commit()
+
+    result = listar_servicos(db=db)
+
+    assert result.upload_data is not None
+    assert result.upload_data.astimezone(timezone.utc) == agora
 
 
 def test_um_agendador_tenta_os_dois_apps_mesmo_se_um_falhar(monkeypatch):

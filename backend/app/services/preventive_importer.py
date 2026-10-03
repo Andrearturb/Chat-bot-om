@@ -13,13 +13,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.integrations.preventive_fields import PREVENTIVE_FIELD_ALIASES, PREVENTIVE_REFERENCE_FIELDS
-from app.integrations.tape_raw import APP_MANUTENCOES_PREVENTIVAS, TapeClient, carregar_token
+from app.integrations.tape_raw import (
+    APP_MANUTENCOES_PREVENTIVAS, PREVENTIVE_SOURCE_NAME, TapeClient, carregar_token,
+)
 from app.models.preventive_service import PreventiveService
 from app.models.upload import Upload
 from app.services.importer import (
     _normalizar_para_comparacao,
     converter_data,
     converter_decimal,
+    normalizar_praca,
     normalizar_texto,
     obter_valor_campo,
     tratar_local_atendimento,
@@ -64,9 +67,13 @@ def classificar_sla(value: object) -> str | None:
         return None
     clean = re.sub(r"<[^>]+>", " ", html.unescape(str(value)))
     text = _normalized(clean)
-    if re.search(r"\batrasado\b", text):
+    # Igualdade com o texto inteiro, não busca de palavra — "nao atrasado"
+    # contém a palavra "atrasado", mas quer dizer o oposto. Como a regra é só
+    # classificar quando a Tape declarar explicitamente, um texto que não bate
+    # exatamente fica None (sem dados) em vez de arriscar inverter o veredito.
+    if text == "atrasado":
         return "Atrasado"
-    if re.search(r"\bno prazo\b", text):
+    if text == "no prazo":
         return "No prazo"
     return None
 
@@ -106,7 +113,7 @@ def extrair_campos_preventivos(linha: dict[str, Any]) -> tuple[str, dict[str, An
     campos = {
         "status": normalizar_texto(field(linha, "status")),
         "store_name": store,
-        "praca": normalizar_texto(field(linha, "praca")),
+        "praca": normalizar_praca(field(linha, "praca")),
         "category": normalizar_texto(field(linha, "category")),
         "subcategory": normalizar_texto(field(linha, "subcategory")),
         "service_description": normalizar_texto(field(linha, "service_description")),
@@ -181,7 +188,7 @@ def importar_preventivas_tape(db: Session, limit: int = 100) -> dict[str, object
             reference_fields=PREVENTIVE_REFERENCE_FIELDS,
             field_aliases=PREVENTIVE_FIELD_ALIASES,
         )
-    source_name = f"Tape API - {APP_MANUTENCOES_PREVENTIVAS}"
+    source_name = PREVENTIVE_SOURCE_NAME
     if not rows:
         return {
             "message": "Coleta retornou 0 registros. Banco preservado sem alterações.",

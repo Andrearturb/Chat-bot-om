@@ -105,6 +105,42 @@ test('DOMINIOS_VALIDOS não inclui os resultados de controle', () => {
   assert.equal(DOMINIOS_VALIDOS.has('sem_acesso'), false);
 });
 
+// --- dica determinística de acompanhamento ---
+
+test('acompanhamento no mesmo domínio liga a dica', () => {
+  assert.equal(rotear('e na praça Natal?', { lastDomain: 'ativos' }).followUpHint, true);
+  // A pergunta 4 do critério de aceite do marco.
+  assert.equal(
+    rotear('e quantos desses tem no salão de venda?', { lastDomain: 'ativos' }).followUpHint,
+    true,
+  );
+  assert.equal(rotear('quantos desses foram concluídos?', { lastDomain: 'chamados_corretiva' }).followUpHint, true);
+});
+
+test('pergunta completa não é acompanhamento', () => {
+  assert.equal(rotear('quantos extintores na loja 4006?', { lastDomain: 'ativos' }).followUpHint, false);
+  assert.equal(rotear('quantos chamados estão abertos?', { lastDomain: 'chamados_corretiva' }).followUpHint, false);
+});
+
+test('a dica não atravessa troca de domínio', () => {
+  // Parece acompanhamento, mas o domínio mudou: herdar filtro seria vazamento.
+  const trocou = rotear('e quantos desses extintores tem?', { lastDomain: 'chamados_corretiva' });
+  assert.equal(trocou.domain, 'ativos');
+  assert.equal(trocou.followUpHint, false);
+});
+
+test('sem domínio anterior não há acompanhamento', () => {
+  assert.equal(rotear('e quantos extintores tem?').followUpHint, false);
+});
+
+test('desconhecido e sem_acesso nunca ligam a dica', () => {
+  assert.equal(rotear('qual a capital da França?').followUpHint, false);
+  assert.equal(
+    rotear('e na praça Natal?', { lastDomain: 'ativos', allowedDomains: [] }).followUpHint,
+    false,
+  );
+});
+
 // --- preservação de estado na troca de domínio ---
 
 test('mesmo domínio preserva o estado inteiro', () => {

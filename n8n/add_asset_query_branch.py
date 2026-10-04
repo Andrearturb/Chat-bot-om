@@ -44,7 +44,7 @@ def router_code() -> str:
 ASSET_PROMPT = """=Você interpreta perguntas sobre a Central de Ativos do Grupo Gentil. Extraia parâmetros estruturados; não gere SQL nem responda ao usuário. Preencha TODAS as propriedades do JSON Schema.
 
 Mensagem atual: {{ $('When chat message received').first().json.chatInput }}
-Estado estruturado da última consulta de ativos: {{ JSON.stringify($('Roteamento da Consulta').first().json.assetQueryState || null) }}
+Estado estruturado da última consulta de ativos: {{ JSON.stringify($('Roteamento da Consulta').first().json.estadoPreservado || null) }}
 Data atual: {{ new Date().toISOString().slice(0, 10) }}
 
 Os cadastros são climatização (ar-condicionado, ar condicionados, split, máquinas de ar, BTU), incêndio (extintor) e água (purificador, gelágua, bebedouro). asset_types=[] significa todos os tipos. Nunca trate chamado ou ticket como ativo.
@@ -89,8 +89,8 @@ ASSET_MERGE_CODE = r"""
 const raw = $input.first().json;
 const changes = typeof raw.output === 'string' ? JSON.parse(raw.output) : (raw.output || raw);
 const trigger = $('Roteamento da Consulta').first().json;
-const previous = trigger.assetQueryState && typeof trigger.assetQueryState === 'object' ? trigger.assetQueryState : null;
-const followUp = Boolean(previous) && (changes.follow_up === true || trigger.assetFollowUpHint === true);
+const previous = trigger.estadoPreservado && typeof trigger.estadoPreservado === 'object' ? trigger.estadoPreservado : null;
+const followUp = Boolean(previous) && (changes.follow_up === true || trigger.followUpHint === true);
 const fields = ['asset_types','store_name','praca','status','equipment_type','location','brand','asset_code','bpcs_number','sap_number','store_code','capacity_btu_min','capacity_btu_max','due_before'];
 const clear = new Set(Array.isArray(changes.clear_fields) ? changes.clear_fields : []);
 const query = {query_shape: changes.query_shape};
@@ -109,7 +109,7 @@ query.limit = ['list','group','ranking'].includes(query.query_shape)
 if (query.group_by && Object.prototype.hasOwnProperty.call(query, query.group_by)) {
   query[query.group_by] = null;
 }
-return [{json:{...query,session_id:trigger.sessionId,access_token:trigger.assetAccessToken}}];
+return [{json:{...query,session_id:trigger.sessionId,access_token:trigger.accessToken}}];
 """.strip()
 
 ASSET_BODY = "={{ $('Mesclar Consulta de Ativos').first().json }}"
@@ -193,11 +193,98 @@ def connect(target: str, index: int = 0):
     return {"node": target, "type": "main", "index": index}
 
 
+NEGADO_CODE = r"""
+const entrada = $input.first().json;
+const rotulos = {
+  ativos: 'a Central de Ativos',
+  chamados_corretiva: 'os chamados corretivos',
+  chamados_preventiva: 'os chamados preventivos',
+  custos: 'os custos de manutenção',
+};
+const alvo = rotulos[entrada.deniedDomain] || 'esse assunto';
+return [{ json: { output: `Você não tem permissão para consultar ${alvo}.` } }];
+""".strip()
+
+
+def _renomear_destino(result: dict, antigo: str, novo: str) -> None:
+    """Aponta para o nome novo em todas as ligações e move a chave de saída."""
+    for origem in result["connections"].values():
+        for ramo in origem.get("main", []):
+            for ligacao in ramo or []:
+                if ligacao.get("node") == antigo:
+                    ligacao["node"] = novo
+    if antigo in result["connections"]:
+        result["connections"][novo] = result["connections"].pop(antigo)
+
+
+def _religar_marco1(result: dict) -> dict:
+    """Topologia do marco 1: estado antes do roteador, dominio no IF e no
+    estado salvo, no de acesso negado generico, sem no de modelo duplicado."""
+    # ── Marco 1: religamento ────────────────────────────────────────────────
+    # O roteador precisa do estado para decidir continuidade de domínio, então a
+    # leitura do dataTable passa a ser o primeiro nó do fluxo.
+    result["connections"]["When chat message received"] = {"main": [[connect("Buscar Estado da Conversa")]]}
+    result["connections"]["Buscar Estado da Conversa"] = {"main": [[connect("Roteamento da Consulta")]]}
+
+    # Um único nó de modelo por chain; o duplicado disputava o mesmo input.
+    result["nodes"] = [item for item in result["nodes"] if item["name"] != "Google Gemini Chat Model1"]
+    result["connections"].pop("Google Gemini Chat Model1", None)
+
+    by_name = {item["name"]: item for item in result["nodes"]}
+
+    # Os dois IF passam a testar o domínio resolvido pelo roteador.
+    if "Tem Acesso aos Ativos?" in by_name:
+        acesso = by_name["Tem Acesso aos Ativos?"]
+        acesso["name"] = "Acesso Negado?"
+        condicao = acesso["parameters"]["conditions"]["conditions"][0]
+        condicao["leftValue"] = "={{ $json.domain }}"
+        condicao["rightValue"] = "sem_acesso"
+        _renomear_destino(result, "Tem Acesso aos Ativos?", "Acesso Negado?")
+
+    if "Consulta de Ativos?" in by_name:
+        condicao = by_name["Consulta de Ativos?"]["parameters"]["conditions"]["conditions"][0]
+        condicao["leftValue"] = "={{ $json.domain }}"
+        condicao["rightValue"] = "ativos"
+
+    # O nó de acesso negado deixa de ser só de ativos e nomeia o domínio recusado.
+    if "Responder Sem Acesso a Ativos" in by_name:
+        negado = by_name["Responder Sem Acesso a Ativos"]
+        negado["name"] = "Responder Sem Acesso"
+        negado["parameters"]["jsCode"] = NEGADO_CODE
+        _renomear_destino(result, "Responder Sem Acesso a Ativos", "Responder Sem Acesso")
+
+    # O estado salvo passa a registrar o domínio do turno.
+    salvar = by_name.get("Salvar Estado da Conversa")
+    if salvar:
+        salvar["parameters"]["columns"]["value"]["domain"] = "={{ $json.domain }}"
+        if not any(c.get("id") == "domain" for c in salvar["parameters"]["columns"]["schema"]):
+            salvar["parameters"]["columns"]["schema"].append({
+                "id": "domain", "displayName": "domain", "required": False,
+                "defaultMatch": False, "display": True, "type": "string",
+                "readOnly": False, "removed": False,
+            })
+
+    # Os dois nós de mesclagem partem do estado já filtrado pelo roteador.
+    mesclar = by_name.get("Mesclar Estado da Consulta")
+    if mesclar:
+        origem = "$('Buscar Estado da Conversa').first().json ?? {}"
+        destino = "$('Roteamento da Consulta').first().json.estadoPreservado ?? {}"
+        codigo = mesclar["parameters"]["jsCode"]
+        if origem not in codigo and destino not in codigo:
+            raise SystemExit(
+                "Mesclar Estado da Consulta: nao achei "
+                f"{origem!r} no jsCode. Inspecione o no e ajuste esta origem."
+            )
+        mesclar["parameters"]["jsCode"] = codigo.replace(origem, destino)
+
+    return result
+
+
 def patch_workflow(workflow: dict) -> dict:
     result = copy.deepcopy(workflow)
     by_name = {item["name"]: item for item in result["nodes"]}
     required = {"When chat message received", "Buscar Estado da Conversa",
-                "Interpretar Estado da Consulta", "Google Gemini Chat Model1",
+                "Interpretar Estado da Consulta", "Google Gemini Chat Model",
                 "Structured Output Parser", "Consultar Query Estruturada"}
     if not required.issubset(by_name):
         raise ValueError(f"Workflow de chat incompatível: faltam {sorted(required - set(by_name))}.")
@@ -222,10 +309,10 @@ def patch_workflow(workflow: dict) -> dict:
             by_name["Mesclar Consulta de Ativos"]["parameters"]["jsCode"] = ASSET_MERGE_CODE
         result["connections"]["Interpretar Consulta de Ativos"] = {"main": [[connect("Mesclar Consulta de Ativos")]]}
         result["connections"]["Mesclar Consulta de Ativos"] = {"main": [[connect("Consultar Ativos")]]}
-        return result
+        return _religar_marco1(result)
     existing_query = by_name["Consultar Query Estruturada"]
     credential = copy.deepcopy(existing_query["credentials"])
-    model = copy.deepcopy(by_name["Google Gemini Chat Model1"])
+    model = copy.deepcopy(by_name["Google Gemini Chat Model"])
     model.update(id="asset-gemini-model", name="Google Gemini Ativos", position=[-1550, -900])
     parser = copy.deepcopy(by_name["Structured Output Parser"])
     parser.update(id="asset-output-parser", name="Estrutura da Consulta de Ativos", position=[-1320, -900])
@@ -268,7 +355,8 @@ def patch_workflow(workflow: dict) -> dict:
     c["Interpretar Consulta de Ativos"] = {"main": [[connect("Mesclar Consulta de Ativos")]]}
     c["Mesclar Consulta de Ativos"] = {"main": [[connect("Consultar Ativos")]]}
     c["Consultar Ativos"] = {"main": [[connect("Montar Resposta de Ativos")]]}
-    return result
+
+    return _religar_marco1(result)
 
 
 def main() -> None:

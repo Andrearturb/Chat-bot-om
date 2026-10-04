@@ -21,6 +21,16 @@ const QUALIFICADORES = {
 
 const CONTA_RAZAO = { corretivo: '41140014', preventivo: '41140026' };
 
+// Salvaguarda determinística de continuidade, herdada do roteador antigo: uma
+// pergunta curta de acompanhamento ("e na praça Natal?", "quantos desses...")
+// deve herdar os filtros do turno anterior mesmo que o modelo esqueça de marcar
+// follow_up. Sem isso, a pergunta de acompanhamento vira consulta nova e perde
+// os filtros, que era o defeito que o hint de ativos já corrigia.
+const ACOMPANHAMENTO = [
+  /^(e\b|(?:quantos?|quantas?) sao\b|quais? (sao|a|as)\b)/,
+  /\b(desses?|dessas?|dos ativos|das maquinas|mesma loja|nesse local|la\b)\b/,
+];
+
 const DOMINIOS_VALIDOS = new Set([
   'chamados_corretiva', 'chamados_preventiva', 'ativos', 'custos',
 ]);
@@ -60,6 +70,11 @@ function dominioDeChamado(qualificador) {
   return qualificador === 'preventivo' ? 'chamados_preventiva' : 'chamados_corretiva';
 }
 
+function pareceAcompanhamento(texto) {
+  const v = normalizar(texto).replace(/\s+/g, ' ').trim();
+  return ACOMPANHAMENTO.some((padrao) => padrao.test(v));
+}
+
 function route({ chatInput, lastDomain, allowedDomains } = {}) {
   const { entidade, qualificador } = detectar(chatInput);
   const anterior = typeof lastDomain === 'string' && DOMINIOS_VALIDOS.has(lastDomain.trim())
@@ -80,13 +95,18 @@ function route({ chatInput, lastDomain, allowedDomains } = {}) {
     dominio = anterior;
   }
 
-  if (!dominio) return { domain: 'desconhecido', contaRazao: null, deniedDomain: null };
+  if (!dominio) {
+    return { domain: 'desconhecido', contaRazao: null, deniedDomain: null, followUpHint: false };
+  }
 
   const permitidos = Array.isArray(allowedDomains) ? allowedDomains : [];
   if (!permitidos.includes(dominio)) {
-    return { domain: 'sem_acesso', contaRazao: null, deniedDomain: dominio };
+    return { domain: 'sem_acesso', contaRazao: null, deniedDomain: dominio, followUpHint: false };
   }
-  return { domain: dominio, contaRazao, deniedDomain: null };
+  // A dica só vale quando há estado anterior no MESMO domínio: herdar filtros de
+  // outro assunto é o vazamento que preservarEstado existe para evitar.
+  const followUpHint = anterior === dominio && pareceAcompanhamento(chatInput);
+  return { domain: dominio, contaRazao, deniedDomain: null, followUpHint };
 }
 
 function preservarEstado(estadoAnterior, dominioNovo) {
@@ -104,6 +124,6 @@ function preservarEstado(estadoAnterior, dominioNovo) {
 
 // --- fim da lógica pura; nada abaixo desta linha é injetado no n8n ---
 module.exports = {
-  route, preservarEstado, detectar, normalizar,
+  route, preservarEstado, detectar, normalizar, pareceAcompanhamento,
   DOMINIOS_VALIDOS, CAMPOS_COMPARTILHADOS, CONTA_RAZAO,
 };

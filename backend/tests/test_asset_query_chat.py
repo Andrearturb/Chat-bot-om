@@ -103,11 +103,9 @@ def test_gateway_only_issues_asset_proof_with_permission(monkeypatch):
 
     captured = []
 
-    def fake_call(_session_id, _message, *, history, asset_access_token, asset_query_state, had_asset_context):
-        captured.append((history, asset_access_token, asset_query_state))
-        next_state = {"query_shape": "count", "asset_types": ["climatization"],
-                      "store_name": "ER Parnamirim"} if asset_access_token else None
-        return "Resposta de teste", next_state
+    def fake_call(_session_id, _message, *, history, access_token, allowed_domains):
+        captured.append((history, access_token, allowed_domains))
+        return "Resposta de teste"
 
     monkeypatch.setattr(assistant, "_call_n8n", fake_call)
     authorized_client = None
@@ -121,56 +119,15 @@ def test_gateway_only_issues_asset_proof_with_permission(monkeypatch):
         if "assets.view" in permissions:
             authorized_client = client
             authorized_conversation = response.json()["conversation_id"]
+    # Sem permissão de domínio nenhuma: nem comprovante, nem domínio liberado.
     assert captured[0][1] is None
+    assert captured[0][2] == []
+    # Com assets.view: comprovante emitido cobrindo exatamente o domínio ativos.
     assert isinstance(captured[1][1], str) and captured[1][1]
+    assert captured[1][2] == ["ativos"]
     follow_up = authorized_client.post("/assistant/chat", json={
         "conversation_id": authorized_conversation, "message": "E na praça Natal?",
     })
     assert follow_up.status_code == 200, follow_up.text
     assert [item["role"] for item in captured[2][0]] == ["user", "assistant"]
     assert captured[2][0][0]["content"] == "Quantos ativos?"
-    assert captured[2][2] == {"query_shape": "count", "asset_types": ["climatization"],
-                              "store_name": "ER Parnamirim"}
-
-
-def test_asset_context_survives_a_service_routed_turn_in_between(monkeypatch):
-    """Depois que o n8n roteia errado uma pergunta de acompanhamento para chamados,
-    o contexto de ativos não pode se perder para as perguntas seguintes."""
-    from app.api.routes import assistant
-
-    captured = []
-
-    def fake_call(_session_id, _message, *, history, asset_access_token, asset_query_state, had_asset_context):
-        captured.append({"asset_access_token": asset_access_token, "asset_query_state": asset_query_state,
-                         "had_asset_context": had_asset_context})
-        if len(captured) == 1:
-            return ("4 ativos encontrados",
-                    {"query_shape": "count", "asset_types": ["climatization"], "store_name": "ER Parnamirim"})
-        # O n8n roteou (incorretamente) para o fluxo de chamados e não devolve estado de ativos.
-        return "Resposta do fluxo de chamados", None
-
-    monkeypatch.setattr(assistant, "_call_n8n", fake_call)
-    token, _ = seed_session(["assistant.use", "assets.view"], email="contexto@test.com")
-    client = TestClient(fastapi_app, raise_server_exceptions=False)
-    client.cookies.set(SESSION_COOKIE, token)
-
-    r1 = client.post("/assistant/chat", json={"message": "Quantos ativos de climatização na ER Parnamirim?"})
-    assert r1.status_code == 200, r1.text
-    conversation_id = r1.json()["conversation_id"]
-
-    r2 = client.post("/assistant/chat", json={
-        "conversation_id": conversation_id, "message": "Quantos chamados estão em aberto?",
-    })
-    assert r2.status_code == 200, r2.text
-
-    r3 = client.post("/assistant/chat", json={
-        "conversation_id": conversation_id, "message": "E quantos splits tem lá?",
-    })
-    assert r3.status_code == 200, r3.text
-
-    expected_state = {"query_shape": "count", "asset_types": ["climatization"], "store_name": "ER Parnamirim"}
-    assert captured[0]["had_asset_context"] is False
-    assert captured[1]["had_asset_context"] is True
-    assert captured[1]["asset_query_state"] == expected_state
-    assert captured[2]["had_asset_context"] is True
-    assert captured[2]["asset_query_state"] == expected_state

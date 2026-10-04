@@ -7,15 +7,32 @@ from app.db.migrations import run_migrations
 import app.models.registry  # noqa: F401
 
 
-def test_adopta_banco_legado_e_aplica_coluna_de_contexto():
+def test_adopta_banco_legado_e_migra_ate_o_head():
+    """Banco anterior ao Alembic é adotado e migrado até o head. A coluna de
+    contexto de ativos é criada pela 0002 e removida pela 0008, então no head ela
+    não existe: o estado conversacional passou a viver no dataTable do n8n."""
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-    with engine.begin() as connection:
-        connection.exec_driver_sql("ALTER TABLE assistant_conversations DROP COLUMN asset_query_state")
 
     assert run_migrations(engine) == "adotado"
     columns = {item["name"] for item in inspect(engine).get_columns("assistant_conversations")}
-    assert "asset_query_state" in columns
+    assert "asset_query_state" not in columns
+
+
+def test_adocao_remove_a_coluna_de_contexto_de_banco_pre_0008():
+    """Um banco que ainda carrega asset_query_state é detectado pelo marcador,
+    stampado na revisão que o esquema comprova e levado ao head, onde a 0008
+    remove a coluna. Entrada diferente, mesmo destino."""
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "ALTER TABLE assistant_conversations ADD COLUMN asset_query_state JSON"
+        )
+
+    assert run_migrations(engine) == "adotado"
+    columns = {item["name"] for item in inspect(engine).get_columns("assistant_conversations")}
+    assert "asset_query_state" not in columns
 
 
 def test_adota_esquema_que_ja_possui_a_coluna():

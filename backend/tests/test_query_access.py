@@ -82,3 +82,45 @@ def test_comprovante_antigo_sem_dominios_nao_autoriza():
     assinatura = hmac.new(INTERNAL_API_KEY.encode(), corpo, hashlib.sha256).hexdigest()
 
     assert verify_query_token(f"{corpo.decode()}.{assinatura}", SESSAO, "ativos") is False
+
+
+def test_payload_do_webhook_nao_carrega_estado_de_consulta(monkeypatch):
+    """O estado vive no dataTable do n8n; o backend só manda a pergunta e o acesso."""
+    from app.api.routes import assistant
+
+    capturado = {}
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"output": "ok"}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def post(self, url, json=None, headers=None):
+            capturado.update(json or {})
+            return FakeResponse()
+
+    monkeypatch.setattr(assistant.httpx, "Client", FakeClient)
+    monkeypatch.setattr(assistant, "N8N_CHAT_WEBHOOK_URL", "http://n8n/webhook/x")
+
+    texto = assistant._call_n8n(
+        "sessao-1", "quantos chamados abertos?", history=[],
+        access_token="tok", allowed_domains=["chamados_corretiva"],
+    )
+
+    assert texto == "ok"
+    assert capturado["allowedDomains"] == ["chamados_corretiva"]
+    assert capturado["accessToken"] == "tok"
+    for saiu in ("assetQueryState", "hadAssetContext", "assetAccessToken"):
+        assert saiu not in capturado

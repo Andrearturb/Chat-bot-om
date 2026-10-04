@@ -133,7 +133,6 @@ class AssistantConversation(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)   # UUID
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("app_users.id", ondelete="CASCADE"), nullable=False, index=True)
     n8n_session_id: Mapped[str] = mapped_column(String(36), nullable=False)
-    asset_query_state: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False, default="Nova conversa")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)

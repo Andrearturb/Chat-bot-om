@@ -56,8 +56,9 @@ class ConversationListItem(BaseModel):
 
 
 def _call_n8n(session_id: str, message: str, *, history: list[dict],
-              asset_access_token: str | None, asset_query_state: dict | None,
-              had_asset_context: bool) -> tuple[str, dict | None]:
+              access_token: str | None, allowed_domains: list[str]) -> str:
+    """Manda a pergunta e o comprovante de acesso. O estado da consulta vive na
+    tabela chat_query_state do n8n; o backend não carrega nem recebe estado."""
     if not N8N_CHAT_WEBHOOK_URL:
         raise HTTPException(status_code=503, detail="Assistente não configurado.")
     headers = {"Content-Type": "application/json"}
@@ -65,16 +66,15 @@ def _call_n8n(session_id: str, message: str, *, history: list[dict],
         headers["Authorization"] = f"Bearer {N8N_GATEWAY_TOKEN}"
     with httpx.Client(timeout=120.0) as client:
         resp = client.post(N8N_CHAT_WEBHOOK_URL,
-                           json={"action": "sendMessage", "sessionId": session_id, "chatInput": message,
-                                 "history": history, "assetAccessToken": asset_access_token,
-                                 "assetQueryState": asset_query_state, "hadAssetContext": had_asset_context},
+                           json={"action": "sendMessage", "sessionId": session_id,
+                                 "chatInput": message, "history": history,
+                                 "accessToken": access_token,
+                                 "allowedDomains": allowed_domains},
                            headers=headers)
         resp.raise_for_status()
     data = resp.json()
-    output = (data.get("output") or data.get("text") or data.get("response") or
-              data.get("message") or str(data))
-    state = data.get("asset_query_state")
-    return output, state if isinstance(state, dict) else None
+    return (data.get("output") or data.get("text") or data.get("response") or
+            data.get("message") or str(data))
 
 
 def _create_title(content: str) -> str:
@@ -140,22 +140,20 @@ def chat(payload: ChatRequest, user: AppUser = Depends(get_current_user),
         ).order_by(AssistantMessage.created_at.desc(), AssistantMessage.id.desc()).limit(6)).all()
         history = [{"role": item.role, "content": item.content[:1000]}
                    for item in reversed(previous_messages)]
-        asset_token = (issue_query_token(conversation.n8n_session_id, user.id, ["ativos"])
-                       if "assets.view" in (session.permissions or []) else None)
-        prior_asset_state = conversation.asset_query_state if asset_token else None
-        assistant_text, asset_state = _call_n8n(
+        # Cada domínio tem a sua permissão; o comprovante assinado diz ao n8n o
+        # que esta sessão pode consultar, e o roteador recusa o resto.
+        permissoes = set(session.permissions or [])
+        dominios: list[str] = []
+        if "assets.view" in permissoes:
+            dominios.append("ativos")
+        if "indicators.view" in permissoes:
+            dominios.extend(["chamados_corretiva", "chamados_preventiva", "custos"])
+        dominios = sorted(dominios)
+        token = issue_query_token(conversation.n8n_session_id, user.id, dominios) if dominios else None
+        assistant_text = _call_n8n(
             conversation.n8n_session_id, content, history=history,
-            asset_access_token=asset_token,
-            asset_query_state=prior_asset_state,
-            had_asset_context=prior_asset_state is not None,
+            access_token=token, allowed_domains=dominios,
         )
-        # Um turno roteado para chamados não devolve asset_query_state; preservamos o
-        # último estado de ativos conhecido em vez de apagá-lo, para que a conversa não
-        # perca o contexto só porque uma pergunta de acompanhamento foi roteada errado.
-        if not asset_token:
-            conversation.asset_query_state = None
-        elif asset_state is not None:
-            conversation.asset_query_state = asset_state
     except httpx.HTTPStatusError as exc:
         error_code = f"HTTP_{exc.response.status_code}"
         raise HTTPException(status_code=502, detail="O assistente encontrou um problema.") from exc

@@ -2,8 +2,11 @@
 
 // Fonte única do roteador. O nó "Roteamento da Consulta" do n8n é artefato
 // gerado: add_asset_query_branch.py injeta este arquivo e acrescenta o invólucro
-// que lê $input e devolve [{ json }]. Editar o nó na interface do n8n faz o
-// teste de contrato falhar — edite aqui.
+// que lê a entrada do nó e devolve o item de saída. Editar o nó na interface do
+// n8n faz o teste de contrato falhar — edite aqui.
+//
+// Nada acima do marcador de fim da lógica pura pode mencionar as globais do n8n,
+// nem como exemplo em comentário: o teste de contrato procura o texto literal.
 
 const ENTIDADES = {
   custo: /\b(custos?|gastos?|gastamos|gastou|gastar|despesas?)\b/,

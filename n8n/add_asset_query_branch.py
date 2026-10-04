@@ -12,40 +12,34 @@ import sys
 from pathlib import Path
 
 
-ROUTER_CODE = r"""
-const trigger = $input.first().json;
-const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-const service = /\b(chamados?|tickets?|ordens? de servico|solicitacoes?|atendimentos?)\b/;
-const asset = /\b(ativos?|equipamentos?|inventario|climatizacao|climatizadores?|ar(?:es)?[ -]?condicionad[oa]s?|maquinas? de ar|splits?|extintores?|incendio|purificadores?|gelagua|bebedouros?|filtros? de agua|btus?)\b/;
-function domain(text) {
-  const value = normalize(text);
-  if (service.test(value)) return 'service';
-  if (asset.test(value)) return 'asset';
-  return null;
-}
-let selected = domain(trigger.chatInput);
-if (!selected && Array.isArray(trigger.history)) {
-  for (const item of [...trigger.history].reverse()) {
-    if (item.role !== 'user') continue;
-    selected = domain(item.content);
-    if (selected) break;
-  }
-}
-// O backend sabe, de forma confiável, se a conversa ainda está em contexto de
-// ativos (persistido entre turnos no banco) — diferente do scan do histórico
-// acima, isso não se perde depois de várias mensagens de acompanhamento sem
-// palavra-chave (ex.: "e quantos desses tem na loja 4006?").
-if (!selected && trigger.hadAssetContext) selected = 'asset';
-let route = selected || 'service';
-if (route === 'asset' && !trigger.assetAccessToken) route = 'asset_denied';
-const previousAssetState = trigger.assetQueryState && typeof trigger.assetQueryState === 'object';
-const message = normalize(trigger.chatInput);
-const assetFollowUpHint = route === 'asset' && previousAssetState && (
-  /^(e\b|(?:quantos?|quantas?) sao\b|quais? (sao|a|as)\b)/.test(message) ||
-  /\b(desses?|dessas?|dos ativos|das maquinas|mesma loja|nesse local)\b/.test(message)
-);
-return [{ json: { ...trigger, route, assetFollowUpHint } }];
+MARCADOR_FIM_LOGICA = "// --- fim da lógica pura; nada abaixo desta linha é injetado no n8n ---"
+
+ROUTER_WRAPPER = """
+// O nó anterior é "Buscar Estado da Conversa": uma linha do dataTable, ou nada
+// quando a sessão é nova.
+const trigger = $('When chat message received').first().json;
+const estadoAnterior = $input.first().json || {};
+const resultado = route({
+  chatInput: trigger.chatInput,
+  lastDomain: estadoAnterior.domain,
+  allowedDomains: Array.isArray(trigger.allowedDomains) ? trigger.allowedDomains : [],
+});
+const estadoPreservado = preservarEstado(estadoAnterior, resultado.domain);
+return [{ json: { ...trigger, ...resultado, estadoPreservado } }];
 """.strip()
+
+
+def router_code() -> str:
+    """Monta o jsCode do nó a partir de n8n/router/route.js.
+
+    A lógica pura é a fonte da verdade e vive versionada com testes; aqui só
+    acrescentamos o invólucro que fala com o n8n.
+    """
+    fonte = (Path(__file__).parent / "router" / "route.js").read_text(encoding="utf-8")
+    if MARCADOR_FIM_LOGICA not in fonte:
+        raise SystemExit("route.js sem o marcador de fim da lógica pura.")
+    pura = fonte.split(MARCADOR_FIM_LOGICA)[0].rstrip()
+    return f"{pura}\n\n{ROUTER_WRAPPER}"
 
 ASSET_PROMPT = """=Você interpreta perguntas sobre a Central de Ativos do Grupo Gentil. Extraia parâmetros estruturados; não gere SQL nem responda ao usuário. Preencha TODAS as propriedades do JSON Schema.
 
@@ -212,7 +206,7 @@ def patch_workflow(workflow: dict) -> dict:
                           "Consultar Ativos", "Montar Resposta de Ativos"}
         if not required_asset.issubset(by_name):
             raise ValueError("Ramificação de ativos incompleta; revise a exportação antes de atualizar.")
-        by_name["Roteamento da Consulta"]["parameters"]["jsCode"] = ROUTER_CODE
+        by_name["Roteamento da Consulta"]["parameters"]["jsCode"] = router_code()
         by_name["Interpretar Consulta de Ativos"]["parameters"]["text"] = ASSET_PROMPT
         by_name["Interpretar Consulta de Ativos"]["parameters"]["needsFallback"] = False
         by_name["Estrutura da Consulta de Ativos"]["parameters"]["inputSchema"] = json.dumps(ASSET_SCHEMA, ensure_ascii=False, indent=2)
@@ -242,7 +236,7 @@ def patch_workflow(workflow: dict) -> dict:
     ai["parameters"]["needsFallback"] = False
 
     new_nodes = [
-        node("Roteamento da Consulta", "asset-query-router", "n8n-nodes-base.code", 2, [-2100, -864], {"jsCode": ROUTER_CODE}),
+        node("Roteamento da Consulta", "asset-query-router", "n8n-nodes-base.code", 2, [-2100, -864], {"jsCode": router_code()}),
         if_node("Tem Acesso aos Ativos?", "asset-access-branch", [-1870, -864], "asset_denied"),
         if_node("Consulta de Ativos?", "asset-domain-branch", [-1650, -700], "asset"),
         node("Responder Sem Acesso a Ativos", "asset-access-denied", "n8n-nodes-base.code", 2,

@@ -10,10 +10,13 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import verificar_api_key, verificar_internal_api_key
 from app.db.session import get_db
 from app.schemas.chatbot import ChatbotQueryRequest, ChatbotQueryResponse
+from app.schemas.asset_query import AssetQueryRequest
 from app.schemas.structured_query import StructuredQueryRequest, StructuredQueryResponse
 from app.services.chatbot_query import ChatbotQueryError, executar_consulta_chatbot
 from app.services.qa_trace import get_qa_trace
 from app.services.structured_query import StructuredQueryError, execute_structured_query
+from app.services.asset_query import execute_asset_query
+from app.services.asset_query_access import verify_query_token
 
 router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
 
@@ -49,3 +52,11 @@ def executar_structured_query(payload: StructuredQueryRequest, db: Session = Dep
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail="Erro ao executar consulta estruturada.") from exc
+
+
+@router.post("/assets-query", dependencies=[Depends(verificar_internal_api_key)])
+def consultar_ativos(payload: AssetQueryRequest, db: Session = Depends(get_db)):
+    """Consulta de leitura para o workflow; exige comprovante do domínio ativos."""
+    if not verify_query_token(payload.access_token, payload.session_id, "ativos"):
+        raise HTTPException(status_code=403, detail="Consulta de ativos não autorizada.")
+    return execute_asset_query(db, payload)

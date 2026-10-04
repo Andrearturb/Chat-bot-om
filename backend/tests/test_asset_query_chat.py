@@ -11,7 +11,7 @@ from app.models.asset_store import AssetStore
 from app.models.climate_asset import ClimateAsset
 from app.models.fire_asset import FireAsset
 from app.models.water_asset import WaterAsset
-from app.services.asset_query_access import issue_asset_query_token
+from app.services.asset_query_access import issue_query_token
 from tests.api_harness import INTERNAL_KEY, SESSION_COOKIE, TestSession, fastapi_app, reset_database, seed_session
 from tests.store_factory import add_asset_store
 
@@ -46,7 +46,7 @@ def inventory():
 
 def query(**fields):
     payload = {
-        "session_id": "test-session", "access_token": issue_asset_query_token("test-session", 1),
+        "session_id": "test-session", "access_token": issue_query_token("test-session", 1, ["ativos"]),
         "query_shape": "count",
     }
     payload.update(fields)

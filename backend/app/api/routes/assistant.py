@@ -22,7 +22,7 @@ from app.core.config import N8N_CHAT_WEBHOOK_URL, N8N_GATEWAY_TOKEN
 from app.db.session import get_db
 from app.models.auth import AiUsage, AppUser, AssistantConversation, AssistantMessage, UserSession
 from app.services.auth import check_ai_rate_limit, record_security_event
-from app.services.asset_query_access import issue_asset_query_token
+from app.services.asset_query_access import issue_query_token
 
 router = APIRouter(prefix="/assistant", tags=["Assistant"])
 logger = logging.getLogger(__name__)
@@ -140,7 +140,7 @@ def chat(payload: ChatRequest, user: AppUser = Depends(get_current_user),
         ).order_by(AssistantMessage.created_at.desc(), AssistantMessage.id.desc()).limit(6)).all()
         history = [{"role": item.role, "content": item.content[:1000]}
                    for item in reversed(previous_messages)]
-        asset_token = (issue_asset_query_token(conversation.n8n_session_id, user.id)
+        asset_token = (issue_query_token(conversation.n8n_session_id, user.id, ["ativos"])
                        if "assets.view" in (session.permissions or []) else None)
         prior_asset_state = conversation.asset_query_state if asset_token else None
         assistant_text, asset_state = _call_n8n(

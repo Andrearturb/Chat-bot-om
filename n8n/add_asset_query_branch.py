@@ -193,6 +193,43 @@ def connect(target: str, index: int = 0):
     return {"node": target, "type": "main", "index": index}
 
 
+ROTEADOR_DOMAIN = "={{ $('Roteamento da Consulta').first().json.domain }}"
+
+# Colunas que o ramo de ativos persiste para o acompanhamento do turno seguinte.
+# asset_types é array e a coluna do dataTable é texto, então vai como JSON e o
+# nó de mesclagem o desserializa na leitura.
+SALVAR_ATIVOS_VALORES = {
+    "session_id": "={{ $('When chat message received').first().json.sessionId }}",
+    "domain": ROTEADOR_DOMAIN,
+    "query_shape": "={{ $json.query_shape }}",
+    "group_by": "={{ $json.group_by }}",
+    "limit": "={{ $json.limit }}",
+    "praca": "={{ $json.praca }}",
+    "store_name": "={{ $json.store_name }}",
+    "location": "={{ $json.location }}",
+    "asset_type": "={{ JSON.stringify($json.asset_types || []) }}",
+}
+
+# Reidrata asset_types a partir da coluna de texto antes do merge usar previous.
+ATIVOS_PARSE_TIPOS = """
+if (previous && typeof previous.asset_type === 'string' && previous.asset_type) {
+  try { previous.asset_types = JSON.parse(previous.asset_type); }
+  catch (erro) { previous.asset_types = []; }
+}
+"""
+
+DESCONHECIDO_CODE = r"""
+return [{ json: { output: [
+  'Não identifiquei sobre qual assunto você está perguntando.',
+  '',
+  'Posso consultar:',
+  '• chamados corretivos — "quantos chamados estão abertos?"',
+  '• ativos — "quantos extintores tem na loja 4006?"',
+  '',
+  'Reformule citando o assunto e eu busco.',
+].join('\n') } }];
+""".strip()
+
 NEGADO_CODE = r"""
 const entrada = $input.first().json;
 const rotulos = {
@@ -226,9 +263,12 @@ def _religar_marco1(result: dict) -> dict:
     result["connections"]["When chat message received"] = {"main": [[connect("Buscar Estado da Conversa")]]}
     result["connections"]["Buscar Estado da Conversa"] = {"main": [[connect("Roteamento da Consulta")]]}
 
-    # Um único nó de modelo por chain; o duplicado disputava o mesmo input.
-    result["nodes"] = [item for item in result["nodes"] if item["name"] != "Google Gemini Chat Model1"]
-    result["connections"].pop("Google Gemini Chat Model1", None)
+    # Os dois nós Gemini de "Interpretar Estado da Consulta" NÃO são duplicados:
+    # Google Gemini Chat Model1 é o modelo principal, em ai_languageModel índice
+    # 0 (gemini-3.5-flash-lite), e Google Gemini Chat Model é o fallback, no
+    # índice 1, porque o nó tem needsFallback=True. Remover o do índice 0 derruba
+    # a cadeia com "A Model sub-node must be connected and enabled". Nenhum dos
+    # dois sai daqui.
 
     by_name = {item["name"]: item for item in result["nodes"]}
 
@@ -256,7 +296,11 @@ def _religar_marco1(result: dict) -> dict:
     # O estado salvo passa a registrar o domínio do turno.
     salvar = by_name.get("Salvar Estado da Conversa")
     if salvar:
-        salvar["parameters"]["columns"]["value"]["domain"] = "={{ $json.domain }}"
+        # domain tem de vir do roteador por referência de nó: aqui $json é a
+        # saída do Mesclar, que devolve o estado de consulta mesclado e não
+        # carrega domain — gravava a coluna vazia, e o turno seguinte perdia o
+        # contexto por não ter lastDomain.
+        salvar["parameters"]["columns"]["value"]["domain"] = ROTEADOR_DOMAIN
         if not any(c.get("id") == "domain" for c in salvar["parameters"]["columns"]["schema"]):
             salvar["parameters"]["columns"]["schema"].append({
                 "id": "domain", "displayName": "domain", "required": False,
@@ -277,6 +321,83 @@ def _religar_marco1(result: dict) -> dict:
             )
         mesclar["parameters"]["jsCode"] = codigo.replace(origem, destino)
 
+    # O ramo de chamados entra em Interpretar Estado da Consulta, não em Buscar
+    # Estado: a leitura do dataTable virou o primeiro nó do fluxo, e manter a
+    # saída falsa apontando para ela fecharia o ciclo
+    # Buscar Estado -> Roteamento -> IF -> Buscar Estado, que pendura a execução.
+    result["connections"]["Consulta de Ativos?"] = {"main": [
+        [connect("Interpretar Consulta de Ativos")],
+        [connect("Interpretar Estado da Consulta")],
+    ]}
+
+    # Rota desconhecida: sem ela, toda pergunta que não casa com nenhum domínio
+    # cai no ramo de chamados e é respondida como se fosse corretiva — o defeito
+    # que este marco existe para corrigir.
+    # by_name foi montado antes das renomeações acima, que mudaram os nomes no
+    # próprio dicionário de nó; sem remontar, as chaves novas não existem.
+    by_name = {item["name"]: item for item in result["nodes"]}
+    if "Assunto Desconhecido?" not in by_name:
+        base = by_name["Acesso Negado?"]["position"]
+        result["nodes"].append(if_node(
+            "Assunto Desconhecido?", "unknown-domain-branch",
+            [base[0] + 160, base[1] + 240], "desconhecido",
+        ))
+        result["nodes"].append(node(
+            "Responder Assunto Desconhecido", "unknown-domain-reply",
+            "n8n-nodes-base.code", 2, [base[0] + 420, base[1] + 240],
+            {"jsCode": DESCONHECIDO_CODE},
+        ))
+    by_name = {item["name"]: item for item in result["nodes"]}
+    condicao = by_name["Assunto Desconhecido?"]["parameters"]["conditions"]["conditions"][0]
+    condicao["leftValue"] = "={{ $json.domain }}"
+    condicao["rightValue"] = "desconhecido"
+    by_name["Responder Assunto Desconhecido"]["parameters"]["jsCode"] = DESCONHECIDO_CODE
+
+    # O ramo de ativos não tinha nó de salvar: o estado vinha do backend, que
+    # deixou de carregá-lo. Sem isto, acompanhamento de ativos perde o contexto.
+    mesclar_ativos = by_name.get("Mesclar Consulta de Ativos")
+    if salvar and mesclar_ativos and "Salvar Estado de Ativos" not in by_name:
+        salvar_ativos = copy.deepcopy(salvar)
+        salvar_ativos["name"] = "Salvar Estado de Ativos"
+        salvar_ativos["id"] = "asset-state-save"
+        base = mesclar_ativos["position"]
+        salvar_ativos["position"] = [base[0] + 170, base[1] + 190]
+        salvar_ativos["parameters"]["columns"]["value"] = dict(SALVAR_ATIVOS_VALORES)
+        salvar_ativos["parameters"]["columns"]["schema"] = [
+            {"id": nome, "displayName": nome, "required": False, "defaultMatch": False,
+             "display": True, "type": "number" if nome == "limit" else "string",
+             "readOnly": False, "removed": False}
+            for nome in SALVAR_ATIVOS_VALORES
+        ]
+        result["nodes"].append(salvar_ativos)
+
+    # Reafirmado fora da criação: patch_workflow religa Mesclar -> Consultar
+    # Ativos antes daqui, e numa segunda passada o nó de salvar já existe, então
+    # o bloco acima não corrigiria a ligação.
+    if "Salvar Estado de Ativos" in {item["name"] for item in result["nodes"]}:
+        result["connections"]["Mesclar Consulta de Ativos"] = {"main": [[connect("Salvar Estado de Ativos")]]}
+        result["connections"]["Salvar Estado de Ativos"] = {"main": [[connect("Consultar Ativos")]]}
+
+    # O merge de ativos precisa reidratar asset_types, que foi persistido como JSON.
+    if mesclar_ativos:
+        codigo = mesclar_ativos["parameters"]["jsCode"]
+        marca = "const followUp ="
+        if ATIVOS_PARSE_TIPOS.strip() not in codigo:
+            if marca not in codigo:
+                raise SystemExit("Mesclar Consulta de Ativos: nao achei onde inserir o parse de asset_types.")
+            codigo = codigo.replace(marca, ATIVOS_PARSE_TIPOS.strip() + "\n" + marca, 1)
+            mesclar_ativos["parameters"]["jsCode"] = codigo
+
+    # Acesso negado primeiro, depois assunto desconhecido, depois o domínio.
+    result["connections"]["Acesso Negado?"] = {"main": [
+        [connect("Responder Sem Acesso")],
+        [connect("Assunto Desconhecido?")],
+    ]}
+    result["connections"]["Assunto Desconhecido?"] = {"main": [
+        [connect("Responder Assunto Desconhecido")],
+        [connect("Consulta de Ativos?")],
+    ]}
+
     return result
 
 
@@ -284,7 +405,7 @@ def patch_workflow(workflow: dict) -> dict:
     result = copy.deepcopy(workflow)
     by_name = {item["name"]: item for item in result["nodes"]}
     required = {"When chat message received", "Buscar Estado da Conversa",
-                "Interpretar Estado da Consulta", "Google Gemini Chat Model",
+                "Interpretar Estado da Consulta", "Google Gemini Chat Model1",
                 "Structured Output Parser", "Consultar Query Estruturada"}
     if not required.issubset(by_name):
         raise ValueError(f"Workflow de chat incompatível: faltam {sorted(required - set(by_name))}.")
@@ -312,7 +433,7 @@ def patch_workflow(workflow: dict) -> dict:
         return _religar_marco1(result)
     existing_query = by_name["Consultar Query Estruturada"]
     credential = copy.deepcopy(existing_query["credentials"])
-    model = copy.deepcopy(by_name["Google Gemini Chat Model"])
+    model = copy.deepcopy(by_name["Google Gemini Chat Model1"])
     model.update(id="asset-gemini-model", name="Google Gemini Ativos", position=[-1550, -900])
     parser = copy.deepcopy(by_name["Structured Output Parser"])
     parser.update(id="asset-output-parser", name="Estrutura da Consulta de Ativos", position=[-1320, -900])

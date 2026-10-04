@@ -67,9 +67,22 @@ banco do backend e **não tem nó de salvar**.
 "para que a conversa não perca o contexto só porque uma pergunta de
 acompanhamento foi roteada errado".
 
-**5. Nó de modelo duplicado.** `Google Gemini Chat Model` e
-`Google Gemini Chat Model1` estão ligados ao mesmo input `ai_languageModel[0]`
-de `Interpretar Estado da Consulta`. Qual vence depende da ordem interna do n8n.
+**5. ~~Nó de modelo duplicado.~~ RETIRADO — diagnóstico errado.** Eu afirmei que
+`Google Gemini Chat Model` e `Google Gemini Chat Model1` disputavam o mesmo input
+`ai_languageModel[0]` de `Interpretar Estado da Consulta`. **Não é verdade.** O
+`Model1` está no índice **0** (modelo principal, `gemini-3.5-flash-lite`) e o
+`Model` no índice **1** (fallback), porque o nó tem `needsFallback = True`. O erro
+veio do meu script de mapeamento, que imprimia o índice do *ramo* — 0 para os
+dois — em vez do campo `index` da conexão.
+
+Remover o nó do índice 0 derruba a cadeia de chamados com
+`NodeOperationError: A Model sub-node must be connected and enabled`, e foi
+exatamente o que aconteceu na primeira implantação. Nenhum dos dois nós sai, e
+`n8n/router/verificar_fluxo.py` passou a exigir as três ligações de modelo nos
+índices certos.
+
+Isso também explica parte da velocidade que o solicitante observa no ramo de
+chamados: ele roda num modelo leve, com reserva configurada.
 
 **6. Workflow morto homônimo.** `upI5TZs9209GtPQU`, 4 nós, inativo desde
 2026-09-17, também chamado "My workflow" — igual ao vivo. Export por nome é

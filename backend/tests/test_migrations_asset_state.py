@@ -35,6 +35,33 @@ def test_adocao_remove_a_coluna_de_contexto_de_banco_pre_0008():
     assert "asset_query_state" not in columns
 
 
+def test_esquema_atual_e_stampado_no_topo_e_nao_reaplica_a_0006(monkeypatch):
+    """O que importa é a revisão STAMPADA, não a final.
+
+    A versão final é sempre o head, porque a adoção stampa e depois sobe. O risco
+    está no stamp: dropar ``asset_query_state`` na 0008 tirou o marcador mais
+    alto da escada, e sem um novo todo esquema atual era stampado em BASELINE —
+    fazendo a adoção reaplicar tudo desde a 0001, inclusive a 0006, que é
+    irreversível e apaga linhas. O marcador novo é a tabela
+    ``maintenance_costs``, criada pela 0007.
+    """
+    from app.db import migrations as modulo
+
+    stampadas = []
+    original = modulo.command.stamp
+    monkeypatch.setattr(modulo.command, "stamp",
+                        lambda cfg, rev, *a, **k: (stampadas.append(rev), original(cfg, rev, *a, **k))[1])
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    assert run_migrations(engine) == "adotado"
+    assert stampadas == ["0008"], (
+        f"esquema atual stampado em {stampadas}; em BASELINE a adoção reaplicaria "
+        "a 0006, que é irreversível"
+    )
+
+
 def test_adota_esquema_que_ja_possui_a_coluna():
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)

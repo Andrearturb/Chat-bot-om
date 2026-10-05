@@ -385,6 +385,16 @@ def _religar_marco1(result: dict) -> dict:
         salvar_ativos["id"] = "asset-state-save"
         base = mesclar_ativos["position"]
         salvar_ativos["position"] = [base[0] + 170, base[1] + 190]
+        result["nodes"].append(salvar_ativos)
+        by_name = {item["name"]: item for item in result["nodes"]}
+
+    # O mapeamento e o schema sao reafirmados FORA da criacao, como as conexoes
+    # abaixo. Defini-los so ao criar o no deixava qualquer campo novo em
+    # SALVAR_ATIVOS_VALORES sem caminho de aplicacao: o no ja existia, o if
+    # pulava, e o estado seguia gravando os nove campos antigos. Foi o que
+    # aconteceu quando as oito colunas novas do dataTable foram criadas.
+    salvar_ativos = by_name.get("Salvar Estado de Ativos")
+    if salvar_ativos:
         salvar_ativos["parameters"]["columns"]["value"] = dict(SALVAR_ATIVOS_VALORES)
         salvar_ativos["parameters"]["columns"]["schema"] = [
             {"id": nome, "displayName": nome, "required": False, "defaultMatch": False,
@@ -392,7 +402,6 @@ def _religar_marco1(result: dict) -> dict:
              "readOnly": False, "removed": False}
             for nome in SALVAR_ATIVOS_VALORES
         ]
-        result["nodes"].append(salvar_ativos)
 
     # Reafirmado fora da criação: patch_workflow religa Mesclar -> Consultar
     # Ativos antes daqui, e numa segunda passada o nó de salvar já existe, então

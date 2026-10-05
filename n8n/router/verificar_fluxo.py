@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from add_asset_query_branch import router_code  # noqa: E402
+from add_asset_query_branch import SALVAR_ATIVOS_VALORES, router_code  # noqa: E402
 
 if len(sys.argv) < 2:
     sys.exit("uso: verificar_fluxo.py WORKFLOW.json [--sem-roteador]\n"
@@ -159,6 +159,19 @@ for no_salvar in SALVAR:
     mapeadas = nos[no_salvar]["parameters"].get("columns", {}).get("value", {})
     if mapeadas.get("domain") != ROTEADOR_DOMAIN:
         falhas.append(f"{no_salvar} grava domain como {mapeadas.get('domain')!r}, nao do roteador")
+
+# O mapeamento do no de salvar de ativos e gerado de SALVAR_ATIVOS_VALORES. Ele
+# ja divergiu em silencio: o bloco que o definia rodava so na CRIACAO do no, e
+# oito campos novos nunca chegaram ao workflow, com o estado seguindo gravando os
+# nove antigos. Criar coluna no dataTable nao basta; o no tem de grava-la.
+if "Salvar Estado de Ativos" in nos:
+    mapeado = set(nos["Salvar Estado de Ativos"]["parameters"].get("columns", {}).get("value", {}))
+    faltando = set(SALVAR_ATIVOS_VALORES) - mapeado
+    if faltando:
+        falhas.append(
+            f"Salvar Estado de Ativos nao grava {sorted(faltando)}; "
+            "regere com add_asset_query_branch.py"
+        )
 
 if "Mesclar Consulta de Ativos" in nos:
     codigo = nos["Mesclar Consulta de Ativos"]["parameters"]["jsCode"]

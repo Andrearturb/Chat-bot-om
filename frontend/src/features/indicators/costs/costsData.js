@@ -76,6 +76,55 @@ export function costKpis(rows) {
   }
 }
 
+// Mesma convenção de abreviação de mês usada em corrective/correctiveData.js,
+// para o rótulo do eixo do gráfico de progressão mensal.
+const MESES_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+/** Progressão mensal do custo líquido, separada por conta razão. Mesmos
+ * predicados do KPI, então o card de tendência nunca pode discordar dos
+ * cards de corretiva/preventiva para o mesmo recorte de linhas. */
+export function buildCostMonthlySeries(rows) {
+  const byMonth = new Map()
+  for (const row of rows) {
+    const parts = postingParts(row.postingDate)
+    if (!parts) continue
+    const key = `${parts.ano}-${parts.mes}`
+    const current = byMonth.get(key) ?? { key, label: '', corretiva: 0, preventiva: 0, total: 0 }
+    const valueCents = cents(row.amount)
+    if (costPredicates.corretiva(row)) current.corretiva += valueCents
+    else if (costPredicates.preventiva(row)) current.preventiva += valueCents
+    current.total += valueCents
+    current.label = `${MESES_PT[Number(parts.mes) - 1]}/${parts.ano.slice(2)}`
+    byMonth.set(key, current)
+  }
+  return [...byMonth.values()]
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map((item) => ({
+      ...item, corretiva: item.corretiva / 100, preventiva: item.preventiva / 100, total: item.total / 100,
+    }))
+}
+
+/** Como costRank, mas com o valor líquido separado por conta razão — o rank
+ * por praça pedido para distinguir corretiva de preventiva em cada linha. */
+export function costRankByType(rows, field, limit = 20) {
+  const groups = new Map()
+  for (const row of rows) {
+    const label = field === 'storeName' ? row.storeName || 'Não atribuído' : row[field] || 'Não informado'
+    const group = groups.get(label) ?? { label, corretiva: 0, preventiva: 0, total: 0, count: 0 }
+    const valueCents = cents(row.amount)
+    if (costPredicates.corretiva(row)) group.corretiva += valueCents
+    else if (costPredicates.preventiva(row)) group.preventiva += valueCents
+    group.total += valueCents
+    group.count += 1
+    groups.set(label, group)
+  }
+  return [...groups.values()].sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'pt-BR'))
+    .slice(0, limit)
+    .map((group) => ({
+      ...group, corretiva: group.corretiva / 100, preventiva: group.preventiva / 100, total: group.total / 100,
+    }))
+}
+
 export function costRank(rows, field, limit = 20) {
   const groups = new Map()
   for (const row of rows) {

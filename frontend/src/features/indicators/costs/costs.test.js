@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  costFilterOptions, costKpis, costPredicates, costRank, defaultCostFilters, filterCosts,
-  postingParts, sortCostDetails,
+  buildCostMonthlySeries, costFilterOptions, costKpis, costPredicates, costRank, costRankByType,
+  defaultCostFilters, filterCosts, postingParts, sortCostDetails,
 } from './costsData.js'
 import { migrateFilterValues } from '../utils/filterState.js'
 
@@ -60,6 +60,50 @@ test('ranking ordena por valor líquido, limita em 20 e detalhe desce pela data'
   const many = Array.from({ length: 25 }, (_, id) => ({ storeName: `L${id}`, amount: id }))
   assert.equal(costRank(many, 'storeName').length, 20)
   assert.deepEqual(sortCostDetails(rows).map((row) => row.id), [4, 3, 2, 1])
+})
+
+test('série mensal separa corretiva de preventiva e soma estorno', () => {
+  const series = buildCostMonthlySeries(rows)
+
+  // jan/2026: ids 1 (corretiva, 100) e 2 (corretiva, estorno -20) -> 80
+  // fev/2026: id 3 (preventiva, 50) e id 4 (corretiva, 5) -> total 55
+  assert.equal(series.length, 2)
+  assert.equal(series[0].key, '2026-01')
+  assert.equal(series[0].label, 'jan/26')
+  assert.equal(series[0].corretiva, 80)
+  assert.equal(series[0].preventiva, 0)
+  assert.equal(series[0].total, 80)
+  assert.equal(series[1].key, '2026-02')
+  assert.equal(series[1].corretiva, 5)
+  assert.equal(series[1].preventiva, 50)
+  assert.equal(series[1].total, 55)
+})
+
+test('série mensal ignora lançamento sem data de lançamento válida', () => {
+  const comInvalido = [...rows, { id: 5, contaRazao: '41140014', postingDate: null, amount: 999 }]
+  const series = buildCostMonthlySeries(comInvalido)
+  assert.equal(series.reduce((acc, item) => acc + item.total, 0), 135)
+})
+
+test('ranking por campo separa corretiva de preventiva, igual ao KPI', () => {
+  const rank = costRankByType(rows, 'praca')
+
+  // Natal: ids 1 e 2, ambos corretiva -> 80. Recife: id 3, preventiva -> 50.
+  const natal = rank.find((item) => item.label === 'Natal')
+  const recife = rank.find((item) => item.label === 'Recife')
+  assert.equal(natal.corretiva, 80)
+  assert.equal(natal.preventiva, 0)
+  assert.equal(natal.total, 80)
+  assert.equal(recife.corretiva, 0)
+  assert.equal(recife.preventiva, 50)
+  // Ordenado do maior total para o menor.
+  assert.deepEqual(rank.map((item) => item.label), ['Natal', 'Recife', 'Não informado'])
+})
+
+test('ranking por campo respeita o limite', () => {
+  const many = Array.from({ length: 25 }, (_, id) => ({ id, contaRazao: '41140014', praca: `P${id}`, amount: id }))
+  assert.equal(costRankByType(many, 'praca').length, 20)
+  assert.equal(costRankByType(many, 'praca', 3).length, 3)
 })
 
 test('migração: filtro salvo no formato antigo (valor único) entra como array', () => {

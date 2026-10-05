@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
+import {
+  CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
+} from 'recharts'
 import { MultiSelect } from '../../../components/MultiSelect'
 import { fetchCostIndicatorsData } from '../api'
 import { migrateFilterValues } from '../utils/filterState.js'
 import {
-  costFilterOptions, costKpis, costPredicates, costRank, defaultCostFilters,
-  filterCosts, money, sortCostDetails,
+  buildCostMonthlySeries, costFilterOptions, costKpis, costPredicates, costRank, costRankByType,
+  defaultCostFilters, filterCosts, money, sortCostDetails,
 } from './costsData'
 import './costs.css'
+
+// Mesma dupla de cores do gráfico Total/Concluídos da corretiva
+// (CorrectiveCharts.jsx): corretiva e preventiva ficam com o mesmo
+// significado visual em toda a Central de Indicadores.
+const COR_CORRETIVA = '#2f6fb3'
+const COR_PREVENTIVA = '#1f9d6b'
 
 const STATE_KEY = 'gentileza-indicators-costs-v1'
 const MONTHS = { '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril', '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto', '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro' }
@@ -74,6 +83,42 @@ function Ranking({ title, items, onOpen }) {
   </section>
 }
 
+/** Mesmo card de ranking, mas com o valor líquido separado por conta razão —
+ * a barra vira duas cores, uma para corretiva e outra para preventiva. */
+function RankingByType({ title, items, onOpen }) {
+  const max = Math.max(...items.map((item) => Math.abs(item.total)), 1)
+  return <section className="costs-ranking"><h3>{title}</h3>{items.length === 0 ? <p>Sem lançamentos neste filtro.</p> :
+    <div className="costs-ranking__list">{items.map((item, index) => <button type="button" key={item.label} onClick={() => onOpen(item.label)}>
+      <span className="costs-ranking__number">{index + 1}.</span><span className="costs-ranking__name">{item.label}</span>
+      <strong>{money(item.total)}</strong>
+      <small>{money(item.corretiva)} corretiva · {money(item.preventiva)} preventiva</small>
+      <span className="costs-ranking__bar costs-ranking__bar--split">
+        <i style={{ width: `${Math.max(0, Math.abs(item.corretiva) / max * 100)}%`, background: COR_CORRETIVA }} />
+        <i style={{ width: `${Math.max(0, Math.abs(item.preventiva) / max * 100)}%`, background: COR_PREVENTIVA }} />
+      </span>
+    </button>)}</div>}
+  </section>
+}
+
+function MonthlyProgressionChart({ series }) {
+  return <article className="costs-chart">
+    <h3>Progressão de custos por mês</h3>
+    {series.length === 0 ? <p className="costs-empty">Sem dados para o filtro atual.</p> : (
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={series}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(5,56,98,0.12)" />
+          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+          <YAxis tick={{ fontSize: 11 }} tickFormatter={(value) => money(value)} width={90} />
+          <Tooltip formatter={(value) => money(value)} />
+          <Legend />
+          <Line type="monotone" dataKey="corretiva" name="Corretiva" stroke={COR_CORRETIVA} strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="preventiva" name="Preventiva" stroke={COR_PREVENTIVA} strokeWidth={2} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    )}
+  </article>
+}
+
 export default function CostsPanel() {
   const [rows, setRows] = useState([])
   const [uploadData, setUploadData] = useState(null)
@@ -114,6 +159,8 @@ export default function CostsPanel() {
   const kpis = useMemo(() => costKpis(filtered), [filtered])
   const supplierRank = useMemo(() => costRank(filtered, 'supplierName'), [filtered])
   const storeRank = useMemo(() => costRank(filtered, 'storeName'), [filtered])
+  const pracaRank = useMemo(() => costRankByType(filtered, 'praca'), [filtered])
+  const monthlySeries = useMemo(() => buildCostMonthlySeries(filtered), [filtered])
   const showDetail = (title, selected) => setDetail({ title, rows: selected })
 
   if (loading) return <section className="indicators-state">Carregando custos de manutenção...</section>
@@ -158,6 +205,9 @@ export default function CostsPanel() {
       {kpis.naoAtribuidoCount > 0 && <CostCard title="Não atribuído" value={kpis.naoAtribuido}
         detail={`${kpis.naoAtribuidoCount} lançamentos`} onClick={() => showDetail('Lançamentos não atribuídos', filtered.filter(costPredicates.naoAtribuido))} />}
     </section>
+    <MonthlyProgressionChart series={monthlySeries} />
+    <RankingByType title="Custo por praça · corretiva x preventiva" items={pracaRank}
+      onOpen={(label) => showDetail(`Praça: ${label}`, filtered.filter((row) => (row.praca || 'Não informado') === label))} />
     <div className="costs-rankings">
       <Ranking title="Fornecedores por valor · top 20" items={supplierRank} onOpen={(label) => showDetail(`Fornecedor: ${label}`, filtered.filter((row) => (row.supplierName || 'Não informado') === label))} />
       <Ranking title="Lojas por valor · top 20" items={storeRank} onOpen={(label) => showDetail(`Loja: ${label}`, filtered.filter((row) => (row.storeName || 'Não atribuído') === label))} />

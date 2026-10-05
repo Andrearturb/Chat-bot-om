@@ -91,6 +91,14 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
+# O Swagger/Redoc padrão do FastAPI carrega script, CSS e favicon de CDN
+# (cdn.jsdelivr.net, fastapi.tiangolo.com). Com a CSP estrita de toda rota de
+# negócio, a página chega (200 OK) mas o navegador bloqueia o bundle do CDN e
+# renderiza em branco — sem nenhum erro HTTP que explique o motivo. Nenhuma
+# rota de negócio precisa de CDN; só estas duas.
+DOCS_PATHS = {"/docs", "/redoc"}
+
+
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next) -> Response:
     response = await call_next(request)
@@ -98,11 +106,20 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; frame-ancestors 'none'; "
-        "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data:; connect-src 'self'"
-    )
+    if request.url.path in DOCS_PATHS:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; frame-ancestors 'none'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https://fastapi.tiangolo.com; "
+            "connect-src 'self'"
+        )
+    else:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; frame-ancestors 'none'; "
+            "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; connect-src 'self'"
+        )
     if os.getenv("APP_ENV", "development") == "production":
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
     return response

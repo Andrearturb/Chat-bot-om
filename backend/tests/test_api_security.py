@@ -134,3 +134,29 @@ class TestAssistant:
 
     def test_conversa_inexistente_404(self, authed):
         assert authed.get("/assistant/conversations/inexistente-xyz").status_code == 404
+
+
+# ── CSP e a documentação do Swagger ────────────────────────────────────────────
+#
+# O Swagger UI padrão do FastAPI carrega script e CSS de cdn.jsdelivr.net. Com
+# a CSP estrita (script-src 'self') aplicada a toda resposta, o /docs devolve
+# 200 — curl vê a página — mas o navegador bloqueia o bundle do CDN e renderiza
+# em branco: parece inacessível sem nenhum erro HTTP que explique o motivo.
+
+class TestDocsContentSecurityPolicy:
+    def test_docs_libera_jsdelivr_para_o_swagger_renderizar(self, client):
+        response = client.get("/docs")
+        csp = response.headers["content-security-policy"]
+        assert "cdn.jsdelivr.net" in csp
+
+    def test_redoc_tambem_libera_jsdelivr(self, client):
+        response = client.get("/redoc")
+        csp = response.headers["content-security-policy"]
+        assert "cdn.jsdelivr.net" in csp
+
+    def test_endpoint_de_negocio_mantem_a_csp_estrita(self, client):
+        # Nenhuma rota de API real precisa de CDN; só /docs e /redoc.
+        response = client.get("/health")
+        csp = response.headers["content-security-policy"]
+        assert "cdn.jsdelivr.net" not in csp
+        assert "script-src 'self' 'unsafe-inline'" in csp

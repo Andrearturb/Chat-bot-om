@@ -30,7 +30,7 @@ flowchart LR
 - Filtros: tipo de ativo, loja, praça, status, tipo de equipamento, local, marca, código, BPCS, SAP, capacidade em BTU e vencimento/troca de filtro até uma data.
 - Continuação: “E na praça Natal?” ou “Quantos são no salão de venda?” mantém os filtros pertinentes da pergunta anterior.
 
-O backend guarda na conversa o estado estruturado da última consulta de ativos. Em perguntas de continuação, o n8n mescla apenas os filtros alterados; perguntas novas substituem o estado. Assim o modelo recebe a pergunta atual e esse estado curto, sem o histórico inteiro no prompt de ativos. O roteamento usa termos de domínio normalizados antes de chamar o modelo: “ar condicionados” e “máquinas de ar condicionado” são perguntas de ativos, enquanto “chamados” segue o fluxo anterior.
+Em perguntas de continuação, o n8n mescla apenas os filtros alterados; perguntas novas substituem o estado. Assim o modelo recebe a pergunta atual e um estado curto, sem o histórico inteiro no prompt. O roteamento normaliza os termos antes de decidir: “ar condicionados” e “máquinas de ar condicionado” são perguntas de ativos, e “chamados” sem qualificador é corretiva. Onde esse estado vive está na seção **Estado da conversa**, abaixo.
 
 No inventário, “salão de venda” corresponde aos locais cadastrados como “Salão” ou “Salão de Vendas”. Uma resposta de contagem com esse filtro informa os nomes dos locais efetivamente encontrados. Perguntas sobre **quais são as localizações** agrupam os ativos por local e removem o filtro anterior de local, preservando loja e tipo.
 
@@ -54,12 +54,27 @@ Ao trocar de domínio, só as dimensões compartilhadas sobrevivem (praça, loja
 
 ## Atualização do workflow
 
-O workflow é armazenado no volume do n8n. O script [add_asset_query_branch.py](../n8n/add_asset_query_branch.py) cria ou atualiza a ramificação de ativos a partir de uma exportação do workflow. Ele copia as referências das credenciais existentes e não grava o valor da chave no JSON. A coluna `assistant_conversations.asset_query_state` é criada pela migração `0002` do backend.
+O workflow é armazenado no volume do n8n e é **artefato gerado**: a fonte do roteador é [n8n/router/route.js](../n8n/router/route.js), e dois scripts montam o fluxo a partir de uma exportação. Eles copiam as referências das credenciais existentes e nunca gravam o valor da chave no JSON.
+
+**A ordem dos dois scripts importa.** O `add_asset_query_branch.py` é o único que reinjeta o nó do roteador; o `add_domain_query_branches.py` só acrescenta os ramos de custos e preventiva. Rodar apenas o segundo não leva uma mudança de `route.js` ao fluxo. Os dois são idempotentes e podem ser reaplicados sobre a própria saída.
 
 1. Faça backup do workflow e das credenciais criptografadas do n8n.
-2. Exporte **somente** o workflow de chat com `n8n export:workflow --id=ID --output=/tmp/chat.json`.
-3. Execute `python n8n/add_asset_query_branch.py chat.json chat-com-ativos.json`.
-4. Importe o JSON no projeto dono do workflow com `n8n import:workflow --input=chat-com-ativos.json --projectId=ID_DO_PROJETO`.
-5. Publique com `n8n publish:workflow --id=ID` e reinicie o n8n para carregar a versão publicada.
+2. Exporte **somente** o workflow de chat:
+   `n8n export:workflow --id=gLbok2Xvy09ciYIf --output=/tmp/chat.json`
+3. Gere, nesta ordem:
+   `python n8n/add_asset_query_branch.py chat.json etapa1.json`
+   `python n8n/add_domain_query_branches.py etapa1.json final.json`
+4. **Verifique antes de importar.** Os dois gates precisam passar:
+   `python n8n/router/verificar_fluxo.py final.json`
+   `python n8n/router/verificar_marco2.py etapa1.json final.json`
+5. Importe: `n8n import:workflow --input=final.json`
+6. Publique: `n8n publish:workflow --id=gLbok2Xvy09ciYIf`
+7. Reinicie o n8n e **confirme a flag `active` no banco**, não a saída do comando.
+8. Atualize o export canônico versionado:
+   `cp final.json n8n/workflows/chat-om-publicado.json`
 
-O importador desativa o workflow durante a importação; a publicação e o reinício são parte da atualização. Confirme ao final que o workflow está ativo e que o nó **Consultar Ativos** usa a credencial de cabeçalho do backend. No ambiente local, a versão publicada foi validada com perguntas de total, lista, agrupamento, continuação, acesso negado e chamado.
+O passo 8 não é cosmético: `n8n/router/domains.test.js` testa os nós de mesclagem contra esse arquivo, e `backend/tests/test_workflow_publicado.py` falha se ele divergir de `route.js`. Sem ele, o repositório deixa de reproduzir o que está no ar — e já deixou uma vez, sem nada acusar.
+
+O importador **desativa** o workflow durante a importação, então a publicação e o reinício são parte da atualização, não opcionais. O histórico do n8n mostra que `publish:workflow` já registrou `deactivated` sem reativar, então a verificação do passo 7 tem de ser a flag no SQLite — e qualquer leitura desse banco precisa copiar `database.sqlite`, `-wal` **e** `-shm`, porque o modo WAL deixa as escritas recentes fora do arquivo principal e uma leitura ingênua devolve dado velho em silêncio.
+
+Se a mudança for no backend, suba o backend junto: o código do app é assado na imagem, e publicar só o workflow deixa o fluxo esperando campos que o backend antigo não envia.

@@ -395,9 +395,17 @@ def _religar_marco1(result: dict) -> dict:
         [connect("Responder Sem Acesso")],
         [connect("Assunto Desconhecido?")],
     ]}
+    # Preserva a cascata de domínio quando ela já existe. Fixar a saída falsa em
+    # "Consulta de Ativos?" fazia este script, rodado sobre um workflow do marco
+    # 2, pular os IF de custos e preventiva e orfanar os 14 nós desses ramos — e
+    # o add_domain_query_branches.py se recusa a reaplicar, então não havia
+    # reparo suportado.
+    CASCATA = ["Consulta de Custos?", "Consulta de Preventivas?", "Consulta de Ativos?"]
+    nomes_atuais = {item["name"] for item in result["nodes"]}
+    entrada_cascata = next((no for no in CASCATA if no in nomes_atuais), "Consulta de Ativos?")
     result["connections"]["Assunto Desconhecido?"] = {"main": [
         [connect("Responder Assunto Desconhecido")],
-        [connect("Consulta de Ativos?")],
+        [connect(entrada_cascata)],
     ]}
 
     return result

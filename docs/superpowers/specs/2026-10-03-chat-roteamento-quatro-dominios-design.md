@@ -309,7 +309,10 @@ feita na interface do n8n não divirja em silêncio.
 
 ### 8. Limpeza
 
-- Remover o nó `Google Gemini Chat Model1` (duplicado no mesmo input).
+- ~~Remover o nó `Google Gemini Chat Model1`.~~ **RETIRADO** — ver o problema 5
+  acima. Os dois nós não são duplicados: `Model1` é o modelo principal no índice
+  0 e `Model` é o fallback no índice 1. Remover o do índice 0 derrubou a cadeia
+  de chamados em produção. Nenhum dos dois sai.
 - Apagar o workflow morto `upI5TZs9209GtPQU`.
 - Renomear o workflow vivo de "My workflow" para "Chat O&M — Consultas".
 - Commitar `/chatbot/assets-query` e `app/services/asset_query*.py`.

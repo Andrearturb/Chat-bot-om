@@ -12,7 +12,9 @@ const ENTIDADES = {
   // Substantivo e verbo: a lista original tinha "custo" e "gastou" mas nao
   // "custou", e "Quanto custou o ar-condicionado?" caia no inventario.
   custo: /\b(custos?|cust(?:a|am|ou|aram|ar|ando)|gastos?|gast(?:a|am|ou|aram|ar|ando|amos)|despesas?)\b/,
-  chamado: /\b(chamados?|tickets?|ordens? de servico|solicitacoes?|atendimentos?)\b/,
+  // "ordens?" casava o plural e o radical mas nao "ordem", e "solicitacoes?"
+  // nao casava "solicitacao" — os dois singulares que o spec lista.
+  chamado: /\b(chamados?|tickets?|ord(?:em|ens) de servico|solicitac(?:ao|oes)|atendimentos?)\b/,
   ativo: /\b(ativos?|equipamentos?|inventario|climatizacao|climatizadores?|ar(?:es)?[ -]?condicionad[oa]s?|maquinas? de ar|splits?|extintores?|incendio|purificadores?|gelagua|bebedouros?|filtros? de agua|btus?)\b/,
 };
 
@@ -28,9 +30,15 @@ const CONTA_RAZAO = { corretivo: '41140014', preventivo: '41140026' };
 // deve herdar os filtros do turno anterior mesmo que o modelo esqueça de marcar
 // follow_up. Sem isso, a pergunta de acompanhamento vira consulta nova e perde
 // os filtros, que era o defeito que o hint de ativos já corrigia.
+// Os padroes tem de ser marcadores de continuidade, nao aberturas comuns de
+// pergunta. "quais as..." e "quantos sao..." abrem perguntas completas: ligavam
+// a dica em "Quais as lojas com maior gasto?" e o turno herdava praca e mes do
+// anterior, devolvendo um ranking de um mes como se fosse o ranking geral.
 const ACOMPANHAMENTO = [
-  /^(e\b|(?:quantos?|quantas?) sao\b|quais? (sao|a|as)\b)/,
-  /\b(desses?|dessas?|dos ativos|das maquinas|mesma loja|nesse local|la\b)\b/,
+  // "E na praça Natal?" — o "e" inicial retoma o turno anterior.
+  /^e\b/,
+  // Deiticos que so significam algo em relacao ao que ja foi perguntado.
+  /\b(desses?|dessas?|dos ativos|das maquinas|mesma loja|nesse local|la)\b/,
 ];
 
 const DOMINIOS_VALIDOS = new Set([

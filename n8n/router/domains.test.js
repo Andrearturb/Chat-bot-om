@@ -4,7 +4,11 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
-const path = process.env.DOMAIN_WORKFLOW || '/n8n/workflows/gentileza-stage2.json';
+// Aponta para o export canonico VERSIONADO do workflow publicado. O default
+// anterior era gentileza-stage2.json, que nunca foi commitado nem publicado:
+// num clone limpo o npm test inteiro morria em ENOENT, e os testes rodavam
+// contra um workflow que nao estava no ar.
+const path = process.env.DOMAIN_WORKFLOW || '/n8n/workflows/chat-om-publicado.json';
 const workflow = JSON.parse(fs.readFileSync(path, 'utf8'))[0];
 const nodes = Object.fromEntries(workflow.nodes.map((node) => [node.name, node]));
 
@@ -41,6 +45,49 @@ test('pergunta nova de custos limpa filtros anteriores', () => {
     { 'Roteamento da Consulta': route, 'When chat message received': { chatInput: 'Quanto custou?' } });
   assert.equal(query.year, null);
   assert.equal(query.conta_razao, null);
+});
+
+test('pergunta nova NAO herda filtro de outro dominio', () => {
+  // Turno anterior: chamados corretivos em Natal, agosto. Agora uma pergunta
+  // independente de custos sobre o ano inteiro. Herdar praça e mês devolveria
+  // Natal/agosto a uma pergunta nacional e anual — e com cifra de dinheiro.
+  const route = { domain: 'custos', sessionId: 's', accessToken: 'token', contaRazao: null,
+    followUpHint: false,
+    estadoPreservado: { domain: 'chamados_corretiva', praca: 'Natal', year: 2026, month: 8 } };
+  const query = runCode('Mesclar Consulta de Custos',
+    { output: { follow_up: false, query_shape: 'count', group_by: null, clear_fields: [] } },
+    { 'Roteamento da Consulta': route,
+      'When chat message received': { chatInput: 'Quanto gastamos com manutenção em 2026?' } });
+  assert.equal(query.praca, null);
+  assert.equal(query.month, null);
+  assert.equal(query.year, null);
+});
+
+test('follow_up false do modelo vence a dica do roteador', () => {
+  // A dica existe para quando o modelo ESQUECE de marcar acompanhamento. Ela não
+  // pode sobrepor uma negativa explícita: "quais as lojas com maior gasto?" é
+  // pergunta completa, e herdar praça e mês daria um ranking de um só mês.
+  const route = { domain: 'custos', sessionId: 's', accessToken: 'token', contaRazao: null,
+    followUpHint: true,
+    estadoPreservado: { domain: 'custos', praca: 'Natal', month: 8, year: 2026 } };
+  const query = runCode('Mesclar Consulta de Custos',
+    { output: { follow_up: false, query_shape: 'ranking', group_by: 'store_name', clear_fields: [] } },
+    { 'Roteamento da Consulta': route,
+      'When chat message received': { chatInput: 'Quais as lojas com maior gasto de manutenção?' } });
+  assert.equal(query.praca, null);
+  assert.equal(query.month, null);
+  assert.equal(query.group_by, 'store_name');
+});
+
+test('a dica ainda salva o acompanhamento quando o modelo omite follow_up', () => {
+  const route = { domain: 'custos', sessionId: 's', accessToken: 'token', contaRazao: null,
+    followUpHint: true,
+    estadoPreservado: { domain: 'custos', praca: 'Natal', query_shape: 'count' } };
+  const query = runCode('Mesclar Consulta de Custos',
+    { output: { query_shape: 'count', group_by: null, clear_fields: [] } },
+    { 'Roteamento da Consulta': route,
+      'When chat message received': { chatInput: 'E quantos desses no mês passado?' } });
+  assert.equal(query.praca, 'Natal');
 });
 
 test('preventiva conserva periodicidade no acompanhamento', () => {

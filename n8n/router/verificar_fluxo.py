@@ -2,8 +2,17 @@
 
 import json
 import sys
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from add_asset_query_branch import router_code  # noqa: E402
+
+if len(sys.argv) < 2:
+    sys.exit("uso: verificar_fluxo.py WORKFLOW.json [--sem-roteador]\n"
+             "  --sem-roteador  pula a comparacao com route.js, para inspecionar\n"
+             "                  um export historico sem alarme falso")
 destino = sys.argv[1]
+comparar_roteador = "--sem-roteador" not in sys.argv[2:]
 workflow = json.load(open(destino, encoding="utf-8"))[0]
 nos = {n["name"]: n for n in workflow["nodes"]}
 conexoes = workflow["connections"]
@@ -52,6 +61,17 @@ for exigido in ("chamados_preventiva", "allowedDomains", "estadoPreservado",
         falhas.append(f"jsCode do roteador sem {exigido}")
 if "module.exports" in js:
     falhas.append("module.exports vazou para o jsCode")
+
+# O no do roteador e artefato gerado de n8n/router/route.js. Sem comparar o
+# conteudo inteiro, o repositorio deixa de reproduzir o que esta no ar: foi o que
+# aconteceu quando o export commitado ficou com a regex antiga de custo enquanto
+# route.js ja tinha a nova, e cinco verificacoes de substring passaram verdes.
+if comparar_roteador and js.strip() != router_code().strip():
+    falhas.append(
+        "o jsCode do no de roteamento divergiu de n8n/router/route.js. "
+        "Regere com add_asset_query_branch.py (e depois add_domain_query_branches.py), "
+        "ou use --sem-roteador se o arquivo for um export historico."
+    )
 
 CONDICOES = [
     ("Acesso Negado?", "sem_acesso"),

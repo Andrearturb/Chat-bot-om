@@ -38,6 +38,24 @@ test('chamado vence ativo', () => {
   assert.equal(rotear('quantos chamados estão abertos?').domain, 'chamados_corretiva');
 });
 
+test('ordem de serviço e solicitação no singular contam como chamado', () => {
+  // A lista tinha "ordens?" e "solicitacoes?", que casam o plural e o radical,
+  // mas nao "ordem" nem "solicitacao" — os dois singulares que o spec lista.
+  assert.equal(rotear('qual o status da ordem de serviço 4412?').domain, 'chamados_corretiva');
+  assert.equal(rotear('quantas solicitação de manutenção estão abertas?').domain, 'chamados_corretiva');
+  assert.equal(rotear('liste as ordens de serviço de agosto').domain, 'chamados_corretiva');
+  assert.equal(rotear('quantas solicitações foram concluídas?').domain, 'chamados_corretiva');
+});
+
+test('pergunta completa nao liga a dica, mesmo comecando por quais ou quantos', () => {
+  // "Quais as lojas com maior gasto?" e pergunta propria, nao acompanhamento.
+  // Ligar a dica aqui herdava praça e mês do turno anterior e devolvia um
+  // ranking restrito a um mês como se fosse o ranking geral.
+  assert.equal(rotear('Quais as lojas com maior gasto de manutenção?', { lastDomain: 'custos' }).followUpHint, false);
+  assert.equal(rotear('Quantos são os extintores vencidos na loja 4006?', { lastDomain: 'ativos' }).followUpHint, false);
+  assert.equal(rotear('Quais as lojas com mais chamados abertos?', { lastDomain: 'chamados_corretiva' }).followUpHint, false);
+});
+
 test('qualificador decide o subtipo do chamado', () => {
   assert.equal(rotear('quantos chamados preventivos foram concluídos?').domain, 'chamados_preventiva');
   assert.equal(rotear('quantos chamados corretivos?').domain, 'chamados_corretiva');

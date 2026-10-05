@@ -2,6 +2,10 @@
 
 import json
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from add_domain_query_branches import GERADOS  # noqa: E402
 
 
 def workflow(path):
@@ -20,7 +24,13 @@ def main(before_path, after_path):
     assert before["id"] == after["id"]
     assert len(nodes) == len(after["nodes"])
     assert len({node["id"] for node in after["nodes"]}) == len(nodes)
+    # Os nós que o script gera sao reconstruidos a cada aplicacao, de proposito:
+    # e assim que uma correcao no codigo de mesclagem chega ao workflow. Quando o
+    # "antes" ja e um workflow do marco 2, compara-los acusaria alteracao
+    # legitima. O que esta checagem protege sao os nos ANTERIORES aos ramos.
     for name, node in original.items():
+        if name in GERADOS:
+            continue
         if name == "Responder Assunto Desconhecido":
             assert nodes[name]["parameters"]["jsCode"] != node["parameters"]["jsCode"]
             assert {**nodes[name], "parameters": {**nodes[name]["parameters"],

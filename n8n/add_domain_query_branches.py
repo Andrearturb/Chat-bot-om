@@ -25,7 +25,9 @@ query_shape: count para quantidade simples; list para tickets individuais; group
 
 Filtros disponíveis: store_name, praca, status, periodicity, category, subcategory, supplier, year, month, start_date, end_date, date_field, overdue. Status reais: Backlog, Em Atendimento, Não Aprovado, Serviço Finalizado. "Concluídos" significa status Serviço Finalizado. "Atrasados" significa overdue=true: data prevista vencida e serviço ainda não finalizado; o campo SLA não contém dados nesta base. Periodicidade: Mensal, Trimestral, Semestral, Anual. Datas no formato AAAA-MM-DD. date_field padrão created_on; para conclusão use completion_date, visita visit_date, prazo due_date. Mês e ano usam date_field. Não confunda valor aprovado da Tape com custo SAP.
 
-Se a pergunta for acompanhamento, use follow_up=true e só preencha filtros alterados, deixando os demais null; clear_fields lista filtros removidos explicitamente. Uma pergunta autônoma usa follow_up=false. "E na praça Natal?" mantém a periodicidade anterior. "Quantas por periodicidade?" usa group_by=periodicity e limpa filtro periodicity. Não invente loja, categoria ou fornecedor; copie os termos do usuário. Preencha todas as chaves do schema, inclusive null e [] quando não usadas."""
+Se a pergunta for acompanhamento, use follow_up=true e só preencha filtros alterados, deixando os demais null; clear_fields lista filtros removidos explicitamente. "E na praça Natal?" mantém a periodicidade anterior.
+
+Uma pergunta autônoma usa follow_up=false E DEIXA EM null TODO FILTRO QUE ELA MESMA NÃO ENUNCIE. Nunca copie loja, praça, categoria, periodicidade ou período do estado anterior numa pergunta autônoma: o estado serve ao acompanhamento, não é valor padrão. "Quantas preventivas foram concluídas em 2026?", depois de um turno sobre Natal com periodicidade mensal, é pergunta sobre a empresa inteira no ano inteiro — year=2026 e todo o resto null. "Quantas por periodicidade?" usa group_by=periodicity e limpa filtro periodicity. Não invente loja, categoria ou fornecedor; copie os termos do usuário. Preencha todas as chaves do schema, inclusive null e [] quando não usadas."""
 
 COST_PROMPT = """=Você interpreta somente perguntas sobre CUSTOS DE MANUTENÇÃO da extração SAP FBL3N. Extraia JSON conforme o parser; não gere SQL e não responda ao usuário.
 
@@ -38,7 +40,9 @@ query_shape: count para valor total gasto (a resposta traz valor líquido e núm
 
 Filtros: conta_razao, store_name, praca, supplier, year, month, start_date, end_date, unattributed. Conta 41140014 é corretiva; 41140026 é preventiva. A conta razão explícita do roteador prevalece sobre qualquer inferência sua. "Não atribuídos" usa unattributed=true. A competência é a data de lançamento, nunca a data da nota. Estornos já vêm negativos e entram na soma líquida. Não use valor aprovado dos chamados. O SAP NÃO traz categoria, equipamento nem ativo; pedidos de gasto por ar-condicionado, climatização ou outra categoria não podem ser filtrados nesta base. Se o usuário pedir isso, preencha unsupported_filter com a dimensão solicitada; a resposta explicará a limitação sem mostrar um total enganoso.
 
-Se a pergunta for acompanhamento, use follow_up=true e só preencha filtros alterados; clear_fields lista filtros removidos explicitamente. Uma pergunta autônoma usa follow_up=false. Para "e na praça Natal?", preserve conta e período anteriores. "Por fornecedor?" é group_by=supplier, sem filtro de fornecedor. Não invente loja, período ou fornecedor. Preencha todas as chaves do schema, inclusive null e [] quando não usadas."""
+Se a pergunta for acompanhamento, use follow_up=true e só preencha filtros alterados; clear_fields lista filtros removidos explicitamente. Para "e na praça Natal?", preserve conta e período anteriores.
+
+Uma pergunta autônoma usa follow_up=false E DEIXA EM null TODO FILTRO QUE ELA MESMA NÃO ENUNCIE. Nunca copie loja, praça, fornecedor ou período do estado anterior numa pergunta autônoma: o estado serve ao acompanhamento, não é valor padrão. "Quanto gastamos com manutenção em 2026?", depois de um turno sobre Natal em agosto, é pergunta sobre a empresa inteira no ano inteiro — year=2026 e todo o resto null. "Quais as lojas com maior gasto?" é o ranking geral: group_by=store_name e nenhum filtro de praça, mês ou loja. Responder essas com o escopo do turno anterior devolve uma cifra errada à pergunta que foi feita. "Por fornecedor?" é group_by=supplier, sem filtro de fornecedor. Não invente loja, período ou fornecedor. Preencha todas as chaves do schema, inclusive null e [] quando não usadas."""
 
 
 def nullable(kind: str, **options) -> dict:
@@ -81,9 +85,16 @@ const raw = $input.first().json;
 const changes = typeof raw.output === 'string' ? JSON.parse(raw.output) : (raw.output || raw);
 const trigger = $('Roteamento da Consulta').first().json;
 const previous = trigger.estadoPreservado && typeof trigger.estadoPreservado === 'object' ? trigger.estadoPreservado : {};
-const sameDomain = previous.domain === '__DOMAIN__';
-const followUp = changes.follow_up === true || trigger.followUpHint === true;
-const preserved = (followUp || !sameDomain) ? previous : {};
+// A dica do roteador existe para quando o modelo ESQUECE de marcar
+// acompanhamento; ela nao pode sobrepor uma negativa explicita, que e o modelo
+// dizendo que a pergunta se sustenta sozinha.
+const followUp = changes.follow_up === true
+  || (changes.follow_up !== false && trigger.followUpHint === true);
+// Herda SO em acompanhamento. O "|| !sameDomain" que estava aqui fazia uma
+// pergunta nova de custos herdar praca e mes do turno de chamados anterior e
+// responder com cifra do escopo errado. O ramo de ativos sempre gateou so em
+// followUp; os dois agora concordam.
+const preserved = followUp ? previous : {};
 const fields = __FIELDS__;
 const groups = new Set(__GROUPS__);
 const clear = new Set(Array.isArray(changes.clear_fields) ? changes.clear_fields : []);
@@ -219,6 +230,20 @@ def _save_node(source: dict, name: str, node_id: str, offset: list[int], domain:
     return result
 
 
+# Os 16 nós que este script cria. Nomes deterministicos, usados para reaplicar
+# sobre a propria saida sem duplicar nem orfanar.
+GERADOS = {
+    "Interpretar Consulta de Custos", "Google Gemini Custos",
+    "Estrutura da Consulta de Custos", "Mesclar Consulta de Custos",
+    "Salvar Estado de Custos", "Consultar Custos", "Montar Resposta de Custos",
+    "Consulta de Custos?",
+    "Interpretar Consulta de Preventivas", "Google Gemini Preventivas",
+    "Estrutura da Consulta de Preventivas", "Mesclar Consulta Preventiva",
+    "Salvar Estado de Preventivas", "Consultar Preventivas",
+    "Montar Resposta de Preventivas", "Consulta de Preventivas?",
+}
+
+
 def patch_workflow(workflow: dict) -> dict:
     result = copy.deepcopy(workflow)
     nodes = {node["name"]: node for node in result["nodes"]}
@@ -227,8 +252,21 @@ def patch_workflow(workflow: dict) -> dict:
                 "Consultar Ativos", "Salvar Estado de Ativos", "Montar Resposta de Ativos"}
     if not required.issubset(nodes):
         raise ValueError(f"Workflow incompatível; faltam: {sorted(required - set(nodes))}")
-    if "Consulta de Custos?" in nodes or "Consulta de Preventivas?" in nodes:
-        raise ValueError("Os ramos novos já existem; exporte e revise antes de reaplicar.")
+    # Idempotente: em vez de recusar, remove os nós que este script gerou antes e
+    # reconstrói. Todos são derivados do molde mais parâmetros, então reconstruir
+    # é seguro. Recusar deixava qualquer correção no código de mesclagem sem
+    # caminho de aplicação: a única saída era rebobinar para um export anterior
+    # ao marco 2, perdendo o que tivesse mudado na interface desde então.
+    # As posições são preservadas para não desfazer ajuste manual de layout.
+    posicoes_anteriores = {
+        node["name"]: node["position"]
+        for node in result["nodes"] if node["name"] in GERADOS and "position" in node
+    }
+    if posicoes_anteriores:
+        result["nodes"] = [node for node in result["nodes"] if node["name"] not in GERADOS]
+        for nome in GERADOS:
+            result["connections"].pop(nome, None)
+        nodes = {node["name"]: node for node in result["nodes"]}
 
     for domain, title, offset, endpoint, fields, groups, prompt, response in (
         ("cost", "Custos", [-330, 250], "costs-query",
@@ -299,6 +337,10 @@ def patch_workflow(workflow: dict) -> dict:
     result["connections"]["Consulta de Preventivas?"] = {"main": [
         [connect("Interpretar Consulta de Preventivas")], [connect("Consulta de Ativos?")],
     ]}
+    # Devolve as posições que os nós tinham antes de serem reconstruídos.
+    for item in result["nodes"]:
+        if item["name"] in posicoes_anteriores:
+            item["position"] = posicoes_anteriores[item["name"]]
     return result
 
 

@@ -1,12 +1,11 @@
-const TODOS = 'todos'
-
 export const defaultCorrectiveFilters = {
-  status: TODOS,
-  loja: TODOS,
-  praca: TODOS,
-  categoria: TODOS,
-  mes: TODOS,
-  ano: TODOS,
+  status: [],
+  loja: [],
+  praca: [],
+  categoria: [],
+  analista: [],
+  mes: [],
+  ano: [],
 }
 
 function normalize(value) {
@@ -15,6 +14,14 @@ function normalize(value) {
     .replace(/[̀-ͯ]/g, '')
     .trim()
     .toLowerCase()
+}
+
+/** Array vazio não restringe; senão o valor do registro precisa estar entre os
+ * selecionados. É a semântica única de "múltipla seleção, vazio = todos". */
+function matchesAny(fieldValue, selected) {
+  if (!selected || selected.length === 0) return true
+  const needle = normalize(fieldValue)
+  return selected.some((option) => normalize(option) === needle)
 }
 
 /** Devolve {ano, mes} da data de criação, ou null quando a data não existe ou é inválida. */
@@ -30,16 +37,18 @@ function dateParts(value) {
 
 export function applyCorrectiveFilters(records, filters = defaultCorrectiveFilters) {
   return records.filter((record) => {
-    if (filters.status !== TODOS && normalize(record.rawStatus) !== normalize(filters.status)) return false
-    if (filters.loja !== TODOS && normalize(record.location) !== normalize(filters.loja)) return false
-    if (filters.praca !== TODOS && normalize(record.region) !== normalize(filters.praca)) return false
-    if (filters.categoria !== TODOS && normalize(record.category) !== normalize(filters.categoria)) return false
+    if (!matchesAny(record.rawStatus, filters.status)) return false
+    if (!matchesAny(record.location, filters.loja)) return false
+    if (!matchesAny(record.region, filters.praca)) return false
+    if (!matchesAny(record.category, filters.categoria)) return false
+    if (!matchesAny(record.analyst, filters.analista)) return false
 
-    if (filters.mes !== TODOS || filters.ano !== TODOS) {
+    const temFiltroDeData = (filters.mes?.length ?? 0) > 0 || (filters.ano?.length ?? 0) > 0
+    if (temFiltroDeData) {
       const parts = dateParts(record.createdOn)
       if (parts === null) return false
-      if (filters.mes !== TODOS && parts.mes !== filters.mes) return false
-      if (filters.ano !== TODOS && parts.ano !== filters.ano) return false
+      if (filters.mes?.length && !filters.mes.includes(parts.mes)) return false
+      if (filters.ano?.length && !filters.ano.includes(parts.ano)) return false
     }
 
     return true
@@ -51,6 +60,7 @@ export function buildFilterOptions(records) {
   const loja = new Set()
   const praca = new Set()
   const categoria = new Set()
+  const analista = new Set()
   const mes = new Set()
   const ano = new Set()
 
@@ -59,6 +69,7 @@ export function buildFilterOptions(records) {
     if (record.location) loja.add(record.location)
     if (record.region) praca.add(record.region)
     if (record.category) categoria.add(record.category)
+    if (record.analyst) analista.add(record.analyst)
 
     const parts = dateParts(record.createdOn)
     if (parts !== null) {
@@ -74,9 +85,28 @@ export function buildFilterOptions(records) {
     loja: ordenar(loja),
     praca: ordenar(praca),
     categoria: ordenar(categoria),
+    analista: ordenar(analista),
     mes: [...mes].sort(),
     ano: [...ano].sort(),
   }
+}
+
+/**
+ * Migra filtros salvos no formato antigo (um valor, sentinela "todos") para o
+ * formato atual (array; vazio = sem restrição). Idempotente: filtro já em
+ * array passa direto. Campo ausente no que foi salvo cai no default — é o
+ * caso de um filtro novo (ex.: analista) que não existia quando a sessão
+ * anterior gravou o sessionStorage.
+ */
+export function migrateFilterValues(saved, defaults) {
+  const migrated = { ...defaults }
+  for (const key of Object.keys(defaults)) {
+    const value = saved?.[key]
+    if (value === undefined) continue
+    if (Array.isArray(value)) { migrated[key] = value; continue }
+    migrated[key] = (value === 'todos' || value === '' || value === null) ? [] : [value]
+  }
+  return migrated
 }
 
 /** Verdadeiro para o conjunto de concluídos: o status canônico do chatbot-om. */

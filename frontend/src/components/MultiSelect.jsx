@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import "./MultiSelect.css";
 
-/** Seletor de múltipla escolha com busca opcional. Vazio = "todos". */
+/**
+ * Seletor de múltipla escolha com busca opcional. Vazio = "todos".
+ *
+ * Compartilhado entre a Central de Ativos e a Central de Indicadores — veio
+ * de features/assets/components/MultiSelect.jsx. O CSS é autocontido (tokens
+ * próprios, não herdados de .assets-page nem .indicators-page), para o
+ * componente funcionar igual em qualquer página que o use.
+ */
 export function MultiSelect({ label, options, selected, onChange, allLabel, unit, filterOption, emptyText = "Nada encontrado." }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -35,35 +43,35 @@ export function MultiSelect({ label, options, selected, onChange, allLabel, unit
   }
 
   return (
-    <div className="assets-multiselect" ref={rootRef}>
+    <div className="ui-multiselect" ref={rootRef}>
       <button
         type="button"
-        className={`assets-multiselect__button${selected.length ? " is-active" : ""}`}
+        className={`ui-multiselect__button${selected.length ? " is-active" : ""}`}
         aria-haspopup="true"
         aria-expanded={open}
         aria-label={label}
         onClick={() => { setOpen((value) => !value); setText(""); }}
       >
-        <span className="assets-multiselect__label">{label}</span>
+        <span className="ui-multiselect__label">{label}</span>
         <strong>{summary}</strong>
         <span aria-hidden="true">▾</span>
       </button>
       {open ? (
-        <div className="assets-multiselect__panel" role="group" aria-label={label}>
+        <div className="ui-multiselect__panel" role="group" aria-label={label}>
           {options.length > 8 ? (
             <input type="search" value={text} onChange={(event) => setText(event.target.value)}
                    placeholder="Buscar..." aria-label={`Buscar em ${label}`} autoFocus />
           ) : null}
-          <div className="assets-multiselect__list">
-            {visible.length === 0 ? <p className="assets-multiselect__empty">{emptyText}</p> : visible.map((option) => (
-              <label key={String(option.value)} className="assets-multiselect__option">
+          <div className="ui-multiselect__list">
+            {visible.length === 0 ? <p className="ui-multiselect__empty">{emptyText}</p> : visible.map((option) => (
+              <label key={String(option.value)} className="ui-multiselect__option">
                 <input type="checkbox" checked={selected.includes(option.value)} onChange={() => toggle(option.value)} />
                 <span>{option.label}</span>
                 {option.hint ? <small>{option.hint}</small> : null}
               </label>
             ))}
           </div>
-          <div className="assets-multiselect__footer">
+          <div className="ui-multiselect__footer">
             <button type="button" onClick={() => onChange([])} disabled={selected.length === 0}>Limpar seleção</button>
           </div>
         </div>

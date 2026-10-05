@@ -6,7 +6,7 @@ import CorrectiveCharts from '../corrective/components/CorrectiveCharts'
 import CorrectiveRankTables from '../corrective/components/CorrectiveRankTables'
 import CorrectiveDetailModal from '../corrective/components/CorrectiveDetailModal'
 import {
-  buildAnalystSeries, buildMonthlySeries, buildRank, buildSubcategoryRanks, filterByRank,
+  buildAnalystSeries, buildMonthlySeries, buildRank, buildSubcategoryRanks, filterByRank, migrateFilterValues,
 } from '../corrective/correctiveData'
 import {
   applyPreventiveFilters, buildPreventiveFilterOptions, buildPreventiveKpis,
@@ -19,7 +19,7 @@ const STATE_KEY = 'gentileza-indicators-preventive-v1'
 function loadFilters() {
   try {
     const saved = sessionStorage.getItem(STATE_KEY)
-    return saved ? { ...defaultPreventiveFilters, ...JSON.parse(saved) } : defaultPreventiveFilters
+    return saved ? migrateFilterValues(JSON.parse(saved), defaultPreventiveFilters) : defaultPreventiveFilters
   } catch {
     return defaultPreventiveFilters
   }

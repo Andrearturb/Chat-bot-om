@@ -15,6 +15,7 @@ import {
   isCompletedOrderService,
   isConcluded,
   isOrderService,
+  migrateFilterValues,
   orderServiceStatusLabel,
   sortDetailRecords,
 } from './correctiveData.js'
@@ -67,39 +68,77 @@ test('status cru desconhecido entra no total e em nenhum card', () => {
   assert.equal(counters.concluidos, 0)
 })
 
-test('filtros combinam loja, praça, categoria e status', () => {
+test('filtros combinam loja, praça, categoria e status, um valor cada', () => {
   const registros = [
     record({ ticketId: 'A', location: 'ER Centro', region: 'Natal', category: 'Elétrica' }),
     record({ ticketId: 'B', location: 'ER Praia', region: 'Natal', category: 'Elétrica' }),
     record({ ticketId: 'C', location: 'ER Centro', region: 'Mossoró', category: 'Hidráulica' }),
   ]
 
-  const porLoja = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, loja: 'ER Centro' })
+  const porLoja = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, loja: ['ER Centro'] })
   assert.deepEqual(porLoja.map((item) => item.ticketId), ['A', 'C'])
 
   const porLojaEPraca = applyCorrectiveFilters(registros, {
-    ...defaultCorrectiveFilters, loja: 'ER Centro', praca: 'Natal',
+    ...defaultCorrectiveFilters, loja: ['ER Centro'], praca: ['Natal'],
   })
   assert.deepEqual(porLojaEPraca.map((item) => item.ticketId), ['A'])
 
-  const porCategoria = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, categoria: 'Hidráulica' })
+  const porCategoria = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, categoria: ['Hidráulica'] })
   assert.deepEqual(porCategoria.map((item) => item.ticketId), ['C'])
 })
 
-test('filtro de mês e ano usa a data de criação', () => {
+test('filtro com múltiplos valores é OU dentro do mesmo campo', () => {
+  // O pedido original: escolher duas ou mais praças ao mesmo tempo.
+  const registros = [
+    record({ ticketId: 'A', region: 'Natal' }),
+    record({ ticketId: 'B', region: 'São Luís' }),
+    record({ ticketId: 'C', region: 'Mossoró' }),
+  ]
+
+  const duasPracas = applyCorrectiveFilters(registros, {
+    ...defaultCorrectiveFilters, praca: ['Natal', 'São Luís'],
+  })
+  assert.deepEqual(duasPracas.map((item) => item.ticketId), ['A', 'B'])
+})
+
+test('filtro vazio (array sem itens) não restringe nada', () => {
+  const registros = [record({ ticketId: 'A' }), record({ ticketId: 'B' })]
+  assert.equal(applyCorrectiveFilters(registros, defaultCorrectiveFilters).length, 2)
+  assert.equal(applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, praca: [] }).length, 2)
+})
+
+test('filtro por analista', () => {
+  const registros = [
+    record({ ticketId: 'A', analyst: 'Ana' }),
+    record({ ticketId: 'B', analyst: 'Bruno' }),
+    record({ ticketId: 'C', analyst: 'Ana' }),
+  ]
+
+  const porAna = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, analista: ['Ana'] })
+  assert.deepEqual(porAna.map((item) => item.ticketId), ['A', 'C'])
+
+  const options = buildFilterOptions(registros)
+  assert.deepEqual(options.analista, ['Ana', 'Bruno'])
+})
+
+test('filtro de mês e ano usa a data de criação, com vários meses ou anos', () => {
   const registros = [
     record({ ticketId: 'A', createdOn: '2026-09-10T08:00:00' }),
     record({ ticketId: 'B', createdOn: '2026-10-02T08:00:00' }),
     record({ ticketId: 'C', createdOn: '2025-09-15T08:00:00' }),
   ]
 
-  const setembro = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, mes: '09' })
+  const setembro = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, mes: ['09'] })
   assert.deepEqual(setembro.map((item) => item.ticketId), ['A', 'C'])
 
   const setembro2026 = applyCorrectiveFilters(registros, {
-    ...defaultCorrectiveFilters, mes: '09', ano: '2026',
+    ...defaultCorrectiveFilters, mes: ['09'], ano: ['2026'],
   })
   assert.deepEqual(setembro2026.map((item) => item.ticketId), ['A'])
+
+  // Setembro e outubro juntos: o caso de multi-seleção em período.
+  const doisMeses = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, mes: ['09', '10'] })
+  assert.deepEqual(doisMeses.map((item) => item.ticketId), ['A', 'B', 'C'])
 })
 
 test('data de criação nula não quebra o filtro nem gera opção inválida', () => {
@@ -117,10 +156,35 @@ test('data de criação nula não quebra o filtro nem gera opção inválida', (
   assert.equal(applyCorrectiveFilters(registros, defaultCorrectiveFilters).length, 2)
   // Com filtro de data, ele sai.
   assert.deepEqual(
-    applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, mes: '09' })
+    applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, mes: ['09'] })
       .map((item) => item.ticketId),
     ['B'],
   )
+})
+
+test('migração: filtro salvo no formato antigo (valor único) entra como array', () => {
+  const antigo = { status: 'Em Aberto', praca: 'todos', loja: '', mes: '09' }
+  const migrado = migrateFilterValues(antigo, defaultCorrectiveFilters)
+
+  assert.deepEqual(migrado.status, ['Em Aberto'])
+  assert.deepEqual(migrado.praca, [])
+  assert.deepEqual(migrado.loja, [])
+  assert.deepEqual(migrado.mes, ['09'])
+  // Campo nunca salvo (ex.: analista, novo) cai no default.
+  assert.deepEqual(migrado.analista, [])
+})
+
+test('migração: filtro já salvo em array passa direto, sem duplicar', () => {
+  const atual = { praca: ['Natal', 'São Luís'] }
+  const migrado = migrateFilterValues(atual, defaultCorrectiveFilters)
+
+  assert.deepEqual(migrado.praca, ['Natal', 'São Luís'])
+})
+
+test('migração: nada salvo devolve os defaults', () => {
+  assert.deepEqual(migrateFilterValues(undefined, defaultCorrectiveFilters), defaultCorrectiveFilters)
+  assert.deepEqual(migrateFilterValues(null, defaultCorrectiveFilters), defaultCorrectiveFilters)
+  assert.deepEqual(migrateFilterValues({}, defaultCorrectiveFilters), defaultCorrectiveFilters)
 })
 
 test('SLA conta só concluídos e ignora atraso em chamado não concluído', () => {
@@ -243,7 +307,7 @@ test('categoria expande subcategorias e a lista usa o mesmo recorte do contador'
     record({ ticketId: 'D', category: 'Elétrica', subcategory: 'Não informado' }),
     record({ ticketId: 'E', category: 'Hidráulica', subcategory: 'Iluminação' }),
   ]
-  const filtrados = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, categoria: 'Elétrica' })
+  const filtrados = applyCorrectiveFilters(registros, { ...defaultCorrectiveFilters, categoria: ['Elétrica'] })
   const categorias = buildRank(filtrados, 'category')
   const subcategorias = buildSubcategoryRanks(filtrados).get('Elétrica')
 

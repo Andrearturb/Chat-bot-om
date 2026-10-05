@@ -83,11 +83,28 @@ test('periodicidade filtra e ranqueia sem misturar categoria ou loja', () => {
   const options = buildPreventiveFilterOptions(records)
   assert.deepEqual(options.periodicidade, ['Anual', 'Mensal'])
   const filtered = applyPreventiveFilters(records, {
-    ...defaultPreventiveFilters, periodicidade: 'Mensal', categoria: 'Climatização',
+    ...defaultPreventiveFilters, periodicidade: ['Mensal'], categoria: ['Climatização'],
   })
   assert.deepEqual(filtered.map((item) => item.ticketId), ['2728'])
   assert.deepEqual(buildRank(records, 'periodicity'), [
     { label: 'Mensal', total: 2, percent: 67 },
     { label: 'Anual', total: 1, percent: 33 },
   ])
+})
+
+test('periodicidade aceita duas ou mais escolhas de uma vez', () => {
+  const records = [
+    adaptPreventiveService(service({ periodicity: 'Mensal' })),
+    adaptPreventiveService(service({ ticket: '2', periodicity: 'Anual' })),
+    adaptPreventiveService(service({ ticket: '3', periodicity: 'Trimestral' })),
+  ]
+  const filtered = applyPreventiveFilters(records, {
+    ...defaultPreventiveFilters, periodicidade: ['Mensal', 'Anual'],
+  })
+  assert.deepEqual(filtered.map((item) => item.ticketId), ['2728', '2'])
+})
+
+test('filtro vazio de periodicidade não restringe nada', () => {
+  const records = [adaptPreventiveService(service()), adaptPreventiveService(service({ ticket: '2' }))]
+  assert.equal(applyPreventiveFilters(records, defaultPreventiveFilters).length, 2)
 })

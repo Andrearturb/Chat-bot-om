@@ -1,5 +1,5 @@
 import { EMPTY_FILTERS, isFiltered, matchesStore, storesCountLabel, storesForPracas, withPracas } from "../filters";
-import { MultiSelect } from "./MultiSelect";
+import { MultiSelect } from "../../../components/MultiSelect";
 
 export function AssetFilters({ pracas, storeOptions, filters, onChange, shownCount, searching }) {
   const pracaChoices = pracas.map((praca) => ({ value: praca, label: praca }));

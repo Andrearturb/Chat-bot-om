@@ -15,6 +15,7 @@ import {
   buildStatusCounters,
   defaultCorrectiveFilters,
   filterByRank,
+  migrateFilterValues,
 } from './correctiveData'
 
 export const CORRECTIVE_STATE_KEY = 'gentileza-indicators-corrective-v1'
@@ -23,7 +24,9 @@ function loadFilters() {
   try {
     const saved = sessionStorage.getItem(CORRECTIVE_STATE_KEY)
     if (!saved) return defaultCorrectiveFilters
-    return { ...defaultCorrectiveFilters, ...JSON.parse(saved) }
+    // Quem tinha filtro salvo no formato antigo (um valor, não array) continua
+    // funcionando: a migração converte na leitura, uma vez.
+    return migrateFilterValues(JSON.parse(saved), defaultCorrectiveFilters)
   } catch {
     return defaultCorrectiveFilters
   }

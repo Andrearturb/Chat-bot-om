@@ -6,13 +6,11 @@ import {
   isOrderService,
 } from '../corrective/correctiveData.js'
 
-const TODOS = 'todos'
-
-export const defaultPreventiveFilters = { ...defaultCorrectiveFilters, periodicidade: TODOS }
+export const defaultPreventiveFilters = { ...defaultCorrectiveFilters, periodicidade: [] }
 
 export function applyPreventiveFilters(records, filters = defaultPreventiveFilters) {
   return applyCorrectiveFilters(records, filters).filter((record) =>
-    filters.periodicidade === TODOS || record.periodicity === filters.periodicidade,
+    !filters.periodicidade?.length || filters.periodicidade.includes(record.periodicity),
   )
 }
 

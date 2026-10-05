@@ -2258,12 +2258,6 @@
   background: #fff; border: 1px solid rgba(5, 56, 98, 0.12);
   border-radius: 14px; padding: 16px;
 }
-.corrective-select { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
-.corrective-select span { color: #5b6b7a; font-weight: 600; }
-.corrective-select select {
-  padding: 8px 10px; border-radius: 8px;
-  border: 1px solid rgba(5, 56, 98, 0.2); background: #fff; font-size: 13px;
-}
 .corrective-filters__clear {
   padding: 9px 14px; border-radius: 8px; cursor: pointer;
   border: 1px solid rgba(5, 56, 98, 0.2); background: #f4f7fb;

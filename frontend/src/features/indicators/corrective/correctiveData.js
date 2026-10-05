@@ -1,3 +1,5 @@
+export { migrateFilterValues } from '../utils/filterState.js'
+
 export const defaultCorrectiveFilters = {
   status: [],
   loja: [],
@@ -91,23 +93,6 @@ export function buildFilterOptions(records) {
   }
 }
 
-/**
- * Migra filtros salvos no formato antigo (um valor, sentinela "todos") para o
- * formato atual (array; vazio = sem restrição). Idempotente: filtro já em
- * array passa direto. Campo ausente no que foi salvo cai no default — é o
- * caso de um filtro novo (ex.: analista) que não existia quando a sessão
- * anterior gravou o sessionStorage.
- */
-export function migrateFilterValues(saved, defaults) {
-  const migrated = { ...defaults }
-  for (const key of Object.keys(defaults)) {
-    const value = saved?.[key]
-    if (value === undefined) continue
-    if (Array.isArray(value)) { migrated[key] = value; continue }
-    migrated[key] = (value === 'todos' || value === '' || value === null) ? [] : [value]
-  }
-  return migrated
-}
 
 /** Verdadeiro para o conjunto de concluídos: o status canônico do chatbot-om. */
 export function isConcluded(record) {

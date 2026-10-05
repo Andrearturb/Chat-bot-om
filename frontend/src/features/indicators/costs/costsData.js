@@ -1,7 +1,5 @@
-const TODOS = 'todos'
-
 export const defaultCostFilters = {
-  tipo: TODOS, fornecedor: TODOS, loja: TODOS, praca: TODOS, mes: TODOS, ano: TODOS,
+  tipo: [], fornecedor: [], loja: [], praca: [], mes: [], ano: [],
 }
 
 export const costPredicates = {
@@ -16,6 +14,14 @@ export const money = (value) => new Intl.NumberFormat('pt-BR', {
 
 const normalize = (value) => String(value ?? '').trim().toLocaleLowerCase('pt-BR')
 
+/** Array vazio não restringe; senão o valor da linha precisa estar entre os
+ * selecionados. Mesma semântica de múltipla seleção da corretiva/preventiva. */
+function matchesAny(fieldValue, selected) {
+  if (!selected || selected.length === 0) return true
+  const needle = normalize(fieldValue)
+  return selected.some((option) => normalize(option) === needle)
+}
+
 export function postingParts(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value ?? '').slice(0, 10))
   if (!match || Number(match[2]) < 1 || Number(match[2]) > 12) return null
@@ -24,15 +30,17 @@ export function postingParts(value) {
 
 export function filterCosts(rows, filters = defaultCostFilters) {
   return rows.filter((row) => {
-    if (filters.tipo !== TODOS && row.contaRazao !== filters.tipo) return false
-    if (filters.fornecedor !== TODOS && normalize(row.supplierName) !== normalize(filters.fornecedor)) return false
-    if (filters.loja !== TODOS && normalize(row.storeName ?? 'Não atribuído') !== normalize(filters.loja)) return false
-    if (filters.praca !== TODOS && normalize(row.praca) !== normalize(filters.praca)) return false
-    if (filters.mes !== TODOS || filters.ano !== TODOS) {
+    if (!matchesAny(row.contaRazao, filters.tipo)) return false
+    if (!matchesAny(row.supplierName, filters.fornecedor)) return false
+    if (!matchesAny(row.storeName ?? 'Não atribuído', filters.loja)) return false
+    if (!matchesAny(row.praca, filters.praca)) return false
+
+    const temFiltroDeData = (filters.mes?.length ?? 0) > 0 || (filters.ano?.length ?? 0) > 0
+    if (temFiltroDeData) {
       const parts = postingParts(row.postingDate)
       if (!parts) return false
-      if (filters.mes !== TODOS && parts.mes !== filters.mes) return false
-      if (filters.ano !== TODOS && parts.ano !== filters.ano) return false
+      if (filters.mes?.length && !filters.mes.includes(parts.mes)) return false
+      if (filters.ano?.length && !filters.ano.includes(parts.ano)) return false
     }
     return true
   })

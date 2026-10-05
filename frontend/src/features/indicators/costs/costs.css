@@ -2,8 +2,6 @@
 .costs-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; color: #60708c; font-size: .9rem; }
 .costs-toolbar button, .costs-filters > button { border: 1px solid #d9dff0; background: white; color: #24305a; border-radius: 10px; padding: .7rem 1rem; cursor: pointer; }
 .costs-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .75rem; align-items: end; padding: 1rem; border: 1px solid #e5e9f3; border-radius: 16px; background: #f8f9fe; }
-.costs-filter { display: grid; gap: .35rem; font-size: .82rem; font-weight: 600; color: #586784; min-width: 0; }
-.costs-filter select { width: 100%; min-width: 0; padding: .65rem; border: 1px solid #d9dff0; border-radius: 9px; background: white; color: #17213d; }
 .costs-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: .85rem; }
 .costs-kpi { display: grid; gap: .55rem; text-align: left; border: 1px solid #e0e5f0; background: white; border-radius: 16px; padding: 1.2rem; cursor: pointer; box-shadow: 0 4px 18px rgba(19, 33, 76, .05); color: #17213d; }
 .costs-kpi:hover, .costs-ranking button:hover { border-color: #8d78d4; background: #fbf9ff; }

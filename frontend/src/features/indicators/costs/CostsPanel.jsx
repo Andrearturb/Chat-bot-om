@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { MultiSelect } from '../../../components/MultiSelect'
 import { fetchCostIndicatorsData } from '../api'
+import { migrateFilterValues } from '../utils/filterState.js'
 import {
   costFilterOptions, costKpis, costPredicates, costRank, defaultCostFilters,
   filterCosts, money, sortCostDetails,
@@ -8,10 +10,20 @@ import './costs.css'
 
 const STATE_KEY = 'gentileza-indicators-costs-v1'
 const MONTHS = { '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril', '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto', '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro' }
+const TIPO_LABEL = (value) => (value === '41140014' ? 'Corretiva' : value === '41140026' ? 'Preventiva' : value)
 
 function initialFilters() {
-  try { return { ...defaultCostFilters, ...JSON.parse(sessionStorage.getItem(STATE_KEY) || '{}') } }
-  catch { return defaultCostFilters }
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(STATE_KEY) || '{}')
+    // Quem tinha filtro salvo no formato antigo (um valor, não array) continua
+    // funcionando: a migração converte na leitura, uma vez.
+    return migrateFilterValues(saved, defaultCostFilters)
+  } catch { return defaultCostFilters }
+}
+
+/** `options.campo` é lista plana de valores; o MultiSelect quer {value, label}. */
+function toChoices(values, mapLabel) {
+  return (values ?? []).map((value) => ({ value, label: mapLabel ? mapLabel(value) : value }))
 }
 
 function dateBr(value) {
@@ -43,13 +55,6 @@ function DetailModal({ detail, onClose }) {
       </div>
     </div>
   )
-}
-
-function FilterSelect({ label, value, options, onChange, labelFor }) {
-  return <label className="costs-filter"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)}>
-    <option value="todos">Todos</option>
-    {options.map((option) => <option key={option} value={option}>{labelFor?.(option) || option}</option>)}
-  </select></label>
 }
 
 function CostCard({ title, value, detail, onClick }) {
@@ -123,13 +128,24 @@ export default function CostsPanel() {
       <button type="button" onClick={refresh} disabled={refreshing}>{refreshing ? 'Atualizando...' : 'Atualizar dados'}</button></div>
     {error && <div className="indicators-inline-warning" role="status">A atualização falhou. Os dados já carregados continuam visíveis.</div>}
     <section className="costs-filters" aria-label="Filtros de custos">
-      <FilterSelect label="Tipo" value={filters.tipo} options={options.tipo} onChange={(v) => updateFilter('tipo', v)}
-        labelFor={(v) => v === '41140014' ? 'Corretiva' : v === '41140026' ? 'Preventiva' : v} />
-      <FilterSelect label="Fornecedor" value={filters.fornecedor} options={options.fornecedor} onChange={(v) => updateFilter('fornecedor', v)} />
-      <FilterSelect label="Loja" value={filters.loja} options={options.loja} onChange={(v) => updateFilter('loja', v)} />
-      <FilterSelect label="Praça" value={filters.praca} options={options.praca} onChange={(v) => updateFilter('praca', v)} />
-      <FilterSelect label="Mês" value={filters.mes} options={options.mes} onChange={(v) => updateFilter('mes', v)} labelFor={(v) => MONTHS[v]} />
-      <FilterSelect label="Ano" value={filters.ano} options={options.ano} onChange={(v) => updateFilter('ano', v)} />
+      <MultiSelect label="Tipo" options={toChoices(options.tipo, TIPO_LABEL)} selected={filters.tipo}
+                   allLabel="Todos os tipos" unit={['tipo', 'tipos']}
+                   onChange={(next) => updateFilter('tipo', next)} />
+      <MultiSelect label="Fornecedor" options={toChoices(options.fornecedor)} selected={filters.fornecedor}
+                   allLabel="Todos os fornecedores" unit={['fornecedor', 'fornecedores']}
+                   onChange={(next) => updateFilter('fornecedor', next)} />
+      <MultiSelect label="Loja" options={toChoices(options.loja)} selected={filters.loja}
+                   allLabel="Todas as lojas" unit={['loja', 'lojas']}
+                   onChange={(next) => updateFilter('loja', next)} />
+      <MultiSelect label="Praça" options={toChoices(options.praca)} selected={filters.praca}
+                   allLabel="Todas as praças" unit={['praça', 'praças']}
+                   onChange={(next) => updateFilter('praca', next)} />
+      <MultiSelect label="Mês" options={toChoices(options.mes, (v) => MONTHS[v] ?? v)} selected={filters.mes}
+                   allLabel="Todos os meses" unit={['mês', 'meses']}
+                   onChange={(next) => updateFilter('mes', next)} />
+      <MultiSelect label="Ano" options={toChoices(options.ano)} selected={filters.ano}
+                   allLabel="Todos os anos" unit={['ano', 'anos']}
+                   onChange={(next) => updateFilter('ano', next)} />
       <button type="button" onClick={clearFilters}>Limpar filtros</button>
     </section>
     <section className="costs-kpis" aria-label="Indicadores de custos">

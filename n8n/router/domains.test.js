@@ -128,6 +128,27 @@ test('custo de equipamento é recusado mesmo sem marcação do modelo', () => {
   assert.equal(category.unsupported_filter, 'categoria');
 });
 
+test('acompanhamento de ativos preserva equipamento, loja e capacidade', () => {
+  // Antes, o estado de ativos salvava 9 colunas e filtros como tipo de
+  // equipamento e código de loja nao sobreviviam: "e no salao de venda?" depois
+  // de "quantos extintores na loja 4006?" respondia por todo incendio em
+  // qualquer loja, citando menos filtros do que a pergunta anterior.
+  const route = { domain: 'ativos', sessionId: 's', accessToken: 'token', followUpHint: true,
+    estadoPreservado: { domain: 'ativos', asset_type: '["fire_safety"]', equipment_type: 'Extintor',
+      store_code: '4006', brand: 'Marca X', capacity_btu_min: '18000', query_shape: 'count' } };
+  const query = runCode('Mesclar Consulta de Ativos',
+    { output: { follow_up: true, query_shape: 'count', location: 'salão de venda', clear_fields: [] } },
+    { 'Roteamento da Consulta': route });
+
+  assert.deepEqual(query.asset_types, ['fire_safety']);
+  assert.equal(query.equipment_type, 'Extintor');
+  assert.equal(query.store_code, '4006');
+  assert.equal(query.brand, 'Marca X');
+  assert.equal(query.location, 'salão de venda');
+  // A coluna e texto; a API espera numero.
+  assert.equal(query.capacity_btu_min, 18000);
+});
+
 test('resposta desconhecida mostra os quatro assuntos', () => {
   const output = runCode('Responder Assunto Desconhecido', {}, {}).output;
   for (const label of ['corretivos', 'preventivos', 'ativos', 'custos']) {

@@ -50,7 +50,9 @@ O roteamento usa dois eixos — entidade (custo, chamado, ativo) e qualificador 
 
 Ao trocar de domínio, só as dimensões compartilhadas sobrevivem (praça, loja, período, forma da consulta): um fornecedor de chamado não contamina um ranking de custo.
 
-**Limitação do acompanhamento de ativos:** a linha de estado guarda `asset_type`, `location`, `praca`, `store_name` e a forma da consulta. Filtros como tipo de equipamento, código de loja, marca, capacidade e vencimento não têm coluna na tabela e por isso não sobrevivem ao turno seguinte — um acompanhamento mantém o tipo de ativo e o local, mas pode responder mais amplo que a pergunta anterior.
+**Acompanhamento de ativos:** a linha de estado guarda tipo de ativo, local, praça, loja, status, tipo de equipamento, código de loja, marca, código do ativo, BPCS, SAP, capacidade mínima e máxima em BTU, além da forma da consulta. `asset_type` é persistido como JSON e as capacidades voltam convertidas para número, porque as colunas do `dataTable` são texto e a API valida inteiro.
+
+O único filtro que **não** sobrevive ao turno seguinte é `due_before`, de vencimento de extintor e troca de filtro de água: não há coluna para ele. Um acompanhamento depois de "quais extintores estão vencidos?" perde o recorte de vencimento e responde por todos. Criar a coluna `due_before` na interface do n8n e acrescentá-la a `SALVAR_ATIVOS_VALORES` fecha isso.
 
 ## Atualização do workflow
 

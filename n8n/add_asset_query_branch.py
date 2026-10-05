@@ -208,13 +208,34 @@ SALVAR_ATIVOS_VALORES = {
     "store_name": "={{ $json.store_name }}",
     "location": "={{ $json.location }}",
     "asset_type": "={{ JSON.stringify($json.asset_types || []) }}",
+    # Sem estas oito, um acompanhamento perdia "extintor" e "loja 4006" e
+    # respondia mais amplo do que a pergunta anterior, citando menos filtros.
+    # status ja tinha coluna desde o inicio e so nao estava mapeado aqui.
+    "status": "={{ $json.status }}",
+    "equipment_type": "={{ $json.equipment_type }}",
+    "store_code": "={{ $json.store_code }}",
+    "brand": "={{ $json.brand }}",
+    "asset_code": "={{ $json.asset_code }}",
+    "bpcs_number": "={{ $json.bpcs_number }}",
+    "sap_number": "={{ $json.sap_number }}",
+    "capacity_btu_min": "={{ $json.capacity_btu_min }}",
+    "capacity_btu_max": "={{ $json.capacity_btu_max }}",
 }
 
-# Reidrata asset_types a partir da coluna de texto antes do merge usar previous.
+# Reidrata o estado antes do merge usar previous: as colunas do dataTable sao
+# texto, mas asset_types e um array e as capacidades em BTU sao numeros que a
+# API valida como inteiro.
 ATIVOS_PARSE_TIPOS = """
 if (previous && typeof previous.asset_type === 'string' && previous.asset_type) {
   try { previous.asset_types = JSON.parse(previous.asset_type); }
   catch (erro) { previous.asset_types = []; }
+}
+if (previous) {
+  for (const campo of ['capacity_btu_min', 'capacity_btu_max']) {
+    if (previous[campo] === null || previous[campo] === undefined || previous[campo] === '') continue;
+    const numero = Number(previous[campo]);
+    previous[campo] = Number.isFinite(numero) ? numero : null;
+  }
 }
 """
 

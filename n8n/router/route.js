@@ -9,7 +9,9 @@
 // nem como exemplo em comentário: o teste de contrato procura o texto literal.
 
 const ENTIDADES = {
-  custo: /\b(custos?|gastos?|gastamos|gastou|gastar|despesas?)\b/,
+  // Substantivo e verbo: a lista original tinha "custo" e "gastou" mas nao
+  // "custou", e "Quanto custou o ar-condicionado?" caia no inventario.
+  custo: /\b(custos?|cust(?:a|am|ou|aram|ar|ando)|gastos?|gast(?:a|am|ou|aram|ar|ando|amos)|despesas?)\b/,
   chamado: /\b(chamados?|tickets?|ordens? de servico|solicitacoes?|atendimentos?)\b/,
   ativo: /\b(ativos?|equipamentos?|inventario|climatizacao|climatizadores?|ar(?:es)?[ -]?condicionad[oa]s?|maquinas? de ar|splits?|extintores?|incendio|purificadores?|gelagua|bebedouros?|filtros? de agua|btus?)\b/,
 };

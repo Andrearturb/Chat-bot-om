@@ -21,6 +21,17 @@ test('custo vence ativo e o qualificador vira filtro de conta razão', () => {
   assert.equal(rotear('qual loja teve o maior custo de manutenção?').contaRazao, null);
 });
 
+test('verbo custar conta como entidade de custo', () => {
+  // "Quanto custou o ar-condicionado?" respondia "180 ativos de climatização":
+  // a lista tinha o substantivo custo e o verbo gastar, mas nao custar, e o
+  // marcador de ativo vencia. Pergunta de dinheiro nao se responde com
+  // contagem de inventario.
+  assert.equal(rotear('Quanto custou o ar-condicionado?').domain, 'custos');
+  assert.equal(rotear('quanto custa a manutenção da loja 4006?').domain, 'custos');
+  assert.equal(rotear('quanto custaram os extintores?').domain, 'custos');
+  assert.equal(rotear('quanto vai custar trocar os filtros?').domain, 'custos');
+});
+
 test('chamado vence ativo', () => {
   // Pergunta de chamado filtrada por categoria, não consulta de inventário.
   assert.equal(rotear('quantos chamados de ar condicionado?').domain, 'chamados_corretiva');

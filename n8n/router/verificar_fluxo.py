@@ -53,9 +53,15 @@ for exigido in ("chamados_preventiva", "allowedDomains", "estadoPreservado",
 if "module.exports" in js:
     falhas.append("module.exports vazou para o jsCode")
 
-for nome, esperado in (("Acesso Negado?", "sem_acesso"),
-                       ("Assunto Desconhecido?", "desconhecido"),
-                       ("Consulta de Ativos?", "ativos")):
+CONDICOES = [
+    ("Acesso Negado?", "sem_acesso"),
+    ("Assunto Desconhecido?", "desconhecido"),
+    ("Consulta de Ativos?", "ativos"),
+    # A partir do marco 2; opcionais para o verificador servir aos dois.
+    ("Consulta de Custos?", "custos"),
+    ("Consulta de Preventivas?", "chamados_preventiva"),
+]
+for nome, esperado in [(n, v) for n, v in CONDICOES if n in nos or n.endswith(("Negado?", "Desconhecido?", "Ativos?"))]:
     no = nos.get(nome)
     if not no:
         falhas.append(f"falta o no {nome}")
@@ -73,18 +79,39 @@ if "Responder Assunto Desconhecido" not in nos:
     falhas.append("falta o no Responder Assunto Desconhecido: a rota desconhecida "
                   "cairia no ramo de chamados e seria respondida como corretiva")
 
-# Encadeamento dos tres IF, na ordem: acesso, assunto, dominio.
+# Cabeca fixa do fluxo: estado, roteador, acesso, assunto.
 ESPERADO = {
     "When chat message received": ["Buscar Estado da Conversa"],
     "Buscar Estado da Conversa": ["Roteamento da Consulta"],
     "Roteamento da Consulta": ["Acesso Negado?"],
     "Acesso Negado?": ["Responder Sem Acesso", "Assunto Desconhecido?"],
-    "Assunto Desconhecido?": ["Responder Assunto Desconhecido", "Consulta de Ativos?"],
-    "Consulta de Ativos?": ["Interpretar Consulta de Ativos", "Interpretar Estado da Consulta"],
 }
 for origem, destinos in ESPERADO.items():
     if alvos(origem) != destinos:
         falhas.append(f"{origem} deveria sair para {destinos}, sai para {alvos(origem)}")
+
+# Cascata de dominio: cada IF presente trata o seu e passa o resto adiante, e o
+# ultimo cai na corretiva. A ordem e fixa, mas os IF do meio sao opcionais -
+# custos e preventiva existem a partir do marco 2. A saida falsa do ultimo IF
+# tem de ser Interpretar Estado da Consulta, nunca Buscar Estado da Conversa:
+# apontar de volta para a leitura do estado fecha o ciclo que pendura o fluxo.
+CASCATA = [
+    ("Consulta de Custos?", "Interpretar Consulta de Custos"),
+    ("Consulta de Preventivas?", "Interpretar Consulta de Preventivas"),
+    ("Consulta de Ativos?", "Interpretar Consulta de Ativos"),
+]
+presentes = [(no, ramo) for no, ramo in CASCATA if no in nos]
+if not presentes:
+    falhas.append("nenhum IF de dominio no fluxo")
+elif alvos("Assunto Desconhecido?") != ["Responder Assunto Desconhecido", presentes[0][0]]:
+    falhas.append(
+        f"Assunto Desconhecido? deveria entrar na cascata por {presentes[0][0]}, "
+        f"sai para {alvos('Assunto Desconhecido?')}"
+    )
+for indice, (no_if, ramo) in enumerate(presentes):
+    seguinte = presentes[indice + 1][0] if indice + 1 < len(presentes) else "Interpretar Estado da Consulta"
+    if alvos(no_if) != [ramo, seguinte]:
+        falhas.append(f"{no_if} deveria sair para ['{ramo}', '{seguinte}'], sai para {alvos(no_if)}")
 
 # Nenhum no pode reentrar em Buscar Estado da Conversa: ela e o primeiro no, e
 # uma segunda entrada fecha o ciclo Buscar -> Roteamento -> IF -> Buscar, que
@@ -98,7 +125,14 @@ ROTEADOR_DOMAIN = "={{ $('Roteamento da Consulta').first().json.domain }}"
 # domain tem de vir por referencia ao roteador. No Salvar, $json e a saida do
 # Mesclar, que nao carrega domain: "={{ $json.domain }}" grava vazio e o turno
 # seguinte perde o contexto por nao ter lastDomain.
-for no_salvar in ("Salvar Estado da Conversa", "Salvar Estado de Ativos"):
+SALVAR = ["Salvar Estado da Conversa", "Salvar Estado de Ativos"]
+# Cada dominio da cascata precisa do seu no de salvar, senao o acompanhamento
+# daquele dominio perde o contexto no turno seguinte.
+for no_if, no_salvar in (("Consulta de Custos?", "Salvar Estado de Custos"),
+                         ("Consulta de Preventivas?", "Salvar Estado de Preventivas")):
+    if no_if in nos:
+        SALVAR.append(no_salvar)
+for no_salvar in SALVAR:
     if no_salvar not in nos:
         falhas.append(f"falta o no {no_salvar}: sem ele o acompanhamento perde o contexto")
         continue

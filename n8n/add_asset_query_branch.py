@@ -224,7 +224,9 @@ return [{ json: { output: [
   '',
   'Posso consultar:',
   '• chamados corretivos — "quantos chamados estão abertos?"',
+  '• chamados preventivos — "quantas preventivas estão em atendimento?"',
   '• ativos — "quantos extintores tem na loja 4006?"',
+  '• custos de manutenção — "quanto foi gasto em agosto?"',
   '',
   'Reformule citando o assunto e eu busco.',
 ].join('\n') } }];

@@ -11,12 +11,15 @@ from app.api.dependencies import verificar_api_key, verificar_internal_api_key
 from app.db.session import get_db
 from app.schemas.chatbot import ChatbotQueryRequest, ChatbotQueryResponse
 from app.schemas.asset_query import AssetQueryRequest
+from app.schemas.domain_queries import CostQueryRequest, PreventiveQueryRequest
 from app.schemas.structured_query import StructuredQueryRequest, StructuredQueryResponse
 from app.services.chatbot_query import ChatbotQueryError, executar_consulta_chatbot
 from app.services.qa_trace import get_qa_trace
 from app.services.structured_query import StructuredQueryError, execute_structured_query
 from app.services.asset_query import execute_asset_query
 from app.services.asset_query_access import verify_query_token
+from app.services.cost_query import execute_cost_query
+from app.services.preventive_query import execute_preventive_query
 
 router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
 
@@ -60,3 +63,17 @@ def consultar_ativos(payload: AssetQueryRequest, db: Session = Depends(get_db)):
     if not verify_query_token(payload.access_token, payload.session_id, "ativos"):
         raise HTTPException(status_code=403, detail="Consulta de ativos não autorizada.")
     return execute_asset_query(db, payload)
+
+
+@router.post("/preventive-query", dependencies=[Depends(verificar_internal_api_key)])
+def consultar_preventivas(payload: PreventiveQueryRequest, db: Session = Depends(get_db)):
+    if not verify_query_token(payload.access_token, payload.session_id, "chamados_preventiva"):
+        raise HTTPException(status_code=403, detail="Consulta de preventivas não autorizada.")
+    return execute_preventive_query(db, payload)
+
+
+@router.post("/costs-query", dependencies=[Depends(verificar_internal_api_key)])
+def consultar_custos(payload: CostQueryRequest, db: Session = Depends(get_db)):
+    if not verify_query_token(payload.access_token, payload.session_id, "custos"):
+        raise HTTPException(status_code=403, detail="Consulta de custos não autorizada.")
+    return execute_cost_query(db, payload)

@@ -15,8 +15,8 @@
     "test:assets": "node --test src/features/assets/assets.test.js",
     "test:bff": "node --test src/lib/apiClient.test.js",
     "test:users": "node --test src/features/users/users.test.js",
-    "test:router": "node --test /n8n/router/route.test.js /n8n/router/contrato.test.js",
-    "test": "node --test src/lib/apiClient.test.js src/lib/conversations.test.js src/features/auth/authErrors.test.js src/features/audit/audit.test.js src/features/indicators/indicators.test.js src/features/indicators/corrective/corrective.test.js src/features/indicators/preventive/preventive.test.js src/features/indicators/costs/costs.test.js src/features/assets/assets.test.js src/features/assets/filters.test.js /n8n/router/route.test.js /n8n/router/contrato.test.js"
+    "test:router": "node --test /n8n/router/route.test.js /n8n/router/contrato.test.js /n8n/router/domains.test.js",
+    "test": "node --test src/lib/apiClient.test.js src/lib/conversations.test.js src/features/auth/authErrors.test.js src/features/audit/audit.test.js src/features/indicators/indicators.test.js src/features/indicators/corrective/corrective.test.js src/features/indicators/preventive/preventive.test.js src/features/indicators/costs/costs.test.js src/features/assets/assets.test.js src/features/assets/filters.test.js /n8n/router/route.test.js /n8n/router/contrato.test.js /n8n/router/domains.test.js"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

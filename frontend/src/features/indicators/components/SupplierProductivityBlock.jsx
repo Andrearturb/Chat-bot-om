@@ -83,7 +83,8 @@ export const SupplierProductivityBlock = ({ suppliers }) => {
         <div className="supplier-productivity__table-wrap">
           <p className="supplier-productivity__col-title">Tabela executiva</p>
           <p className="muted supplier-productivity__col-subtitle">Leitura rápida por fornecedor</p>
-          <div className="table-wrap" style={{ marginTop: 12 }}>
+          <p className="performance-scroll-hint">Deslize a tabela para ver todas as colunas.</p>
+          <div className="table-wrap supplier-productivity__table-scroll" style={{ marginTop: 12 }} role="region" aria-label="Tabela de produtividade dos fornecedores" tabIndex={0}>
             <table>
               <thead>
                 <tr>
@@ -95,7 +96,7 @@ export const SupplierProductivityBlock = ({ suppliers }) => {
               </thead>
               <tbody>
                 {suppliers.map((row) => (<tr key={row.name}>
-                    <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td title={row.name} style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {row.name}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 700 }}>{row.concluded}</td>
@@ -139,7 +140,7 @@ export const SupplierProductivityBlock = ({ suppliers }) => {
 
               {/* reference lines forming quadrants */}
               <ReferenceLine x={avgConcluded} stroke="rgba(8,43,91,0.28)" strokeDasharray="4 4" label={{ value: 'média', position: 'top', fontSize: 10, fill: '#5b6b7a' }}/>
-              <ReferenceLine y={avgDays} stroke="rgba(12,116,112,0.28)" strokeDasharray="4 4" label={{ value: 'média', position: 'right', fontSize: 10, fill: '#5b6b7a' }}/>
+              <ReferenceLine y={avgDays} stroke="rgba(12,116,112,0.28)" strokeDasharray="4 4" label={{ value: 'média', position: 'insideTopRight', fontSize: 10, fill: '#5b6b7a' }}/>
 
               <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3' }}/>
 

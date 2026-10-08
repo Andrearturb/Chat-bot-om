@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { fetchIndicatorsData } from './api'
+import { fetchIndicatorsData, syncIndicatorsData } from './api'
 import { FilterBar } from './components/FilterBar'
 import { KpiCard } from './components/KpiCard'
 import { ChartsGrid } from './components/ChartsGrid'
 import { SupplierProductivityBlock } from './components/SupplierProductivityBlock'
 import { AnalystProductivityBlock } from './components/AnalystProductivityBlock'
 import IndicatorDashboardHeader from './components/IndicatorDashboardHeader'
+import IndicatorLoadingState from './components/IndicatorLoadingState'
 import IndicatorPlaceholder from './components/IndicatorPlaceholder'
 import IndicatorsHome from './home/IndicatorsHome'
 import CorrectivePanel from './corrective/CorrectivePanel'
@@ -23,6 +24,7 @@ import {
 } from './utils/dashboardData'
 import indicatorsMascot from '../../assets/gentileza-indicadores.webp'
 import './indicators.css'
+import './performance.css'
 
 const PERFORMANCE_STATE_KEY = 'gentileza-indicators-performance-v1'
 const INDICATORS_SCROLL_KEY = 'gentileza-indicators-scroll-v1'
@@ -137,7 +139,7 @@ function HeroMetaCard({ icon, label, value, children, action }) {
   )
 }
 
-function CentralHero({ records, uploadData, loading, refreshing, onRefresh }) {
+function CentralHero({ records, uploadData, loading, refreshing, onRefresh, canSyncData }) {
   const period = loading && records.length === 0 ? 'Carregando...' : findDateRange(records)
   const updatedAt = loading && !uploadData ? 'Carregando...' : formatDateTime(uploadData)
   const base = loading && records.length === 0 ? 'Carregando...' : `${records.length.toLocaleString('pt-BR')} chamados`
@@ -179,10 +181,10 @@ function CentralHero({ records, uploadData, loading, refreshing, onRefresh }) {
         <div className="indicators-hero-meta">
           <HeroMetaCard icon="calendar" label="Período disponível" value={period} />
           <HeroMetaCard icon="clock" label="Última atualização" value={updatedAt} />
-          <HeroMetaCard icon="database" label="Base atual" value={base} action>
-            <button type="button" onClick={onRefresh} disabled={refreshing || loading}>
-              {refreshing ? 'Atualizando...' : 'Atualizar dados'}
-            </button>
+          <HeroMetaCard icon="database" label="Base atual" value={base} action={canSyncData}>
+            {canSyncData && <button type="button" onClick={onRefresh} disabled={refreshing || loading}>
+              {refreshing ? 'Sincronizando...' : 'Atualizar dados'}
+            </button>}
           </HeroMetaCard>
         </div>
       </div>
@@ -204,20 +206,20 @@ function ErrorState({ error, onRetry }) {
   )
 }
 
-function EmptyState({ onRetry }) {
+function EmptyState({ onBack }) {
   return (
     <section className="indicators-state">
       <span className="indicators-state__icon" aria-hidden="true">0</span>
       <div>
         <h2>Nenhum chamado disponível</h2>
         <p>O backend está acessível, mas a base ainda não possui registros para exibir.</p>
-        <button type="button" onClick={onRetry}>Atualizar dados</button>
+        <button type="button" onClick={onBack}>Voltar à Central de Indicadores</button>
       </div>
     </section>
   )
 }
 
-export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorChange = () => {} }) {
+export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorChange = () => {}, canSyncData = false }) {
   const pageRef = useRef(null)
   const restoredState = useMemo(() => loadPerformanceState(), [])
   const [records, setRecords] = useState([])
@@ -227,6 +229,8 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
+  const [syncNotice, setSyncNotice] = useState(null)
+  const syncInProgress = useRef(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -305,7 +309,6 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
   }, [activeIndicator, loading, records.length])
 
   const refresh = async () => {
-    setRefreshing(true)
     setError(null)
     try {
       const result = await fetchIndicatorsData()
@@ -313,7 +316,25 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
       setUploadData(result.uploadData)
     } catch (loadError) {
       setError(loadError)
+    }
+  }
+
+  const syncData = async () => {
+    if (!canSyncData || syncInProgress.current) return
+    syncInProgress.current = true
+    setRefreshing(true)
+    setSyncNotice(null)
+    try {
+      const result = await syncIndicatorsData()
+      const unsuccessful = result.sources.filter((source) => source.status !== 'success')
+      setSyncNotice(unsuccessful.length
+        ? `Atualização incompleta: ${unsuccessful.map((source) => `${source.label} (${source.status === 'empty' ? 'origem sem registros; base preservada' : 'falha na sincronização'})`).join(', ')}. Tente atualizar novamente.`
+        : 'Dados atualizados da Tape: cadastro de lojas, Corretivos e Preventivos. Custos seguem a última importação do SAP.')
+      await refresh()
+    } catch (syncError) {
+      setSyncNotice(syncError.message || 'Não foi possível sincronizar os dados da Tape.')
     } finally {
+      syncInProgress.current = false
       setRefreshing(false)
     }
   }
@@ -366,10 +387,13 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
           uploadData={uploadData}
           loading={loading}
           refreshing={refreshing}
-          onRefresh={refresh}
+          onRefresh={syncData}
+          canSyncData={canSyncData}
         />
         <main className="indicators-content indicators-content--home">
-          <IndicatorsHome onOpenIndicator={onIndicatorChange} error={error} onRetry={refresh} />
+          {refreshing && <div className="indicators-home__warning" role="status">Buscando os dados mais recentes da Tape. A sincronização pode levar alguns minutos.</div>}
+          {!refreshing && syncNotice && <div className="indicators-home__warning" role="status">{syncNotice}</div>}
+          <IndicatorsHome onOpenIndicator={onIndicatorChange} error={error} onRetry={canSyncData ? syncData : refresh} />
         </main>
       </div>
     )
@@ -382,20 +406,15 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
       return <IndicatorPlaceholder type={activeIndicator} />
     }
 
-    if (activeIndicator === 'preventive') return <PreventivePanel />
-    if (activeIndicator === 'financial') return <CostsPanel />
+    if (activeIndicator === 'preventive') return <PreventivePanel onBack={() => onIndicatorChange('home')} />
+    if (activeIndicator === 'financial') return <CostsPanel onBack={() => onIndicatorChange('home')} />
 
     if (loading) {
-      return (
-        <section className="indicators-state" aria-live="polite">
-          <span className="indicators-loader" aria-hidden="true" />
-          <div><h2>Carregando indicador</h2><p>Consultando os dados do Gentileza...</p></div>
-        </section>
-      )
+      return <IndicatorLoadingState />
     }
 
     if (error && records.length === 0) return <ErrorState error={error} onRetry={refresh} />
-    if (records.length === 0) return <EmptyState onRetry={refresh} />
+    if (records.length === 0) return <EmptyState onBack={() => onIndicatorChange('home')} />
 
     if (activeIndicator === 'corrective') {
       return (
@@ -406,7 +425,7 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
               <button type="button" onClick={refresh}>Tentar novamente</button>
             </div>
           )}
-          <CorrectivePanel records={records} />
+          <CorrectivePanel records={records} uploadData={uploadData} />
         </>
       )
     }
@@ -420,13 +439,16 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
           </div>
         )}
 
+        <div className="performance-toolbar">
+          <span>Última atualização: {uploadData ? new Date(uploadData).toLocaleString('pt-BR') : 'Não disponível'}</span>
+        </div>
         <FilterBar records={records} filters={filters} onChange={setFilters} />
 
         <section className="kpi-section">
           <div className="kpi-section__toolbar">
-            <span className="kpi-section__legend">Filtrado / Global a partir de</span>
+            <span className="kpi-section__legend">Comparativo: período filtrado e global</span>
             <div className="global-date-filter">
-              <label htmlFor="global-start-date" className="global-date-filter__label">A partir de</label>
+              <label htmlFor="global-start-date" className="global-date-filter__label">Global a partir de</label>
               <input
                 id="global-start-date"
                 type="date"
@@ -438,12 +460,12 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
           </div>
 
           <div className="kpi-grid">
-            <KpiCard label="Total de chamados" value={metrics.total.toString()} globalValue={globalMetrics.total.toString()} helper={`Filtrado / Global desde ${globalStartLabel}`} progress={100} tone="cyan" />
-            <KpiCard label="Backlog" value={metrics.backlog.toString()} globalValue={globalMetrics.backlog.toString()} helper="Chamados em espera" progress={metrics.total ? (metrics.backlog / metrics.total) * 100 : 0} tone="amber" />
-            <KpiCard label="Em andamento" value={metrics.inProgress.toString()} globalValue={globalMetrics.inProgress.toString()} helper="Itens ainda em atendimento" progress={metrics.total ? (metrics.inProgress / metrics.total) * 100 : 0} tone="amber" />
-            <KpiCard label="Concluídos" value={metrics.concluded.toString()} globalValue={globalMetrics.concluded.toString()} helper="Chamados concluídos" progress={metrics.completionRate} tone="teal" />
-            <KpiCard label="Rejeitados" value={metrics.rejected.toString()} globalValue={globalMetrics.rejected.toString()} helper="Chamados não aprovados" progress={metrics.total ? (metrics.rejected / metrics.total) * 100 : 0} tone="rose" />
-            <KpiCard label="Tempo médio" value={`${metrics.avgSlaDays.toFixed(1)} / ${globalMetrics.avgSlaDays.toFixed(1)} dias`} helper="Entre abertura e conclusão" progress={Math.min(100, metrics.avgSlaDays * 10)} tone="cyan" />
+            <KpiCard label="Total de chamados" value={metrics.total.toLocaleString('pt-BR')} globalValue={globalMetrics.total.toLocaleString('pt-BR')} globalLabel={`Global desde ${globalStartLabel}`} helper="Chamados na base selecionada" progress={100} tone="cyan" />
+            <KpiCard label="Backlog" value={metrics.backlog.toLocaleString('pt-BR')} globalValue={globalMetrics.backlog.toLocaleString('pt-BR')} globalLabel={`Global desde ${globalStartLabel}`} helper="Chamados em espera" progress={metrics.total ? (metrics.backlog / metrics.total) * 100 : 0} tone="amber" />
+            <KpiCard label="Em andamento" value={metrics.inProgress.toLocaleString('pt-BR')} globalValue={globalMetrics.inProgress.toLocaleString('pt-BR')} globalLabel={`Global desde ${globalStartLabel}`} helper="Itens ainda em atendimento" progress={metrics.total ? (metrics.inProgress / metrics.total) * 100 : 0} tone="amber" />
+            <KpiCard label="Concluídos" value={metrics.concluded.toLocaleString('pt-BR')} globalValue={globalMetrics.concluded.toLocaleString('pt-BR')} globalLabel={`Global desde ${globalStartLabel}`} helper="Chamados concluídos" progress={metrics.completionRate} tone="teal" />
+            <KpiCard label="Rejeitados" value={metrics.rejected.toLocaleString('pt-BR')} globalValue={globalMetrics.rejected.toLocaleString('pt-BR')} globalLabel={`Global desde ${globalStartLabel}`} helper="Chamados não aprovados" progress={metrics.total ? (metrics.rejected / metrics.total) * 100 : 0} tone="rose" />
+            <KpiCard label="Tempo médio" value={metrics.avgSlaDays.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} globalValue={globalMetrics.avgSlaDays.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} unit="dias" globalLabel={`Global desde ${globalStartLabel}`} helper="Entre abertura e conclusão" progress={Math.min(100, metrics.avgSlaDays * 10)} tone="cyan" />
           </div>
         </section>
 
@@ -455,7 +477,7 @@ export default function IndicatorsPage({ activeIndicator = 'home', onIndicatorCh
   })()
 
   return (
-    <div className="indicators-page indicators-page--dashboard" ref={pageRef}>
+    <div className={`indicators-page indicators-page--dashboard${activeIndicator === 'performance' ? ' indicators-page--performance' : ''}`} ref={pageRef}>
       <IndicatorDashboardHeader
         activeIndicator={activeIndicator}
         onChange={onIndicatorChange}

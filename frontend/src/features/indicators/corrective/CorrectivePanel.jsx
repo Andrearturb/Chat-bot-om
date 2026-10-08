@@ -40,7 +40,7 @@ function saveFilters(filters) {
   }
 }
 
-export default function CorrectivePanel({ records }) {
+export default function CorrectivePanel({ records, uploadData }) {
   const [filters, setFilters] = useState(loadFilters)
   const [detail, setDetail] = useState(null)
 
@@ -78,8 +78,13 @@ export default function CorrectivePanel({ records }) {
     saveFilters(defaultCorrectiveFilters)
   }
 
+  const updatedAt = uploadData ? new Date(uploadData).toLocaleString('pt-BR') : 'Não disponível'
+
   return (
     <div className="corrective-panel">
+      <div className="corrective-toolbar">
+        <span>Última atualização: {updatedAt}</span>
+      </div>
       <CorrectiveFilters filters={filters} options={options} onChange={updateFilter} onClear={clearFilters} />
       <CorrectiveKpis kpis={kpis} counters={counters} records={filtered} onOpenDetail={setDetail} />
       <CorrectiveCharts analystSeries={analystSeries} monthlySeries={monthlySeries} />

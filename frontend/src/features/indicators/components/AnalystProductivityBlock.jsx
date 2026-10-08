@@ -49,7 +49,8 @@ export const AnalystProductivityBlock = ({ analysts }) => {
         </div>
       </div>
 
-      <div className="table-wrap">
+      <p className="performance-scroll-hint">Deslize a tabela para ver todas as colunas.</p>
+      <div className="table-wrap" role="region" aria-label="Tabela de produtividade dos analistas" tabIndex={0}>
         <table>
           <thead>
             <tr>

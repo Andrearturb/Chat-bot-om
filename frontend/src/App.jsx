@@ -272,7 +272,7 @@ function AppShell() {
             <div className="permission-denied"><p>Você não tem permissão para usar o assistente.</p></div>
           ) : section === 'indicators' && canSeeIndicators ? (
             <Suspense fallback={<div className="permission-denied" role="status">Carregando indicadores...</div>}>
-              <IndicatorsPage activeIndicator={activeIndicator} onIndicatorChange={setActiveIndicator} />
+              <IndicatorsPage activeIndicator={activeIndicator} onIndicatorChange={setActiveIndicator} canSyncData={hasPermission('sync.tape')} />
             </Suspense>
           ) : section === 'assets' && canSeeAssets ? (
             <Suspense fallback={<div className="permission-denied" role="status">Carregando ativos...</div>}>

@@ -4,6 +4,7 @@ import {
 } from 'recharts'
 import { MultiSelect } from '../../../components/MultiSelect'
 import { fetchCostIndicatorsData } from '../api'
+import IndicatorLoadingState from '../components/IndicatorLoadingState'
 import { migrateFilterValues } from '../utils/filterState.js'
 import {
   buildCostMonthlySeries, costFilterOptions, costKpis, costPredicates, costRank, costRankByType,
@@ -119,11 +120,10 @@ function MonthlyProgressionChart({ series }) {
   </article>
 }
 
-export default function CostsPanel() {
+export default function CostsPanel({ onBack }) {
   const [rows, setRows] = useState([])
   const [uploadData, setUploadData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [filters, setFilters] = useState(initialFilters)
   const [detail, setDetail] = useState(null)
@@ -138,10 +138,10 @@ export default function CostsPanel() {
   }, [])
 
   async function refresh() {
-    setRefreshing(true); setError(null)
+    setLoading(true); setError(null)
     try { const data = await fetchCostIndicatorsData(); setRows(data.records); setUploadData(data.uploadData) }
     catch (cause) { setError(cause) }
-    finally { setRefreshing(false) }
+    finally { setLoading(false) }
   }
 
   function updateFilter(key, value) {
@@ -163,16 +163,15 @@ export default function CostsPanel() {
   const monthlySeries = useMemo(() => buildCostMonthlySeries(filtered), [filtered])
   const showDetail = (title, selected) => setDetail({ title, rows: selected })
 
-  if (loading) return <section className="indicators-state">Carregando custos de manutenção...</section>
+  if (loading) return <IndicatorLoadingState title="Carregando custos de manutenção" />
   if (error && rows.length === 0) return <section className="indicators-state indicators-state--error" role="alert"><div>
     <h2>Não foi possível carregar os custos</h2><p>{error.message}</p><button type="button" onClick={refresh}>Tentar novamente</button>
   </div></section>
   if (rows.length === 0) return <section className="indicators-state"><div><h2>Nenhum custo importado</h2>
-    <p>Importe a extração FBL3N para preencher este painel.</p><button type="button" onClick={refresh}>Atualizar dados</button></div></section>
+    <p>Importe a extração FBL3N para preencher este painel.</p><button type="button" onClick={onBack}>Voltar à Central de Indicadores</button></div></section>
 
   return <div className="costs-panel">
-    <div className="costs-toolbar"><span>Última atualização: {uploadData ? new Date(uploadData).toLocaleString('pt-BR') : 'Não disponível'}</span>
-      <button type="button" onClick={refresh} disabled={refreshing}>{refreshing ? 'Atualizando...' : 'Atualizar dados'}</button></div>
+    <div className="costs-toolbar"><span>Última atualização: {uploadData ? new Date(uploadData).toLocaleString('pt-BR') : 'Não disponível'}</span></div>
     {error && <div className="indicators-inline-warning" role="status">A atualização falhou. Os dados já carregados continuam visíveis.</div>}
     <section className="costs-filters" aria-label="Filtros de custos">
       <MultiSelect label="Tipo" options={toChoices(options.tipo, TIPO_LABEL)} selected={filters.tipo}

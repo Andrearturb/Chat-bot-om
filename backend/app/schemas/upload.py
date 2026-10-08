@@ -6,6 +6,7 @@ a sincronização com a Tape API.
 """
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -26,3 +27,14 @@ class UploadResponse(BaseModel):
     rejected: int = 0
     upload_data: datetime | None
     source_file_name: str | None
+
+
+class TapeSourceSyncResponse(BaseModel):
+    app_id: int
+    label: str
+    status: Literal['success', 'empty', 'error']
+    result: UploadResponse | None = None
+
+
+class CentralSyncResponse(BaseModel):
+    sources: list[TapeSourceSyncResponse]

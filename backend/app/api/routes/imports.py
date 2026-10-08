@@ -7,16 +7,54 @@ import logging
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_permission, verificar_api_key
+from app.api.dependencies import get_current_user, require_permission, verificar_api_key, verify_csrf
 from app.db.session import get_db
 from app.models.auth import AppUser
-from app.schemas.upload import UploadResponse
+from app.schemas.upload import CentralSyncResponse, TapeSourceSyncResponse, UploadResponse
+from app.integrations.tape_raw import APP_DCENTROS, APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS
 from app.services.auth import record_audit
 from app.services.importer import importar_servicos_tape
 from app.services.maintenance_costs_importer import import_maintenance_costs
+from app.services.tape_sync_guard import TapeSyncBusyError, tape_sync_guard
 
 router = APIRouter(prefix="/imports", tags=["Imports"])
 logger = logging.getLogger(__name__)
+
+
+@router.post(
+    '/tape/central', response_model=CentralSyncResponse,
+    dependencies=[Depends(require_permission('sync.tape')), Depends(verify_csrf)],
+)
+def sincronizar_central(
+    db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
+) -> CentralSyncResponse:
+    """Browser BFF: session + CSRF; credentials for Tape stay on the server."""
+    sources = []
+    try:
+        with tape_sync_guard():
+            for app_id, label in (
+                (APP_DCENTROS, 'Cadastro de lojas'),
+                (APP_MANUTENCOES_CORRETIVAS, 'Corretivos'),
+                (APP_MANUTENCOES_PREVENTIVAS, 'Preventivos'),
+            ):
+                try:
+                    result = UploadResponse(**importar_servicos_tape(db=db, app_id=app_id))
+                    source_status = 'success' if result.total_rows else 'empty'
+                    record_audit(db, user_id=user.id, action='SYNC_TAPE', entity_type='upload',
+                                 new_values={'app_id': app_id, 'total_rows': result.total_rows,
+                                             'inserted': result.inserted, 'updated': result.updated,
+                                             'status': source_status})
+                    db.commit()
+                    sources.append(TapeSourceSyncResponse(app_id=app_id, label=label,
+                                                         status=source_status, result=result))
+                except Exception:
+                    db.rollback()
+                    logger.exception('Falha na sincronização manual da Tape app %s', app_id)
+                    sources.append(TapeSourceSyncResponse(app_id=app_id, label=label, status='error'))
+    except TapeSyncBusyError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return CentralSyncResponse(sources=sources)
 
 
 @router.post(
@@ -61,11 +99,14 @@ def sincronizar_tape(
     limit: int = Query(100, ge=1, le=500),
 ) -> UploadResponse:
     try:
-        resultado = importar_servicos_tape(db=db, app_id=app_id, limit=limit)
-        record_audit(db, user_id=user.id, action="SYNC_TAPE",
-                     entity_type="upload", new_values={"total_rows": resultado.get("total_rows")})
-        db.commit()
-        return UploadResponse(**resultado)
+        with tape_sync_guard():
+            resultado = importar_servicos_tape(db=db, app_id=app_id, limit=limit)
+            record_audit(db, user_id=user.id, action="SYNC_TAPE",
+                         entity_type="upload", new_values={"total_rows": resultado.get("total_rows")})
+            db.commit()
+            return UploadResponse(**resultado)
+    except TapeSyncBusyError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
     except Exception as error:

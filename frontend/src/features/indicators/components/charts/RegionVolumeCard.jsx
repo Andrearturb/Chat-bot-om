@@ -33,7 +33,7 @@ const RegionTooltip = ({ active, payload, }) => {
 export const RegionVolumeCard = ({ regions }) => {
     const totalVolume = regions.reduce((sum, r) => sum + r.volume, 0);
     const totalConcluded = regions.reduce((sum, r) => sum + r.concluded, 0);
-    return (<article className="chart-card chart-card--wide">
+    return (<article className="chart-card chart-card--wide performance-region-card">
       <div className="chart-header">
         <div>
           <p className="indicators-eyebrow">Região</p>
@@ -41,6 +41,8 @@ export const RegionVolumeCard = ({ regions }) => {
         </div>
       </div>
 
+      <div className="performance-region-scroll" role="region" aria-label="Gráfico por praça, com rolagem horizontal quando necessário" tabIndex={0}>
+      <div className="performance-region-plot" style={{ minWidth: Math.max(280, regions.length * 120 + 64) }}>
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={sortRegionsByVolume(regions)} barCategoryGap="26%" barGap={10} margin={{ top: 10, right: 18, bottom: 34, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(5,56,98,0.08)" vertical={false}/>
@@ -72,6 +74,8 @@ export const RegionVolumeCard = ({ regions }) => {
           <Bar dataKey="concluded" name="Concluídos" fill="#0C7A75" radius={[8, 8, 0, 0]}/>
         </BarChart>
       </ResponsiveContainer>
+      </div>
+      </div>
 
       <div className="region-totals">
         <div className="region-totals__item region-totals__item--volume">

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchPreventiveIndicatorsData } from '../api'
+import IndicatorLoadingState from '../components/IndicatorLoadingState'
 import CorrectiveFilters from '../corrective/components/CorrectiveFilters'
 import CorrectiveKpis from '../corrective/components/CorrectiveKpis'
 import CorrectiveCharts from '../corrective/components/CorrectiveCharts'
@@ -33,11 +34,10 @@ function saveFilters(filters) {
   }
 }
 
-export default function PreventivePanel() {
+export default function PreventivePanel({ onBack }) {
   const [records, setRecords] = useState([])
   const [uploadData, setUploadData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [filters, setFilters] = useState(loadFilters)
   const [detail, setDetail] = useState(null)
@@ -52,7 +52,7 @@ export default function PreventivePanel() {
   }, [])
 
   async function refresh() {
-    setRefreshing(true)
+    setLoading(true)
     setError(null)
     try {
       const data = await fetchPreventiveIndicatorsData()
@@ -61,7 +61,7 @@ export default function PreventivePanel() {
     } catch (cause) {
       setError(cause)
     } finally {
-      setRefreshing(false)
+      setLoading(false)
     }
   }
 
@@ -99,7 +99,7 @@ export default function PreventivePanel() {
     })
   }
 
-  if (loading) return <section className="indicators-state">Carregando chamados preventivos...</section>
+  if (loading) return <IndicatorLoadingState title="Carregando chamados preventivos" />
   if (error && records.length === 0) {
     return (
       <section className="indicators-state indicators-state--error" role="alert">
@@ -112,7 +112,7 @@ export default function PreventivePanel() {
     return (
       <section className="indicators-state"><div><h2>Nenhum chamado preventivo disponível</h2>
         <p>Sincronize o app 57532 da Tape para preencher este painel.</p>
-        <button type="button" onClick={refresh}>Atualizar dados</button></div></section>
+        <button type="button" onClick={onBack}>Voltar à Central de Indicadores</button></div></section>
     )
   }
 
@@ -121,9 +121,6 @@ export default function PreventivePanel() {
     <div className="corrective-panel">
       <div className="preventive-toolbar">
         <span>Última atualização: {updatedAt}</span>
-        <button type="button" onClick={refresh} disabled={refreshing}>
-          {refreshing ? 'Atualizando...' : 'Atualizar dados'}
-        </button>
       </div>
       {error && <div className="indicators-inline-warning" role="status">
         A última atualização falhou. Os dados carregados anteriormente continuam visíveis.

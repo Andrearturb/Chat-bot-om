@@ -1,50 +1,41 @@
-import { uniqueOptions } from '../utils/dashboardData';
-const selectClass = 'filter-select';
+import { uniqueOptions } from '../utils/dashboardData'
+
 export const FilterBar = ({ records, filters, onChange }) => {
-    const regions = uniqueOptions(records, (record) => record.region);
-    const statuses = uniqueOptions(records, (record) => record.status);
-    const categories = uniqueOptions(records, (record) => record.category);
-    const providers = uniqueOptions(records, (record) => record.provider);
-    const analysts = uniqueOptions(records, (record) => record.analyst);
-    return (<section className="filter-bar">
-      <input className="filter-search" type="search" placeholder="Buscar ticket, fornecedor, categoria ou analista" value={filters.query} onChange={(event) => onChange({ ...filters, query: event.target.value })}/>
+  const fields = [
+    { key: 'region', label: 'Praça', allLabel: 'Todas as praças', options: uniqueOptions(records, (record) => record.region) },
+    { key: 'status', label: 'Status', allLabel: 'Todos os status', options: uniqueOptions(records, (record) => record.status) },
+    { key: 'category', label: 'Categoria', allLabel: 'Todas as categorias', options: uniqueOptions(records, (record) => record.category) },
+    { key: 'provider', label: 'Fornecedor', allLabel: 'Todos os fornecedores', options: uniqueOptions(records, (record) => record.provider) },
+    { key: 'analyst', label: 'Analista', allLabel: 'Todos os analistas', options: uniqueOptions(records, (record) => record.analyst) },
+  ]
+  const updateField = (key, value) => onChange({ ...filters, [key]: value })
 
-      <select className={selectClass} value={filters.region} onChange={(event) => onChange({ ...filters, region: event.target.value })}>
-        <option value="all">Todas as praças</option>
-        {regions.map((region) => (<option key={region} value={region}>
-            {region}
-          </option>))}
-      </select>
-
-      <select className={selectClass} value={filters.status} onChange={(event) => onChange({ ...filters, status: event.target.value })}>
-        <option value="all">Todos os status</option>
-        {statuses.map((status) => (<option key={status} value={status}>
-            {status}
-          </option>))}
-      </select>
-
-      <select className={selectClass} value={filters.category} onChange={(event) => onChange({ ...filters, category: event.target.value })}>
-        <option value="all">Todas as categorias</option>
-        {categories.map((category) => (<option key={category} value={category}>
-            {category}
-          </option>))}
-      </select>
-
-      <select className={selectClass} value={filters.provider} onChange={(event) => onChange({ ...filters, provider: event.target.value })}>
-        <option value="all">Todos os fornecedores</option>
-        {providers.map((provider) => (<option key={provider} value={provider}>
-            {provider}
-          </option>))}
-      </select>
-
-      <select className={selectClass} value={filters.analyst} onChange={(event) => onChange({ ...filters, analyst: event.target.value })}>
-        <option value="all">Todos os analistas</option>
-        {analysts.map((analyst) => (<option key={analyst} value={analyst}>
-            {analyst}
-          </option>))}
-      </select>
-
-      <input className={selectClass} type="date" value={filters.startDate} onChange={(event) => onChange({ ...filters, startDate: event.target.value })}/>
-      <input className={selectClass} type="date" value={filters.endDate} onChange={(event) => onChange({ ...filters, endDate: event.target.value })}/>
-    </section>);
-};
+  return (
+    <section className="filter-bar" aria-label="Filtros de desempenho">
+      <label className="performance-filter-field performance-filter-field--search">
+        <span>Buscar chamados</span>
+        <input className="filter-search" type="search" placeholder="Ticket, fornecedor, categoria ou analista"
+          value={filters.query} onChange={(event) => updateField('query', event.target.value)} />
+      </label>
+      {fields.map(({ key, label, allLabel, options }) => (
+        <label className="performance-filter-field" key={key}>
+          <span>{label}</span>
+          <select className="filter-select" value={filters[key]} onChange={(event) => updateField(key, event.target.value)}>
+            <option value="all">{allLabel}</option>
+            {options.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </label>
+      ))}
+      <label className="performance-filter-field">
+        <span>Data inicial</span>
+        <input className="filter-select" type="date" value={filters.startDate}
+          onChange={(event) => updateField('startDate', event.target.value)} />
+      </label>
+      <label className="performance-filter-field">
+        <span>Data final</span>
+        <input className="filter-select" type="date" value={filters.endDate}
+          onChange={(event) => updateField('endDate', event.target.value)} />
+      </label>
+    </section>
+  )
+}

@@ -23,6 +23,15 @@ export async function fetchIndicatorsData({ signal } = {}) {
   }
 }
 
+export async function syncIndicatorsData() {
+  const result = await apiFetch('/imports/tape/central', { method: 'POST' })
+  if (!Array.isArray(result?.sources) || result.sources.length !== 3
+      || result.sources.some((source) => !['success', 'empty', 'error'].includes(source.status))) {
+    throw new IndicatorsApiError('Não foi possível confirmar o resultado da sincronização.', { kind: 'payload' })
+  }
+  return result
+}
+
 export async function fetchPreventiveIndicatorsData({ signal } = {}) {
   let payload
   try {

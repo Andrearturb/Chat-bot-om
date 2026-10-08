@@ -1,0 +1,280 @@
+/* Scoped to performance: other dashboards and the treemap keep their styles. */
+.indicators-page--performance .indicators-content--dashboard,
+.indicators-page--performance .indicators-content--dashboard > *,
+.indicators-page--performance .charts-grid,
+.indicators-page--performance .charts-grid > * {
+  min-width: 0;
+}
+
+.indicators-page--performance .filter-bar {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  padding: 16px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.indicators-page--performance .performance-filter-field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: var(--muted);
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.indicators-page--performance .performance-filter-field--search {
+  grid-column: 1 / -1;
+}
+
+.indicators-page--performance .filter-search,
+.indicators-page--performance .filter-select {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.indicators-page--performance .kpi-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 12px;
+}
+
+.indicators-page--performance .kpi-section__toolbar {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.indicators-page--performance .kpi-section__legend {
+  font-size: .8rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.indicators-page--performance .global-date-filter {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.indicators-page--performance .global-date-filter__input {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+}
+
+.indicators-page--performance .kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--teal-dark);
+}
+
+.indicators-page--performance .kpi-label {
+  margin: 0;
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.indicators-page--performance .kpi-value {
+  margin: 0 0 4px;
+  font-size: 1.625rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.indicators-page--performance .kpi-context,
+.indicators-page--performance .kpi-helper {
+  color: var(--muted);
+  font-size: .75rem;
+  line-height: 1.45;
+}
+
+.indicators-page--performance .kpi-value__separator {
+  margin: 0 3px;
+  font-size: .8em;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.indicators-page--performance .kpi-value__global {
+  color: var(--muted);
+  font-size: .85em;
+  font-weight: 600;
+}
+
+.indicators-page--performance .kpi-value__unit {
+  font-size: .7em;
+  font-weight: 600;
+}
+
+.indicators-page--performance .kpi-helper {
+  margin-top: auto;
+}
+
+.indicators-page--performance .kpi-card .progress-track {
+  height: 4px;
+}
+
+.indicators-page--performance .kpi-card--amber .progress-fill { background: #b57e1c; }
+.indicators-page--performance .kpi-card--rose .progress-fill { background: #ab3749; }
+.indicators-page--performance .kpi-card--cyan .progress-fill { background: var(--teal-dark); }
+.indicators-page--performance .kpi-card--teal .progress-fill { background: var(--teal); }
+
+.indicators-page--performance .performance-region-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.indicators-page--performance .performance-region-plot {
+  width: 100%;
+}
+
+.indicators-page--performance .performance-region-card .region-totals__item {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.indicators-page--performance .performance-summary-card .summary-stats {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+}
+
+.indicators-page--performance .performance-summary-card .summary-stat,
+.indicators-page--performance .performance-summary-card .summary-stat > div,
+.indicators-page--performance .performance-summary-card .summary-insight > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.indicators-page--performance .performance-summary-card .summary-stat__icon {
+  flex-shrink: 0;
+}
+
+.indicators-page--performance .supplier-productivity__body {
+  grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
+}
+
+.indicators-page--performance .supplier-productivity__body > * {
+  min-width: 0;
+}
+
+.indicators-page--performance .table-wrap {
+  max-width: 100%;
+}
+
+.indicators-page--performance .supplier-productivity__table-scroll {
+  /* Cabeçalho de 44px e até dez fornecedores com linhas de 48px. */
+  max-height: 524px;
+  overflow: auto;
+}
+
+.indicators-page--performance .supplier-productivity__table-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.indicators-page--performance .supplier-productivity__table-scroll td {
+  height: 48px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  line-height: 20px;
+}
+
+.indicators-page--performance .performance-scroll-hint {
+  display: none;
+}
+
+.indicators-page--performance .performance-region-card .chart-tooltip,
+.indicators-page--performance .supplier-productivity .chart-tooltip {
+  min-width: 0;
+  max-width: min(280px, calc(100vw - 120px));
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.indicators-page--performance .performance-region-scroll:focus-visible,
+.indicators-page--performance .table-wrap:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+
+@media (max-width: 1100px) {
+  .indicators-page--performance .supplier-productivity__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .indicators-page--performance .filter-bar,
+  .indicators-page--performance .kpi-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .indicators-page--performance .indicator-dashboard-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+  }
+
+  .indicators-page--performance .indicator-dashboard-nav button {
+    min-height: 44px;
+    padding: 8px;
+  }
+
+  .indicators-page--performance .performance-region-card,
+  .indicators-page--performance .performance-summary-card,
+  .indicators-page--performance .table-card {
+    padding: 14px;
+  }
+
+  .indicators-page--performance .performance-summary-card .summary-card {
+    padding: 12px;
+    border-radius: 14px;
+    box-shadow: none;
+  }
+
+  .indicators-page--performance .performance-summary-card .summary-insights {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .indicators-page--performance .performance-summary-card .summary-stat,
+  .indicators-page--performance .performance-summary-card .summary-insight {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .indicators-page--performance .table-card .chart-header h3 {
+    overflow-wrap: anywhere;
+  }
+
+  .indicators-page--performance .supplier-legend {
+    padding: 12px;
+  }
+
+  .indicators-page--performance .performance-scroll-hint {
+    display: block;
+    margin: 8px 0;
+    color: var(--muted);
+    font-size: .75rem;
+  }
+
+  .indicators-page--performance .indicators-inline-warning {
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+  }
+}

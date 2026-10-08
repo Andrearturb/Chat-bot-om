@@ -13,6 +13,7 @@ import threading
 from app.db.session import SessionLocal
 from app.integrations.tape_raw import APP_DCENTROS, APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS
 from app.services.importer import importar_servicos_tape
+from app.services.tape_sync_guard import TapeSyncBusyError, tape_sync_guard
 
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,14 @@ def _obter_intervalo_segundos() -> float:
 
 
 def executar_sincronizacao_tape() -> None:
+    try:
+        with tape_sync_guard():
+            _sincronizar_apps_tape()
+    except TapeSyncBusyError:
+        logger.info('Sincronização agendada adiada: outra sincronização está em andamento.')
+
+
+def _sincronizar_apps_tape() -> None:
     """Um agendador sincroniza os dois apps com sessões e falhas isoladas."""
     for app_id in (APP_DCENTROS, APP_MANUTENCOES_CORRETIVAS, APP_MANUTENCOES_PREVENTIVAS):
         db = SessionLocal()

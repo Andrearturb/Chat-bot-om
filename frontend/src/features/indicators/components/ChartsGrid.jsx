@@ -4,7 +4,7 @@ import { ExecutiveSummary } from './ExecutiveSummary';
 export const ChartsGrid = ({ regions, categoryTree, executiveSummary }) => {
     return (<section className="charts-grid">
       <RegionVolumeCard regions={regions}/>
-      <article className="chart-card chart-card--wide">
+      <article className="chart-card chart-card--wide performance-summary-card">
         <ExecutiveSummary summary={executiveSummary}/>
       </article>
       <CategoryTreemapCard categoryTree={categoryTree}/>

@@ -802,9 +802,9 @@
     linear-gradient(180deg, #f8fbfc 0%, #eef3f6 100%);
 }
 
-/* The Central home intentionally uses more of the available desktop width.
-   Dashboard pages keep the original workspace spacing. */
-.workspace--indicators .indicators-page--home {
+/* The Central and its dashboards share the same outer frame. */
+.workspace--indicators .indicators-page--home,
+.workspace--indicators .indicators-page--dashboard {
   padding: 8px 18px 32px 8px;
 }
 
@@ -2033,14 +2033,39 @@
   padding-top: 16px;
 }
 
+.indicators-page--dashboard .indicators-content--dashboard,
+.indicators-page--dashboard .indicators-content--dashboard > *,
+.indicators-page--dashboard .corrective-panel,
+.indicators-page--dashboard .costs-panel {
+  min-width: 0;
+}
+
+.indicators-page--dashboard .indicators-state {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.indicators-page--dashboard .corrective-charts,
+.indicators-page--dashboard .corrective-ranks {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}
+
+.indicators-page--dashboard .corrective-chart,
+.indicators-page--dashboard .corrective-rank {
+  min-width: 0;
+}
+
+.indicators-page--dashboard .corrective-rank {
+  overflow-x: auto;
+}
+
 .indicators-page .indicator-dashboard-header {
   padding: 18px 20px;
-  border: 1px solid rgba(5, 56, 98, 0.10);
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(12, 116, 112, 0.08), transparent 26%),
-    rgba(255, 255, 255, 0.94);
-  box-shadow: 0 16px 42px rgba(7, 26, 48, 0.08);
+  border: 1px solid rgba(5, 56, 98, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 70px rgba(7, 26, 48, 0.10);
 }
 
 .indicators-page .indicator-dashboard-header__topline {
@@ -2232,16 +2257,22 @@
   }
 
   .indicators-page .indicator-dashboard-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
     justify-content: flex-start;
   }
 
   .indicators-page .indicator-dashboard-nav button {
     flex: 0 0 auto;
+    min-height: 44px;
   }
 }
 
 /* Painel de chamados corretivos */
 .corrective-panel { display: flex; flex-direction: column; gap: 18px; }
+.performance-toolbar,
+.corrective-toolbar,
 .preventive-toolbar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   color: #5b6b7a; font-size: 12px;
@@ -2314,21 +2345,24 @@
 }
 
 /* Modal de detalhe da corretiva */
-.corrective-modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; }
+.corrective-modal { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 24px; }
 .corrective-modal__backdrop { position: absolute; inset: 0; background: rgba(5, 25, 45, 0.5); }
 .corrective-modal__content {
   position: relative; display: flex; flex-direction: column; gap: 12px;
-  width: min(1040px, 100%); max-height: 84vh; padding: 20px;
+  width: min(1200px, 100%); min-width: 0; max-width: 100%; max-height: min(88dvh, calc(100dvh - 48px)); padding: 20px;
+  overflow: hidden;
   background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(5, 25, 45, 0.3);
 }
 .corrective-modal__content header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.corrective-modal__content header > div { min-width: 0; overflow-wrap: anywhere; }
+.corrective-modal__content header, .corrective-modal__content footer { flex-shrink: 0; }
 .corrective-modal__content header h3 { margin: 0; font-size: 16px; color: #053862; }
 .corrective-modal__content header p { margin: 4px 0 0; font-size: 12px; color: #5b6b7a; }
 .corrective-modal__content header button {
   border: none; background: transparent; cursor: pointer;
-  font-size: 24px; line-height: 1; color: #5b6b7a;
+  font-size: 24px; line-height: 1; color: #5b6b7a; min-width: 44px; min-height: 44px; flex-shrink: 0;
 }
-.corrective-modal__scroll { overflow: auto; }
+.corrective-modal__scroll { min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .corrective-modal__scroll table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .corrective-modal__scroll th, .corrective-modal__scroll td {
   padding: 7px 8px; border-bottom: 1px solid rgba(5, 56, 98, 0.08); white-space: nowrap;
@@ -2338,3 +2372,8 @@
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
 }
 .corrective-modal__content footer { font-size: 12px; color: #5b6b7a; }
+
+@media (max-width: 767px) {
+  .corrective-modal { padding: 12px; }
+  .corrective-modal__content { padding: 16px; max-height: calc(100dvh - 24px); }
+}
